@@ -80,6 +80,17 @@ app.*.map.json
 
 # Coverage
 coverage/
+.coverage
+htmlcov/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 
 # Secrets — never commit API keys for Mono/Okra or any bank data
 .env
