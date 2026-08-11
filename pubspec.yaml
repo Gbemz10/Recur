@@ -1,0 +1,21 @@
+name: recur
+description: Recur — see every recurring charge hitting your Nigerian bank account, automatically.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  # Flutter 3.27+ / Dart 3.6+ — the design system uses Color.withValues().
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
