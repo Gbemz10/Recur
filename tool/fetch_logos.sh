@@ -153,6 +153,10 @@ fetch_any ifitness "$(g128 ifitness.com.ng)"   "$(g64 ifitness.com.ng)" \
                    "$(g64 ifitnessng.com)"     "$(g64 i-fitness.com.ng)" \
                    "$(ddg ifitness.com.ng)"    "$(ddg ifitnessng.com)"
 fetch_any bolt     "$(g128 bolt.eu)"          "$(g64 bolt.eu)"          "$(ddg bolt.eu)"
+fetch_any chicken_republic \
+                   "$(g128 chickenrepublic.com)" "$(g64 chickenrepublic.com)" \
+                   "$(g64 chicken-republic.com)" "$(g64 foodconceptsplc.com)" \
+                   "$(ddg chickenrepublic.com)"
 
 
 # Clear any stragglers from an interrupted run.

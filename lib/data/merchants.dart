@@ -90,6 +90,12 @@ class Merchants {
     domain: 'bolt.eu',
     brandColor: Color(0xFF34D186),
   );
+  static const chickenRepublic = Merchant(
+    slug: 'chicken_republic',
+    name: 'Chicken Republic',
+    domain: 'chickenrepublic.com',
+    brandColor: Color(0xFFE01F26),
+  );
 
   static const List<Merchant> all = [
     netflix,
@@ -102,5 +108,6 @@ class Merchants {
     apple,
     ifitness,
     bolt,
+    chickenRepublic,
   ];
 }

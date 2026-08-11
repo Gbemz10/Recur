@@ -5,6 +5,7 @@ import '../data/mock_data.dart';
 import '../theme/recur_brand.dart';
 import '../ui/ui.dart';
 import 'brand_mark.dart';
+import 'person_avatar.dart';
 
 /// Month label for the simulated statement, so the preview never shows a
 /// stale date. Hardcoding this was a small lie that would age badly.
@@ -60,12 +61,13 @@ class StatementScanPreview extends StatelessWidget {
   final double t;
 
   static const List<_Txn> _rows = [
-    _Txn('Bolt ride', '₦3,400', false, Merchants.bolt),
-    _Txn('NETFLIX.COM NGN', '₦7,000', true, Merchants.netflix),
-    _Txn('Chicken Republic', '₦6,200', false, null),
-    _Txn('MULTICHOICE DSTV', '₦19,000', true, Merchants.dstv),
-    _Txn('Transfer to Tunde', '₦25,000', false, null),
-    _Txn('MTNNG DATA AUTOREN', '₦10,000', true, Merchants.mtn),
+    _Txn('Bolt ride', '₦3,400', false, merchant: Merchants.bolt),
+    _Txn('NETFLIX.COM NGN', '₦7,000', true, merchant: Merchants.netflix),
+    _Txn('Chicken Republic', '₦6,200', false,
+        merchant: Merchants.chickenRepublic),
+    _Txn('MULTICHOICE DSTV', '₦19,000', true, merchant: Merchants.dstv),
+    _Txn('Transfer to Tunde', '₦25,000', false, person: 'Tunde'),
+    _Txn('MTNNG DATA AUTOREN', '₦10,000', true, merchant: Merchants.mtn),
   ];
 
   @override
@@ -145,14 +147,23 @@ class StatementScanPreview extends StatelessWidget {
 }
 
 class _Txn {
-  const _Txn(this.label, this.amount, this.recurring, this.merchant);
+  const _Txn(
+    this.label,
+    this.amount,
+    this.recurring, {
+    this.merchant,
+    this.person,
+  });
+
   final String label;
   final String amount;
   final bool recurring;
 
-  /// Null for one-off spend we can't attribute to a known brand — which is
-  /// most of a real statement.
+  /// Set when the counterparty is a known brand.
   final Merchant? merchant;
+
+  /// Set when the counterparty is a human — a transfer, not a purchase.
+  final String? person;
 }
 
 class _TxnRow extends StatelessWidget {
@@ -182,7 +193,8 @@ class _TxnRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Brand mark for anything we recognise, a neutral dot otherwise.
+          // Brands get a rounded-square logo tile, people get a circular
+          // initial avatar, anything unattributed gets a neutral receipt.
           if (txn.merchant case final m?)
             BrandMark(
               slug: m.slug,
@@ -194,6 +206,8 @@ class _TxnRow extends StatelessWidget {
               bordered: false,
               padded: false,
             )
+          else if (txn.person case final p?)
+            PersonAvatar(name: p, size: 17)
           else
             Container(
               width: 17,
