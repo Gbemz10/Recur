@@ -136,17 +136,22 @@ fetch_any() {
 echo
 echo "Merchants →  $OUT"
 fetch_any netflix  "$(g128 netflix.com)"      "$(g64 netflix.com)"      "$(ddg netflix.com)"
-fetch_any dstv     "$(g128 dstv.com)"         "$(g64 dstv.com)" \
-                   "$(g64 multichoice.com)"   "$(ddg dstv.com)"
+fetch_any dstv     "$(g128 dstv.com)"          "$(g64 dstv.com)" \
+                   "$(g128 dstv.co.za)"        "$(g64 dstv.co.za)" \
+                   "$(g64 multichoice.com)"    "$(g64 multichoicegroup.com)" \
+                   "$(ddg dstv.com)"           "$(ddg dstv.co.za)" \
+                   "$(ddg multichoice.com)"
 fetch_any mtn      "$(g128 mtn.ng)"           "$(g64 mtn.ng)" \
                    "$(g64 mtnonline.com)"     "$(g64 mtn.com)"          "$(ddg mtn.ng)"
 fetch_any spotify  "$(g128 spotify.com)"      "$(g64 spotify.com)"      "$(ddg spotify.com)"
 fetch_any openai   "$(g128 openai.com)"       "$(g64 openai.com)"       "$(ddg openai.com)"
 fetch_any canva    "$(g128 canva.com)"        "$(g64 canva.com)"        "$(ddg canva.com)"
-fetch_any showmax  "$(g128 showmax.com)"      "$(g64 showmax.com)"      "$(ddg showmax.com)"
+fetch_any showmax  "$(g128 showmax.com)"       "$(g64 showmax.com)" \
+                   "$(g64 showmax.co.za)"      "$(ddg showmax.com)"
 fetch_any apple    "$(g128 apple.com)"        "$(g64 apple.com)"        "$(ddg apple.com)"
-fetch_any ifitness "$(g128 ifitness.com.ng)"  "$(g64 ifitness.com.ng)" \
-                   "$(g64 ifitnessng.com)"    "$(ddg ifitness.com.ng)"
+fetch_any ifitness "$(g128 ifitness.com.ng)"   "$(g64 ifitness.com.ng)" \
+                   "$(g64 ifitnessng.com)"     "$(g64 i-fitness.com.ng)" \
+                   "$(ddg ifitness.com.ng)"    "$(ddg ifitnessng.com)"
 fetch_any bolt     "$(g128 bolt.eu)"          "$(g64 bolt.eu)"          "$(ddg bolt.eu)"
 
 
