@@ -1,9 +1,28 @@
-# Recur — Flutter frontend
+# Recur
 
-See every recurring charge hitting your Nigerian bank account, automatically.
+**See every recurring charge hitting your Nigerian bank account, automatically.**
 
-This is the **v1 frontend only**. All data is mocked in `lib/data/mock_data.dart`
-so screens can be built and reviewed before the Python backend exists.
+Old subscriptions, auto-renewing data plans, that free trial from March.
+Recur links to your bank read-only, finds the charges that repeat, and warns
+you before the next one lands. No manual entry, no receipt scanning.
+
+Nothing like this exists for Nigerian banks — Rocket Money and Trim are built
+on US banking infrastructure and don't work here.
+
+---
+
+## Status
+
+**v1 frontend only.** All data is mocked in `lib/data/mock_data.dart` so
+screens can be built and reviewed before the Python backend exists. Nothing
+touches a real bank yet.
+
+| | |
+|---|---|
+| Frontend | Flutter (this repo) |
+| Backend | Python / FastAPI (not started) |
+| Bank data | Mono or Okra — provider not yet chosen |
+| Market | Nigeria first |
 
 ---
 
@@ -109,4 +128,3 @@ expressive surfaces (splash, total card). Don't reach for it in everyday UI.
 - Renewal calendar and Settings tabs — placeholders in `app_shell.dart`
 - Offline font bundling (currently fetched by `google_fonts` at runtime)
 - Dark theme pass (wired up, not designed against)
-# Recur
