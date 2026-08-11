@@ -44,12 +44,8 @@ class _RootFlowState extends State<_RootFlow> {
 
   @override
   Widget build(BuildContext context) {
-    // Splash owns a dark status bar; everything after it is light.
-    final overlay = _stage == _Stage.splash
-        ? SystemUiOverlayStyle.light
-        : SystemUiOverlayStyle.dark.copyWith(
-            statusBarColor: Colors.transparent,
-          );
+    // Every stage sits on a light background, so status bar icons stay dark.
+    const overlay = SystemUiOverlayStyle.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlay,

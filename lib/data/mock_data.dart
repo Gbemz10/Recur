@@ -213,20 +213,8 @@ class MockData {
     return list;
   }
 
-  static const List<String> supportedBanks = [
-    'Access Bank',
-    'GTBank',
-    'Zenith Bank',
-    'First Bank',
-    'UBA',
-    'Kuda',
-    'Opay',
-    'Moniepoint',
-    'Sterling Bank',
-    'Fidelity Bank',
-    'Union Bank',
-    'Wema / ALAT',
-  ];
+  // Bank list lives in data/banks.dart — it carries CBN codes and logos,
+  // which this file has no business duplicating.
 }
 
 /// Formats a naira amount the way Nigerian users expect to read it.

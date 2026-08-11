@@ -19,3 +19,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    # Populate with ./tool/fetch_logos.sh. Release builds render either a
+    # bundled logo or the brand's initial — never a network fetch — so this
+    # folder is the only thing standing between a user and a real logo.
+    - assets/logos/

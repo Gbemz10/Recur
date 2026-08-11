@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/banks.dart';
 import '../data/mock_data.dart';
 import '../ui/ui.dart';
+import '../widgets/bank_logo.dart';
 
 /// Consent → pick bank → connecting → done.
 ///
@@ -22,7 +24,11 @@ enum _Step { consent, pickBank, connecting, success }
 
 class _LinkBankScreenState extends State<LinkBankScreen> {
   _Step _step = _Step.consent;
-  String? _bank;
+  Bank? _bank;
+
+  final TextEditingController _search = TextEditingController();
+  String _query = '';
+
   String _statusLine = 'Establishing secure connection…';
   Timer? _timer;
 
@@ -35,12 +41,22 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _search.addListener(() {
+      if (_search.text != _query) setState(() => _query = _search.text);
+    });
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
+    _search.dispose();
     super.dispose();
   }
 
-  void _startConnecting(String bank) {
+  void _startConnecting(Bank bank) {
+    FocusScope.of(context).unfocus();
     setState(() {
       _bank = bank;
       _step = _Step.connecting;
@@ -144,13 +160,13 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             body: 'You authorise through your bank, not through us.',
           ),
 
-          const SizedBox(height: AppSpacing.lg),
-          const AppAlert(
-            title: 'You stay in control',
-            message:
-                'Disconnect any account and delete its data from Settings '
-                'at any time.',
-            variant: AppAlertVariant.info,
+          Text(
+            'You stay in control. Disconnect any account and delete its data '
+            'from Settings at any time.',
+            style: text.bodySmall?.copyWith(
+              color: AppColors.neutral500,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: AppSpacing.xxl),
 
@@ -175,78 +191,70 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
   // -------------------------------------------------------------- pick bank
 
   Widget _buildPickBank() {
+    final results = Banks.search(_query);
+
     return Column(
       key: const ValueKey('pick'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xxl,
+            AppSpacing.xl,
             AppSpacing.lg,
-            AppSpacing.xxl,
-            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.md,
           ),
-          child: Text(
-            'Pick the bank your subscriptions are charged to. You can add '
-            'more later.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColors.neutral600),
+          child: AppTextField(
+            controller: _search,
+            hint: 'Search banks',
+            prefixIcon: Icons.search_rounded,
           ),
         ),
+
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xxl,
-              0,
-              AppSpacing.xxl,
-              AppSpacing.xxl,
-            ),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: AppSpacing.md,
-              crossAxisSpacing: AppSpacing.md,
-              childAspectRatio: 2.4,
-            ),
-            itemCount: MockData.supportedBanks.length,
-            itemBuilder: (context, i) {
-              final bank = MockData.supportedBanks[i];
-              return AppCard(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                onTap: () => _startConnecting(bank),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: AppRadius.smBR,
+          child: results.isEmpty
+              ? const AppEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No bank matches that',
+                  message:
+                      'Try the short name instead — GTB, UBA, FCMB all work.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    0,
+                    AppSpacing.xl,
+                    AppSpacing.xxl,
+                  ),
+                  itemCount: results.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.sm),
+                  itemBuilder: (context, i) {
+                    final bank = results[i];
+                    return AppCard(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      onTap: () => _startConnecting(bank),
+                      child: Row(
+                        children: [
+                          BankLogo(bank: bank),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: Text(
+                              bank.name,
+                              style: Theme.of(context).textTheme.titleSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.neutral400,
+                          ),
+                        ],
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        bank.substring(0, 1),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        bank,
-                        style: Theme.of(context).textTheme.labelLarge,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -265,7 +273,8 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             const _PulsingOrb(),
             const SizedBox(height: AppSpacing.xxxl),
             Text(
-              _bank ?? '',
+              _bank?.name ?? '',
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.sm),
