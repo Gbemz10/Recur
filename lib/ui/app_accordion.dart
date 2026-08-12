@@ -58,7 +58,7 @@ class _AppAccordionState extends State<AppAccordion> {
                       children: [
                         Expanded(
                           child: Text(widget.items[i].title,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.neutral900)),
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink(context))),
                         ),
                         AnimatedRotation(
                           turns: _openIndices.contains(i) ? 0.5 : 0,

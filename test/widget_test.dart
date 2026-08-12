@@ -1,9 +1,7 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Basic smoke test — confirms the app boots and renders its first frame
+// without throwing. The default `flutter create` template that used to be
+// here tested a counter demo (`MyApp`) that was never this app; `RecurApp`
+// is the real entry point, defined in lib/main.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,20 +9,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:recur/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('RecurApp builds without throwing', (WidgetTester tester) async {
+    await tester.pumpWidget(const RecurApp());
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Doesn't assert on specific screen content — the root flow starts on
+    // the splash screen and moves through several async stages (session
+    // check, onboarding, etc.), so the only thing worth guaranteeing here
+    // is that construction itself doesn't throw.
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

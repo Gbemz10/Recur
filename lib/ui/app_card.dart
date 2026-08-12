@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 
 /// Generic surface container. Prefer this over raw `Card` so every
 /// surface in the app shares the same radius/border/shadow language.
@@ -25,7 +26,7 @@ class AppCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.lgBR,
         border: Border.all(color: scheme.outline),
         boxShadow: elevated
             ? [
@@ -40,10 +41,10 @@ class AppCard extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppRadius.lgBR,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.lgBR,
         child: card,
       ),
     );
@@ -75,14 +76,39 @@ class AppStatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: textTheme.bodyMedium?.copyWith(color: AppColors.neutral500)),
-              if (icon != null) Icon(icon, size: 18, color: AppColors.neutral400),
+              Expanded(
+                child: Text(
+                  label,
+                  // Two lines beats a truncated "Monthly equi…" — a label
+                  // wrapping cleanly still reads fine at this size; losing
+                  // the second half of the word doesn't.
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
+                ),
+              ),
+              if (icon != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Icon(icon, size: 18, color: AppColors.neutral400),
+              ],
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(value, style: textTheme.headlineMedium),
+          // A big naira figure in a narrow card is the one thing here that
+          // must never wrap or truncate — losing digits off a money amount
+          // is actively misleading, not just untidy. Scaling the whole line
+          // down to fit keeps every digit visible instead.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTypography.mono(size: 26, weight: FontWeight.w600, color: AppColors.ink(context)),
+            ),
+          ),
           if (trend != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Row(

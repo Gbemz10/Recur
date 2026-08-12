@@ -85,3 +85,7 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# backend (Node) — in case node_modules/dist ever get generated here
+backend/node_modules/
+backend/dist/

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'app_dots_loader.dart';
 
 enum AppButtonVariant { primary, secondary, outline, ghost, destructive }
 
@@ -59,22 +60,29 @@ class AppButton extends StatelessWidget {
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // Loading replaces the label entirely — dots only, no text beside
+        // them. A spinner sitting next to "Send me a code" reads as two
+        // competing signals; the dots alone say "working" on their own.
         if (isLoading)
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: c.fg),
-          )
-        else if (icon != null)
-          Icon(icon, size: 18, color: c.fg),
-        if ((icon != null || isLoading)) const SizedBox(width: AppSpacing.sm),
-        Text(
-          label,
-          style: TextStyle(fontSize: _fontSize, fontWeight: FontWeight.w600, color: c.fg, height: 1),
-        ),
-        if (trailingIcon != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          Icon(trailingIcon, size: 18, color: c.fg),
+          AppDotsLoader(size: _fontSize * 0.5, color: c.fg)
+        else ...[
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: c.fg),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: _fontSize,
+              fontWeight: FontWeight.w600,
+              color: c.fg,
+              height: 1,
+            ),
+          ),
+          if (trailingIcon != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Icon(trailingIcon, size: 18, color: c.fg),
+          ],
         ],
       ],
     );

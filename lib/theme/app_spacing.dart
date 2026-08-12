@@ -23,10 +23,15 @@ class AppSpacing {
 class AppRadius {
   AppRadius._();
 
+  // Slightly tightened from the original scale. Containers that hold
+  // information (cards, statements, sheets) read as more "ledger" and
+  // less "bubble app" a few points off full-round; controls people tap
+  // (buttons, chips, badges) stay at `full` so touch targets still feel
+  // inviting. The gap between the two is deliberate, not an oversight.
   static const double sm = 6;
-  static const double md = 10;
-  static const double lg = 14;
-  static const double xl = 20;
+  static const double md = 9;
+  static const double lg = 12;
+  static const double xl = 16;
   static const double full = 999;
 
   static BorderRadius get smBR => BorderRadius.circular(sm);

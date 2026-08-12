@@ -1,79 +1,114 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-import '../data/banks.dart';
-import '../data/mock_data.dart';
+import '../data/api_client.dart';
+import '../data/banking_service.dart';
 import '../ui/ui.dart';
-import '../widgets/bank_logo.dart';
 
-/// Consent → pick bank → connecting → done.
+/// Consent → Mono's hosted Connect page (webview) → confirming → done.
 ///
 /// The consent step is doing the heaviest lifting in the whole product:
 /// asking a Nigerian user to connect a real bank account to a new app is
 /// the single biggest drop-off point, so it states plainly what Recur can
 /// and cannot do before anything else happens.
+///
+/// Bank selection and login happen entirely on Mono's own hosted page
+/// (opened in the webview below) — this app never sees which bank was
+/// picked or any credentials, only a redirect once the user finishes.
+/// Even then, the actual linked-account id isn't known synchronously: it
+/// arrives moments later via a webhook to the backend, so "waiting" here
+/// means polling for that to land rather than a fixed animation.
 class LinkBankScreen extends StatefulWidget {
-  const LinkBankScreen({super.key});
+  const LinkBankScreen({super.key, required this.onDone});
+
+  /// Called when the user finishes linking, or chooses to skip for now.
+  /// Skipping is allowed on purpose: forcing a bank connection before
+  /// someone has seen anything useful is how you lose them at the door.
+  final VoidCallback onDone;
 
   @override
   State<LinkBankScreen> createState() => _LinkBankScreenState();
 }
 
-enum _Step { consent, pickBank, connecting, success }
+enum _Step { consent, webview, waiting, success, timeout }
 
 class _LinkBankScreenState extends State<LinkBankScreen> {
   _Step _step = _Step.consent;
-  Bank? _bank;
+  bool _busy = false;
 
-  final TextEditingController _search = TextEditingController();
-  String _query = '';
+  WebViewController? _controller;
+  String? _redirectUrl;
+  bool _redirectHandled = false;
 
-  String _statusLine = 'Establishing secure connection…';
-  Timer? _timer;
+  Future<void> _startLinking() async {
+    setState(() => _busy = true);
+    try {
+      final result = await BankingService.initiateLink();
+      _redirectUrl = result.redirectUrl;
+      _redirectHandled = false;
 
-  static const List<String> _connectingLines = [
-    'Establishing secure connection…',
-    'Verifying with your bank…',
-    'Reading transaction history…',
-    'Looking for repeating charges…',
-    'Grouping what we found…',
-  ];
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onNavigationRequest: (request) {
+              if (request.url.startsWith(_redirectUrl!)) {
+                _onLinkingRedirect();
+                return NavigationDecision.prevent;
+              }
+              return NavigationDecision.navigate;
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(result.monoUrl));
 
-  @override
-  void initState() {
-    super.initState();
-    _search.addListener(() {
-      if (_search.text != _query) setState(() => _query = _search.text);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _search.dispose();
-    super.dispose();
-  }
-
-  void _startConnecting(Bank bank) {
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _bank = bank;
-      _step = _Step.connecting;
-      _statusLine = _connectingLines.first;
-    });
-
-    var i = 0;
-    _timer = Timer.periodic(const Duration(milliseconds: 900), (timer) {
-      i++;
       if (!mounted) return;
-      if (i < _connectingLines.length) {
-        setState(() => _statusLine = _connectingLines[i]);
-      } else {
-        timer.cancel();
-        setState(() => _step = _Step.success);
+      setState(() {
+        _busy = false;
+        _step = _Step.webview;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    }
+  }
+
+  void _onLinkingRedirect() {
+    // The webview can fire multiple navigation events for the same
+    // redirect (query-string variants, a trailing fragment); only act on
+    // the first one.
+    if (_redirectHandled) return;
+    _redirectHandled = true;
+    setState(() => _step = _Step.waiting);
+    _pollForLinkedAccount();
+  }
+
+  /// The account id isn't known until Mono's `account_connected` webhook
+  /// reaches the backend — anywhere from "instant" to a couple of minutes
+  /// per Mono's own docs. Polling `GET /banking/accounts` is the only way
+  /// to know when that's landed; this isn't the final "subscriptions
+  /// detected" state, just "the bank is actually linked, not abandoned."
+  Future<void> _pollForLinkedAccount() async {
+    const maxAttempts = 20;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!mounted) return;
+      try {
+        final accounts = await BankingService.listAccounts();
+        if (accounts.isNotEmpty) {
+          if (!mounted) return;
+          setState(() => _step = _Step.success);
+          return;
+        }
+      } catch (_) {
+        // Transient network hiccup — keep polling rather than failing the
+        // whole flow on one bad request.
       }
-    });
+      if (!mounted) return;
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    if (!mounted) return;
+    setState(() => _step = _Step.timeout);
   }
 
   @override
@@ -83,22 +118,20 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
       appBar: AppBar(
         title: Text(switch (_step) {
           _Step.consent => 'Before we start',
-          _Step.pickBank => 'Choose your bank',
-          _Step.connecting => 'Connecting',
+          _Step.webview => 'Connect your bank',
+          _Step.waiting => 'Confirming',
           _Step.success => 'All set',
+          _Step.timeout => 'Still connecting',
         }),
-        leading: _step == _Step.connecting
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () {
-                  if (_step == _Step.pickBank) {
-                    setState(() => _step = _Step.consent);
-                  } else {
-                    Navigator.of(context).pop(false);
-                  }
-                },
-              ),
+        leading: _step == _Step.webview
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => setState(() {
+                  _controller = null;
+                  _step = _Step.consent;
+                }),
+              )
+            : null,
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -106,9 +139,10 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
           duration: const Duration(milliseconds: 320),
           child: switch (_step) {
             _Step.consent => _buildConsent(),
-            _Step.pickBank => _buildPickBank(),
-            _Step.connecting => _buildConnecting(),
+            _Step.webview => _buildWebview(),
+            _Step.waiting => _buildWaiting(),
             _Step.success => _buildSuccess(),
+            _Step.timeout => _buildTimeout(),
           },
         ),
       ),
@@ -174,97 +208,34 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             label: 'I understand, continue',
             size: AppButtonSize.lg,
             expand: true,
-            onPressed: () => setState(() => _step = _Step.pickBank),
+            isLoading: _busy,
+            onPressed: _busy ? null : _startLinking,
           ),
           const SizedBox(height: AppSpacing.sm),
           AppButton(
             label: 'Not now',
             variant: AppButtonVariant.ghost,
             expand: true,
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: widget.onDone,
           ),
         ],
       ),
     );
   }
 
-  // -------------------------------------------------------------- pick bank
+  // ---------------------------------------------------------------- webview
 
-  Widget _buildPickBank() {
-    final results = Banks.search(_query);
-
-    return Column(
-      key: const ValueKey('pick'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.lg,
-            AppSpacing.xl,
-            AppSpacing.md,
-          ),
-          child: AppTextField(
-            controller: _search,
-            hint: 'Search banks',
-            prefixIcon: Icons.search_rounded,
-          ),
-        ),
-
-        Expanded(
-          child: results.isEmpty
-              ? const AppEmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No bank matches that',
-                  message:
-                      'Try the short name instead — GTB, UBA, FCMB all work.',
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    0,
-                    AppSpacing.xl,
-                    AppSpacing.xxl,
-                  ),
-                  itemCount: results.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, i) {
-                    final bank = results[i];
-                    return AppCard(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      onTap: () => _startConnecting(bank),
-                      child: Row(
-                        children: [
-                          BankLogo(bank: bank),
-                          const SizedBox(width: AppSpacing.lg),
-                          Expanded(
-                            child: Text(
-                              bank.name,
-                              style: Theme.of(context).textTheme.titleSmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppColors.neutral400,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
+  Widget _buildWebview() {
+    final controller = _controller;
+    if (controller == null) return const SizedBox.shrink();
+    return WebViewWidget(key: const ValueKey('webview'), controller: controller);
   }
 
-  // ------------------------------------------------------------- connecting
+  // ---------------------------------------------------------------- waiting
 
-  Widget _buildConnecting() {
+  Widget _buildWaiting() {
     return Center(
-      key: const ValueKey('connecting'),
+      key: const ValueKey('waiting'),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
@@ -273,30 +244,15 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             const _PulsingOrb(),
             const SizedBox(height: AppSpacing.xxxl),
             Text(
-              _bank?.name ?? '',
+              'Confirming your connection',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.sm),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              child: Text(
-                _statusLine,
-                key: ValueKey(_statusLine),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.neutral500),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.huge),
             Text(
-              'This usually takes a few seconds. Keep the app open.',
+              "This can take a few seconds, sometimes longer depending on your bank.",
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.neutral400),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
             ),
           ],
         ),
@@ -307,7 +263,6 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
   // ---------------------------------------------------------------- success
 
   Widget _buildSuccess() {
-    final found = MockData.subscriptions.length;
     final text = Theme.of(context).textTheme;
 
     return Padding(
@@ -337,11 +292,11 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),
-          Text('$found recurring charges found', style: text.headlineSmall),
+          Text('Bank connected', style: text.headlineSmall),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'That is ${formatNaira(MockData.monthlyTotal)} a month leaving '
-            'your account on repeat. Let us go through them.',
+            "We're scanning your transaction history now. Recurring charges "
+            'will start showing up on your dashboard shortly.',
             textAlign: TextAlign.center,
             style: text.bodyMedium?.copyWith(
               color: AppColors.neutral600,
@@ -350,10 +305,54 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
           ),
           const Spacer(),
           AppButton(
-            label: 'See what we found',
+            label: 'Go to dashboard',
             size: AppButtonSize.lg,
             expand: true,
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: widget.onDone,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- timeout
+
+  Widget _buildTimeout() {
+    final text = Theme.of(context).textTheme;
+
+    return Padding(
+      key: const ValueKey('timeout'),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
+      child: Column(
+        children: [
+          const Spacer(),
+          const Icon(Icons.hourglass_top_rounded, size: 56, color: AppColors.neutral400),
+          const SizedBox(height: AppSpacing.xl),
+          Text('Taking longer than usual', style: text.headlineSmall, textAlign: TextAlign.center),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            "Your bank connection is still being confirmed in the background. "
+            "You can continue into the app now — we'll update your dashboard "
+            'as soon as it comes through.',
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(
+              color: AppColors.neutral600,
+              height: 1.5,
+            ),
+          ),
+          const Spacer(),
+          AppButton(
+            label: 'Continue to dashboard',
+            size: AppButtonSize.lg,
+            expand: true,
+            onPressed: widget.onDone,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Try again',
+            variant: AppButtonVariant.ghost,
+            expand: true,
+            onPressed: () => setState(() => _step = _Step.consent),
           ),
         ],
       ),
@@ -406,7 +405,7 @@ class _ConsentRow extends StatelessWidget {
   }
 }
 
-/// Concentric pulse used while the bank connection is in flight.
+/// Concentric pulse used while the link is being confirmed.
 class _PulsingOrb extends StatefulWidget {
   const _PulsingOrb();
 

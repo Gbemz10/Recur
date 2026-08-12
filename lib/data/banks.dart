@@ -220,4 +220,15 @@ class Banks {
 
   static List<Bank> search(String query) =>
       all.where((b) => b.matches(query)).toList();
+
+  /// Looks up a bank by its CBN code, e.g. to render a real logo for a
+  /// [LinkedBank] returned from the backend. Returns null for anything not
+  /// in this curated list — Mono's sandbox test banks in particular won't
+  /// match, since they're not real CBN-registered institutions.
+  static Bank? byCode(String code) {
+    for (final bank in all) {
+      if (bank.code == code) return bank;
+    }
+    return null;
+  }
 }

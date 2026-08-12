@@ -3,25 +3,31 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../models/subscription.dart';
 import '../ui/ui.dart';
+import 'brand_mark.dart';
 
 /// One row in the subscriptions list.
 ///
-/// Staggers itself in on first build — a list that assembles rather than
-/// snaps in makes the detection feel like it just happened.
-class SubscriptionTile extends StatefulWidget {
+/// Design intent: a financial list fails when every row carries the same
+/// visual weight, because the user can't tell what's actually costing them
+/// money. So each row shows its share of monthly spend as a thin bar under
+/// the amount — ₦32,000 and ₦1,300 stop looking equivalent at a glance.
+class SubscriptionTile extends StatelessWidget {
   const SubscriptionTile({
     super.key,
     required this.subscription,
-    required this.index,
     required this.onTap,
+    this.shareOfSpend,
     this.showConfidence = false,
     this.onConfirm,
     this.onDismiss,
   });
 
   final Subscription subscription;
-  final int index;
   final VoidCallback onTap;
+
+  /// 0–1, this subscription's portion of total monthly spend. Null hides
+  /// the bar — correct for cancelled items, which cost nothing.
+  final double? shareOfSpend;
 
   /// In the review tab we show how sure the engine is, plus quick actions.
   final bool showConfidence;
@@ -29,204 +35,196 @@ class SubscriptionTile extends StatefulWidget {
   final VoidCallback? onDismiss;
 
   @override
-  State<SubscriptionTile> createState() => _SubscriptionTileState();
-}
-
-class _SubscriptionTileState extends State<SubscriptionTile>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 420),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(
-      Duration(milliseconds: 40 * widget.index),
-      () {
-        if (mounted) _c.forward();
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final sub = widget.subscription;
     final text = Theme.of(context).textTheme;
-    final cancelled = sub.status == SubscriptionStatus.cancelled;
+    final cancelled = subscription.status == SubscriptionStatus.cancelled;
+    final urgent = subscription.isDueSoon && !cancelled;
 
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, child) {
-        final v = Curves.easeOutCubic.transform(_c.value);
-        return Opacity(
-          opacity: v,
-          child: Transform.translate(offset: Offset(0, 18 * (1 - v)), child: child),
-        );
-      },
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        onTap: widget.onTap,
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _MerchantMark(subscription: sub, faded: cancelled),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sub.merchant,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.titleSmall?.copyWith(
-                          decoration:
-                              cancelled ? TextDecoration.lineThrough : null,
-                          color: cancelled ? AppColors.neutral400 : null,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Text(
-                            sub.cycle.label,
-                            style: text.bodySmall
-                                ?.copyWith(color: AppColors.neutral500),
-                          ),
-                          const _Dot(),
-                          Flexible(
-                            child: Text(
-                              cancelled
-                                  ? 'Cancelled'
-                                  : _nextChargeLabel(sub),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: text.bodySmall?.copyWith(
-                                color: sub.isDueSoon && !cancelled
-                                    ? AppColors.warning
-                                    : AppColors.neutral500,
-                                fontWeight: sub.isDueSoon && !cancelled
-                                    ? FontWeight.w600
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: onTap,
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Opacity(
+                opacity: cancelled ? 0.45 : 1,
+                child: BrandMark(
+                  slug: subscription.brand.slug,
+                  fallbackLabel: subscription.brand.name,
+                  brandColor: subscription.brand.brandColor,
+                  networkUrl: subscription.brand.logoUrl,
+                  size: 42,
+                  radius: 12,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      formatNaira(sub.amount),
+                      subscription.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: text.titleSmall?.copyWith(
+                        decoration:
+                            cancelled ? TextDecoration.lineThrough : null,
                         color: cancelled ? AppColors.neutral400 : null,
                       ),
                     ),
-                    if (sub.cycle != BillingCycle.monthly) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        '${formatNaira(sub.monthlyEquivalent)}/mo',
-                        style: text.bodySmall
-                            ?.copyWith(color: AppColors.neutral400),
-                      ),
-                    ],
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text(
+                          subscription.cycle.label,
+                          style: text.bodySmall
+                              ?.copyWith(color: AppColors.neutral500),
+                        ),
+                        const _Dot(),
+                        Flexible(
+                          child: Text(
+                            cancelled
+                                ? 'Cancelled'
+                                : subscription.nextChargeLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall?.copyWith(
+                              color: urgent
+                                  ? AppColors.warning
+                                  : AppColors.neutral500,
+                              fontWeight: urgent ? FontWeight.w700 : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-            if (widget.showConfidence) ...[
-              const SizedBox(height: AppSpacing.lg),
-              _ConfidenceBar(value: sub.confidence),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Not a subscription',
-                      variant: AppButtonVariant.outline,
-                      size: AppButtonSize.sm,
-                      expand: true,
-                      onPressed: widget.onDismiss,
+                  Text(
+                    formatNaira(subscription.amount),
+                    style: AppTypography.mono(
+                      size: 14,
+                      weight: FontWeight.w600,
+                      color: cancelled ? AppColors.neutral400 : AppColors.ink(context),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppButton(
-                      label: 'Yes, it is',
-                      size: AppButtonSize.sm,
-                      expand: true,
-                      onPressed: widget.onConfirm,
+                  if (subscription.cycle != BillingCycle.monthly &&
+                      !cancelled) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatNaira(subscription.monthlyEquivalent)}/mo',
+                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.neutral400),
                     ),
-                  ),
+                  ],
+                  if (shareOfSpend != null && !cancelled) ...[
+                    const SizedBox(height: 6),
+                    _ShareBar(
+                      share: shareOfSpend!,
+                      color: subscription.accentColor,
+                    ),
+                  ],
                 ],
               ),
             ],
+          ),
+          if (showConfidence) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _ConfidenceRow(value: subscription.confidence),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Not a subscription',
+                    variant: AppButtonVariant.outline,
+                    size: AppButtonSize.sm,
+                    expand: true,
+                    onPressed: onDismiss,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AppButton(
+                    label: 'Yes, it is',
+                    size: AppButtonSize.sm,
+                    expand: true,
+                    onPressed: onConfirm,
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
-
-  String _nextChargeLabel(Subscription sub) {
-    final d = sub.daysUntilCharge;
-    if (d < 0) return 'Overdue';
-    if (d == 0) return 'Charges today';
-    if (d == 1) return 'Charges tomorrow';
-    if (d <= 7) return 'In $d days';
-    return 'In $d days';
-  }
 }
 
-class _MerchantMark extends StatelessWidget {
-  const _MerchantMark({required this.subscription, this.faded = false});
+/// Thin proportional bar. Deliberately unlabelled — the point is the
+/// relative length, and a percentage next to every row would be noise.
+class _ShareBar extends StatelessWidget {
+  const _ShareBar({required this.share, required this.color});
 
-  final Subscription subscription;
-  final bool faded;
+  final double share;
+  final Color color;
+
+  static const double _width = 52;
 
   @override
   Widget build(BuildContext context) {
-    final color = faded ? AppColors.neutral400 : subscription.accentColor;
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: AppRadius.mdBR,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        subscription.initials,
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          fontSize: 14,
-          color: color,
-        ),
+    return SizedBox(
+      width: _width,
+      height: 3,
+      child: Stack(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.neutral200,
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: const SizedBox(width: _width, height: 3),
+          ),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: share.clamp(0.0, 1.0)),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, _) => Container(
+              // Floor so a small subscription still registers visually.
+              width: (_width * v).clamp(4.0, _width),
+              height: 3,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ConfidenceBar extends StatelessWidget {
-  const _ConfidenceBar({required this.value});
+class _ConfidenceRow extends StatelessWidget {
+  const _ConfidenceRow({required this.value});
 
   final double value;
 
   @override
   Widget build(BuildContext context) {
     final pct = (value * 100).round();
+    final color = value >= 0.8
+        ? AppColors.success
+        : value >= 0.65
+            ? AppColors.warning
+            : AppColors.neutral400;
+
     return Row(
       children: [
         Text(
@@ -248,22 +246,13 @@ class _ConfidenceBar extends StatelessWidget {
                 value: v,
                 minHeight: 6,
                 backgroundColor: AppColors.neutral200,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  value >= 0.8
-                      ? AppColors.success
-                      : value >= 0.65
-                          ? AppColors.warning
-                          : AppColors.neutral400,
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        Text(
-          '$pct%',
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
+        Text('$pct%', style: Theme.of(context).textTheme.labelSmall),
       ],
     );
   }

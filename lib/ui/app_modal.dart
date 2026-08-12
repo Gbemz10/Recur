@@ -16,7 +16,7 @@ Future<T?> showAppModal<T>(
   return showDialog<T>(
     context: context,
     builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.xlBR),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: width),
         child: Padding(

@@ -302,7 +302,7 @@ class _ScanStatus extends StatelessWidget {
     return Row(
       children: [
         Transform.rotate(
-          angle: t * 14,
+          angle: t * 9,
           child: const Icon(
             Icons.autorenew_rounded,
             size: 12,

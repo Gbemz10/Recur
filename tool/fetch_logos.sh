@@ -28,6 +28,36 @@ mkdir -p "$OUT"
 FORCE=0
 [[ "${1:-}" == "--force" ]] && FORCE=1
 
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    echo ''
+  fi
+}
+
+# Google's favicon service doesn't 404 for domains it doesn't know — it
+# quietly returns a generic globe. That globe is a perfectly valid PNG, so a
+# magic-byte check waves it through and you end up shipping a globe as a
+# brand's logo. (This is exactly how a wrong Chicken Republic logo got in:
+# the un-hyphenated domain isn't theirs, so Google served the placeholder.)
+#
+# So: fetch the globe once from a domain that definitely doesn't exist,
+# fingerprint it, and reject anything that matches.
+GLOBE_SUM=''
+fingerprint_placeholder() {
+  local tmp="$OUT/.globe.probe"
+  local bogus='recur-nonexistent-domain-check.invalid'
+  if curl -fsSL --max-time 15 -o "$tmp" \
+      "https://www.google.com/s2/favicons?sz=64&domain=$bogus" 2>/dev/null; then
+    GLOBE_SUM=$(sha256_of "$tmp")
+    [[ -n "$GLOBE_SUM" ]] && printf 'Placeholder fingerprint: %s…\n\n' "${GLOBE_SUM:0:12}"
+  fi
+  rm -f "$tmp"
+}
+
 fetch() {
   local name="$1" url="$2"
   local dest="$OUT/$1.png"
@@ -70,6 +100,13 @@ fetch() {
       return 0
       ;;
   esac
+
+  # Reject the "I don't know this domain" globe.
+  if [[ -n "$GLOBE_SUM" ]] && [[ "$(sha256_of "$tmp")" == "$GLOBE_SUM" ]]; then
+    rm -f "$tmp"
+    printf '  SKIP  %s (placeholder globe, not a real logo)\n' "$name"
+    return 0
+  fi
 
   mv "$tmp" "$dest"
   printf '  ok    %s (%s)\n' "$name" "$(du -h "$dest" | cut -f1 | tr -d ' \t')"
@@ -134,6 +171,20 @@ fetch_any() {
 }
 
 echo
+fingerprint_placeholder
+
+# Sweep anything already on disk that turns out to be the placeholder, so a
+# bad logo from an earlier run gets replaced rather than silently kept.
+if [[ -n "$GLOBE_SUM" ]]; then
+  for existing in "$OUT"/*.png; do
+    [[ -e "$existing" ]] || continue
+    if [[ "$(sha256_of "$existing")" == "$GLOBE_SUM" ]]; then
+      printf 'Removing placeholder that slipped through: %s\n' "$(basename "$existing")"
+      rm -f "$existing"
+    fi
+  done
+fi
+
 echo "Merchants →  $OUT"
 fetch_any netflix  "$(g128 netflix.com)"      "$(g64 netflix.com)"      "$(ddg netflix.com)"
 fetch_any dstv     "$(g128 dstv.com)"          "$(g64 dstv.com)" \
@@ -154,9 +205,8 @@ fetch_any ifitness "$(g128 ifitness.com.ng)"   "$(g64 ifitness.com.ng)" \
                    "$(ddg ifitness.com.ng)"    "$(ddg ifitnessng.com)"
 fetch_any bolt     "$(g128 bolt.eu)"          "$(g64 bolt.eu)"          "$(ddg bolt.eu)"
 fetch_any chicken_republic \
-                   "$(g128 chickenrepublic.com)" "$(g64 chickenrepublic.com)" \
-                   "$(g64 chicken-republic.com)" "$(g64 foodconceptsplc.com)" \
-                   "$(ddg chickenrepublic.com)"
+                   "$(g128 chicken-republic.com)" "$(g64 chicken-republic.com)" \
+                   "$(ddg chicken-republic.com)"  "$(g64 foodconceptsplc.com)"
 
 
 # Clear any stragglers from an interrupted run.

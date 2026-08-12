@@ -13,12 +13,17 @@ import '../ui/ui.dart';
 ///     while the screen is alive (orbiting rings, drifting particles,
 ///     the highlight that sweeps the wordmark).
 ///
-/// Stages, in order:
-///   0.00–0.42  violet wash blooms out from centre
-///   0.10–0.58  orbit rings draw themselves, counter-rotating
-///   0.22–0.66  the mark (a recurring-cycle arc) draws stroke-by-stroke
-///   0.46–0.76  wordmark letters rise in, staggered
-///   0.88–1.00  the whole composition lifts and fades out
+/// Stages, in order (3.2s total):
+///   0.00–0.28  violet wash blooms out from centre
+///   0.06–0.40  orbit rings draw themselves, counter-rotating
+///   0.12–0.46  the mark (a recurring-cycle arc) draws stroke-by-stroke
+///   0.42–0.68  wordmark letters rise in, staggered
+///   0.86–1.00  the whole composition lifts and fades out
+///
+/// Stages overlap heavily on purpose. Running them end to end would read as
+/// a slideshow; overlapping them means the arc is still drawing as the
+/// letters start arriving, which is what makes 3.2s feel unhurried rather
+/// than rushed.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, required this.onComplete});
 
@@ -47,9 +52,13 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
+    // Well under five seconds on purpose. WCAG 2.2.2 requires a pause
+    // control for auto-starting motion that runs longer than that, and a
+    // launch sequence is something people sit through on every single cold
+    // start — it should feel confident, not indulgent.
     _main = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5200),
+      duration: const Duration(milliseconds: 3200),
     );
 
     _ambient = AnimationController(
@@ -64,14 +73,36 @@ class _SplashScreenState extends State<SplashScreen>
       );
     }
 
-    _wash = stage(0.00, 0.42, Curves.easeOutCubic);
-    _ringDraw = stage(0.10, 0.58, Curves.easeOutCubic);
-    _markDraw = stage(0.22, 0.66, Curves.easeInOutCubic);
-    _markSettle = stage(0.52, 0.78, Curves.easeOutBack);
+    _wash = stage(0.00, 0.28, Curves.easeOutCubic);
+    _ringDraw = stage(0.06, 0.40, Curves.easeOutCubic);
+    // The arc draw is the slowest thing to read, so it gets the tightest
+    // curve — it should feel drawn, not laboured.
+    _markDraw = stage(0.12, 0.46, Curves.easeOutCubic);
+    _markSettle = stage(0.38, 0.60, Curves.easeOutBack);
     // A beat of stillness after the wordmark lands, then out.
-    _exit = stage(0.88, 1.00, Curves.easeInCubic);
+    _exit = stage(0.86, 1.00, Curves.easeInCubic);
 
     _main.forward().whenComplete(widget.onComplete);
+  }
+
+  bool _appliedMotionPreference = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // With reduce-motion on, don't make the user sit through a launch
+    // sequence they've explicitly asked not to see. Hold the finished mark
+    // briefly so the app doesn't appear to flash, then move on.
+    if (!_appliedMotionPreference &&
+        MediaQuery.disableAnimationsOf(context)) {
+      _appliedMotionPreference = true;
+      _ambient.stop();
+      _main.stop();
+      _main.value = 0.85;
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        if (mounted) widget.onComplete();
+      });
+    }
   }
 
   @override
@@ -83,8 +114,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   /// Per-letter entrance: each letter is offset slightly later than the last.
   double _letterProgress(int index) {
-    const start = 0.46;
-    const span = 0.30;
+    const start = 0.42;
+    const span = 0.26;
     const step = span / (_wordmark.length + 1);
     final begin = start + step * index;
     final end = (begin + step * 2).clamp(0.0, 1.0);

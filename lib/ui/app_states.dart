@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
+import 'app_dots_loader.dart';
 
 /// Empty state for lists/tables with no data, or zero search results.
 /// Always pair with a next action when one exists — an empty state that
@@ -35,7 +36,7 @@ class AppEmptyState extends StatelessWidget {
             child: Icon(icon, size: 28, color: AppColors.neutral400),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.neutral900)),
+          Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
           if (message != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(message!,
@@ -100,28 +101,17 @@ class _AppSkeletonState extends State<AppSkeleton> with SingleTickerProviderStat
   }
 }
 
-/// Simple centered spinner for full-page/section loading.
+/// Centered loading indicator for full-page or section loading.
+///
+/// Three dots, no label. See [AppDotsLoader] for why.
 class AppLoadingIndicator extends StatelessWidget {
-  const AppLoadingIndicator({super.key, this.label});
-  final String? label;
+  const AppLoadingIndicator({super.key, this.size = 9, this.color});
+
+  final double size;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
-          ),
-          if (label != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(label!, style: const TextStyle(fontSize: 13, color: AppColors.neutral500)),
-          ],
-        ],
-      ),
-    );
+    return Center(child: AppDotsLoader(size: size, color: color));
   }
 }

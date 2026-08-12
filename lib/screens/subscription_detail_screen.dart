@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/mock_data.dart';
 import '../models/subscription.dart';
 import '../ui/ui.dart';
+import '../widgets/brand_mark.dart';
 
 /// Detail view for a single detected subscription.
 ///
@@ -27,8 +28,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
     final cancelled = subscription.status == SubscriptionStatus.cancelled;
 
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      appBar: AppBar(title: Text(subscription.merchant)),
+      backgroundColor: AppColors.background(context),
+      appBar: AppBar(title: Text(subscription.displayName)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -37,31 +38,25 @@ class SubscriptionDetailScreen extends StatelessWidget {
             AppCard(
               child: Column(
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: subscription.accentColor.withValues(alpha: 0.12),
-                      borderRadius: AppRadius.lgBR,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      subscription.initials,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: subscription.accentColor,
-                      ),
-                    ),
+                  BrandMark(
+                    slug: subscription.brand.slug,
+                    fallbackLabel: subscription.brand.name,
+                    brandColor: subscription.brand.brandColor,
+                    networkUrl: subscription.brand.logoUrl,
+                    size: 64,
+                    radius: 18,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    formatNaira(subscription.amount),
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.8,
-                      color: AppColors.neutral900,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      formatNaira(subscription.amount),
+                      maxLines: 1,
+                      style: AppTypography.mono(
+                        size: 32,
+                        weight: FontWeight.w600,
+                        color: AppColors.ink(context),
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -113,7 +108,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: AppStatCard(
-                    label: 'Monthly equivalent',
+                    label: 'Per month',
                     value: formatNaira(subscription.monthlyEquivalent),
                     icon: Icons.autorenew_rounded,
                   ),
@@ -158,11 +153,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         Expanded(
                           child: Text(
                             subscription.charges.first.narration,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                              color: AppColors.neutral600,
-                            ),
+                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.neutral600),
                           ),
                         ),
                       ],
@@ -210,7 +201,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           ),
                           Text(
                             formatNaira(subscription.charges[i].amount),
-                            style: text.labelLarge,
+                            style: AppTypography.mono(size: 13, weight: FontWeight.w600, color: AppColors.ink(context)),
                           ),
                         ],
                       ),
@@ -306,7 +297,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     context,
                     title: 'Mark as cancelled?',
                     message:
-                        'We will stop counting ${subscription.merchant} in '
+                        'We will stop counting ${subscription.displayName} in '
                         'your monthly total and let you know if it charges '
                         'you again.',
                     confirmLabel: 'Mark cancelled',

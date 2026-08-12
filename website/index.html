@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recur — See every subscription before it debits</title>
+<meta name="description" content="Recur reads your Nigerian bank statement and shows you every recurring charge leaving your account, before it leaves. Read-only, licensed, and calm about it.">
+<link rel="canonical" href="https://recur.website/">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='100' y2='100' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%230b6e4f'/%3E%3Cstop offset='0.5' stop-color='%236e8f45'/%3E%3Cstop offset='1' stop-color='%23d9a441'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='%23f8e7c9'/%3E%3Cpath d='M 50 20 A 30 30 0 1 1 25.9 63.3' stroke='url(%23g)' stroke-width='13.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M 12 60 L 35 54 L 31 78 Z' fill='%23d9a441'/%3E%3C/svg%3E">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Recur — See every subscription before it debits">
+<meta property="og:description" content="Recur reads your Nigerian bank statement and shows you every recurring charge leaving your account, before it leaves.">
+<meta property="og:url" content="https://recur.website/">
+<meta property="og:image" content="https://recur.website/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Recur — See every subscription before it debits">
+<meta name="twitter:description" content="Recur reads your Nigerian bank statement and shows you every recurring charge leaving your account, before it leaves.">
+<meta name="twitter:image" content="https://recur.website/assets/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Recur",
+  "url": "https://recur.website/",
+  "description": "Recur reads your Nigerian bank statement and shows you every recurring charge leaving your account, before it leaves.",
+  "email": "support@recur.website"
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --forest: #064e3b;
+    --forest-deep: #033024;
+    --forest-soft: #0b6e4f;
+    --parchment: #f8e7c9;
+    --parchment-light: #fdf4e2;
+    --parchment-dark: #efd8ac;
+    --ink: #12201a;
+    --ink-soft: #4d5c52;
+    --brass: #d9a441;
+    --brass-deep: #7c5314;
+    --alert: #e4572e;
+    --alert-soft: #f6d9cd;
+
+    --serif: "Frank Ruhl Libre", ui-serif, Georgia, serif;
+    --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+    --container: 1180px;
+    --edge: clamp(20px, 5vw, 64px);
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  body {
+    margin: 0;
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  img { max-width: 100%; display: block; }
+
+  a { color: inherit; }
+
+  ::selection { background: var(--brass); color: var(--forest-deep); }
+
+  /* Grain / paper texture, very subtle */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.035;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .wrap { max-width: var(--container); margin: 0 auto; padding-left: var(--edge); padding-right: var(--edge); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--forest);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--brass);
+    flex-shrink: 0;
+  }
+
+  .rule {
+    border: none;
+    border-top: 1px solid var(--parchment-dark);
+    margin: 0;
+  }
+  .rule.strong { border-top: 1.5px solid var(--forest); opacity: 0.18; }
+
+  h1, h2, h3 { font-family: var(--serif); margin: 0; color: var(--forest-deep); font-weight: 600; }
+
+  .amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------------------------------------------------------- buttons */
+  .btn {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 14.5px;
+    letter-spacing: 0.01em;
+    border-radius: 11px;
+    padding: 13px 26px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color .18s ease;
+    white-space: nowrap;
+  }
+  .btn:focus-visible {
+    outline: 2.5px solid var(--forest);
+    outline-offset: 3px;
+  }
+  .btn-primary { background: var(--forest); color: var(--parchment-light); box-shadow: 0 1px 0 rgba(0,0,0,0.05); }
+  .btn-primary:hover { background: var(--forest-deep); transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(6,78,59,0.55); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost { background: transparent; color: var(--forest); border-color: rgba(6,78,59,0.28); }
+  .btn-ghost:hover { border-color: var(--forest); background: rgba(6,78,59,0.05); }
+  .btn-sm { padding: 9px 18px; font-size: 13px; }
+
+  /* ---------------------------------------------------------------- nav */
+  header.site {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+  }
+
+  nav.wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 74px;
+    max-width: var(--container);
+    border-radius: 0;
+    transform: translateY(0);
+    /* Real content reflow (a brand label collapsing, a CTA regrouping into
+       the pill) reads as a genuine regroup rather than one element being
+       optically scaled down. Scoped to this one small, persistent nav bar —
+       not the kind of large-surface animation that causes real thrash. */
+    transition: transform 0.5s cubic-bezier(.2,.8,.2,1), max-width 0.55s cubic-bezier(.2,.8,.2,1),
+      padding 0.55s cubic-bezier(.2,.8,.2,1), border-radius 0.5s ease;
+  }
+  /* Background + blur live on a pseudo-element that overlaps the box by 1px
+     on every side. backdrop-filter clips exactly to its own edge, and a
+     nearby warm gradient (the hero glow) makes that edge read as a hairline
+     seam — bleeding it 1px past the visible box hides that seam. */
+  nav.wrap::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgba(248,231,201,0.82);
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    transition: border-radius 0.5s ease, background 0.5s ease, box-shadow 0.5s ease, backdrop-filter 0.5s ease;
+  }
+
+  /* liquid-glass floating state, after first scroll */
+  header.site.scrolled nav.wrap {
+    transform: translateY(14px);
+    max-width: 580px;
+    padding-left: 20px;
+    padding-right: 20px;
+    border-radius: 999px;
+  }
+  header.site.scrolled nav.wrap::before {
+    background: rgba(253,244,226,0.6);
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 14px 34px -14px rgba(6,78,59,0.32),
+      0 1px 0 rgba(255,255,255,0.55) inset,
+      0 -2px 0 rgba(6,78,59,0.08) inset;
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .brand svg { width: 30px; height: 30px; flex-shrink: 0; transition: width 0.4s ease, height 0.4s ease; }
+  .brand span {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 21px;
+    color: var(--forest-deep);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 80px;
+    opacity: 1;
+    transition: max-width 0.4s ease, opacity 0.3s ease, margin-left 0.4s ease;
+  }
+  /* small vertical divider, hidden until the mark collapses to an icon */
+  .brand::after {
+    content: "";
+    width: 1px; height: 18px;
+    background: rgba(6,78,59,0.18);
+    margin-left: 2px;
+    opacity: 0;
+    transform: scaleY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  header.site.scrolled .brand svg { width: 24px; height: 24px; }
+  header.site.scrolled .brand span { max-width: 0; opacity: 0; margin-left: -10px; }
+  header.site.scrolled .brand::after { opacity: 1; transform: scaleY(1); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 34px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    transition: gap 0.4s ease, font-size 0.4s ease;
+  }
+  .nav-links a { text-decoration: none; position: relative; }
+  .nav-links a:not(.btn)::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -6px;
+    height: 2px;
+    background: var(--brass);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+  .nav-links a:not(.btn):hover::after { transform: scaleX(1); }
+  .nav-links a:not(.btn):hover { color: var(--forest-deep); }
+  header.site.scrolled .nav-links { gap: 20px; font-size: 13px; }
+
+  .nav-cta { display: flex; align-items: center; gap: 14px; }
+  .nav-cta .btn { transition: padding 0.4s ease, font-size 0.4s ease; }
+  header.site.scrolled .nav-cta .btn { padding: 9px 16px; font-size: 13px; }
+
+  .nav-menu-btn { display: none; }
+
+  @media (max-width: 860px) {
+    .nav-links .nav-only-links { display: none; }
+    .nav-menu-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 1.5px solid rgba(6,78,59,0.25); background: transparent; cursor: pointer;
+    }
+  }
+
+  /* ---------------------------------------------------------------- hero */
+  /* Maximalist, single-visual hero: huge layered type, one large product
+     shot bleeding off the right edge, soft ambient light behind it.
+     No small animated card scene — one confident move instead. */
+  .hero {
+    padding: 86px 0 70px;
+    position: relative;
+  }
+  @media (min-width: 981px) {
+    .hero { min-height: 900px; }
+  }
+  .hero-glow {
+    position: absolute;
+    top: -18%;
+    right: -8%;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(circle, rgba(217,164,65,0.32), rgba(217,164,65,0) 68%);
+    filter: blur(10px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-copy {
+    position: relative;
+    z-index: 2;
+    max-width: 640px;
+    padding-bottom: 64px;
+  }
+  .hero h1 {
+    font-size: clamp(46px, 7.2vw, 92px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    margin: 0 0 26px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--brass-deep);
+    position: relative;
+    display: inline-block;
+  }
+  .hero h1 em::after {
+    content: "";
+    position: absolute;
+    left: -1%;
+    right: -1%;
+    bottom: 0.05em;
+    height: 0.06em;
+    min-height: 3px;
+    background: var(--brass);
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: underlineDraw 0.85s cubic-bezier(.2,.8,.2,1) 0.5s forwards;
+  }
+  @keyframes underlineDraw { to { transform: scaleX(1); } }
+  .hero p.lead {
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    max-width: 44ch;
+    margin: 0 0 32px;
+  }
+  .hero-form {
+    display: flex;
+    gap: 10px;
+    max-width: 440px;
+  }
+  .hero-form input {
+    flex: 1;
+    font-family: var(--sans);
+    font-size: 14.5px;
+    padding: 0 16px;
+    border-radius: 11px;
+    border: 1.5px solid rgba(6,78,59,0.28);
+    background: var(--parchment-light);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .hero-form input::placeholder { color: #8a9187; }
+  .hero-form input:focus { border-color: var(--forest); box-shadow: 0 0 0 4px rgba(6,78,59,0.1); }
+  .hero-micro {
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .hero-micro svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--forest); }
+
+  /* ---------------------------------------------------- hero visual: one bleeding phone */
+  .hero-visual {
+    position: absolute;
+    top: 46px;
+    right: 40px;
+    width: 380px;
+    z-index: 1;
+    transform: rotate(-7deg);
+  }
+  .hero-phone {
+    border-radius: 40px;
+    background: #0d1a14;
+    padding: 12px;
+    box-shadow: 0 60px 100px -36px rgba(6,78,59,0.55);
+  }
+  .hero-phone .screen {
+    width: 100%;
+    aspect-ratio: 376 / 812;
+    border-radius: 30px;
+    overflow: hidden;
+    background: var(--parchment-light);
+  }
+  .hero-phone .screen img { width: 100%; height: 100%; object-fit: cover; }
+
+  .hero-chip {
+    position: absolute;
+    left: -64px;
+    bottom: 64px;
+    background: var(--forest);
+    color: var(--parchment-light);
+    border-radius: var(--radius-md);
+    padding: 15px 18px;
+    box-shadow: 0 24px 44px -20px rgba(6,78,59,0.6);
+    transform: rotate(4deg);
+    width: 202px;
+  }
+  .hero-chip .lbl {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b9e6c9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hero-chip .lbl::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--alert); flex-shrink: 0; }
+  .hero-chip .val { font-family: var(--serif); font-size: 17px; font-weight: 600; margin-top: 6px; }
+
+  @media (max-width: 1180px) {
+    .hero-visual { right: -20px; width: 340px; }
+  }
+  @media (max-width: 980px) {
+    .hero { padding-top: 60px; }
+    .hero-copy { max-width: 100%; padding-bottom: 0; }
+    .hero-visual {
+      position: relative;
+      top: auto; right: auto;
+      width: 260px;
+      margin: 40px auto 0;
+      transform: rotate(-4deg);
+    }
+    .hero-chip { left: -36px; bottom: 40px; width: 176px; padding: 12px 14px; }
+    .hero-glow { width: 420px; height: 420px; top: -10%; right: -20%; }
+  }
+  @media (max-width: 520px) {
+    .hero-form { flex-direction: column; }
+    .hero-visual { width: 210px; }
+    .hero-chip { left: -20px; bottom: 30px; width: 150px; }
+    .hero-chip .val { font-size: 14px; }
+  }
+
+  /* ------------------------------------------------------------ section */
+  section { padding: 100px 0; position: relative; }
+  .section-head { max-width: 640px; margin-bottom: 56px; }
+  .section-head h2 { font-size: clamp(28px, 3.4vw, 40px); line-height: 1.12; letter-spacing: -0.01em; margin-top: 14px; }
+  .section-head p { color: var(--ink-soft); font-size: 16px; line-height: 1.6; margin-top: 14px; max-width: 54ch; }
+
+  /* ------------------------------------------------------------ problem */
+  /* No table, no bordered card — a plain-text problem statement paired
+     with a single realistic floating transaction card, in the vein of
+     bachs.io's receipt-card device rather than an editorial ledger. */
+  .problem-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 64px; align-items: center; }
+  .problem-lines { margin-top: 34px; display: flex; flex-direction: column; }
+  .problem-line {
+    padding: 22px 0;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+  .problem-line + .problem-line { border-top: 1px solid rgba(6,78,59,0.12); }
+  .problem-line .narration { font-family: var(--mono); font-weight: 600; color: var(--forest-deep); letter-spacing: -0.01em; }
+  .problem-line .amount { font-weight: 700; color: var(--ink); }
+
+  .tx-card-wrap { position: relative; padding: 20px 10px 46px; }
+  .tx-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px 26px;
+    box-shadow: 0 40px 70px -30px rgba(6,78,59,0.4);
+    transform: rotate(2.5deg);
+    max-width: 340px;
+    margin: 0 auto;
+  }
+  .tx-card-head { display: flex; align-items: center; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+  .tx-card-narration { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--forest-deep); margin-top: 18px; letter-spacing: -0.01em; }
+  .tx-card-amount { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--ink); margin-top: 8px; }
+  .tx-card-divider { border: none; border-top: 1px solid rgba(6,78,59,0.12); margin: 18px 0; }
+  .tx-card-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); padding: 5px 0; }
+  .tx-card-row span:last-child { color: var(--ink); font-weight: 600; }
+
+  .tx-callout {
+    position: absolute;
+    left: 12px; bottom: 0;
+    max-width: 250px;
+    background: var(--parchment-light);
+    border: 1px solid rgba(6,78,59,0.16);
+    border-radius: var(--radius-md);
+    padding: 13px 16px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--forest-deep);
+    font-weight: 600;
+    transform: rotate(-2.5deg);
+    box-shadow: 0 20px 40px -22px rgba(6,78,59,0.35);
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+  }
+  .tx-callout-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--alert); margin-top: 5px; flex-shrink: 0; }
+
+  @media (max-width: 980px) {
+    .problem-grid { grid-template-columns: 1fr; }
+    .tx-card-wrap { order: -1; padding-bottom: 56px; }
+  }
+  @media (max-width: 520px) {
+    .tx-card { max-width: 280px; padding: 22px 20px; }
+    .tx-card-amount { font-size: 25px; }
+  }
+
+  /* --------------------------------------------------------- how it works */
+  /* Plain typographic grid — no border, no icon boxes, no numbering.
+     Whitespace and hierarchy do the work. */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
+  .step h3 { font-size: 20px; margin: 0 0 10px; }
+  .step p { font-size: 14.5px; line-height: 1.62; color: var(--ink-soft); margin: 0; }
+
+  @media (max-width: 860px) {
+    .steps { grid-template-columns: 1fr; gap: 36px; }
+  }
+
+  /* ------------------------------------------------------------ showcase */
+  .showcase-wrap { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 60px; align-items: center; }
+  .phones { position: relative; height: 560px; }
+  .phone {
+    position: absolute;
+    width: 240px;
+    border-radius: 34px;
+    background: #0d1a14;
+    padding: 10px;
+    box-shadow: 0 40px 70px -30px rgba(6,78,59,0.5);
+  }
+  .phone .screen {
+    width: 100%; height: 480px; border-radius: 26px; overflow: hidden;
+    background: var(--parchment-light);
+    position: relative;
+  }
+  .phone img { width: 100%; height: 100%; object-fit: cover; }
+  .phone.p1 { left: 0; top: 30px; z-index: 3; transform: rotate(-6deg); }
+  .phone.p2 { left: 150px; top: 0; z-index: 2; transform: rotate(3deg); }
+  .phone.p3 { left: 90px; top: 130px; z-index: 1; transform: rotate(10deg); opacity: 0.9; }
+
+  .showcase-list { display: flex; flex-direction: column; gap: 28px; }
+  .showcase-item { display: flex; gap: 16px; }
+  .showcase-item .idx { font-family: var(--mono); font-size: 12px; color: var(--brass-deep); padding-top: 3px; }
+  .showcase-item h4 { font-family: var(--serif); font-size: 19px; color: var(--forest-deep); margin: 0 0 6px; }
+  .showcase-item p { font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+
+  @media (max-width: 980px) {
+    .showcase-wrap { grid-template-columns: 1fr; }
+    .phones { height: 480px; margin: 0 auto; max-width: 380px; }
+  }
+  @media (max-width: 520px) {
+    .phone { width: 190px; }
+    .phone .screen { height: 380px; }
+    .phone.p2 { left: 100px; }
+    .phone.p3 { left: 60px; top: 110px; }
+  }
+
+  /* ----------------------------------------------------------- security */
+  .security { background: var(--forest); color: var(--parchment-light); border-radius: var(--radius-lg); overflow: hidden; }
+  .security-grid { display: grid; grid-template-columns: 1fr 1fr; }
+  .security-copy { padding: 64px; }
+  .security .eyebrow { color: var(--brass); }
+  .security .eyebrow::before { background: var(--brass); }
+  .security h2 { color: var(--parchment-light); font-size: clamp(26px,3vw,34px); margin-top: 14px; }
+  .security p.lead { color: rgba(248,244,226,0.78); font-size: 15.5px; line-height: 1.65; margin-top: 16px; max-width: 46ch; }
+  .security-points { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .security-points li { display: flex; gap: 10px; font-size: 14px; color: rgba(248,244,226,0.9); align-items: flex-start; }
+  .security-points svg { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; color: var(--brass); }
+
+  .stamp-side {
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+    border-left: 1px dashed rgba(248,244,226,0.25);
+  }
+  .stamp {
+    width: 200px; height: 200px;
+    border: 2px solid var(--brass);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    transform: rotate(-8deg);
+    flex-shrink: 0;
+  }
+  .stamp::before {
+    content: "";
+    position: absolute; inset: 10px;
+    border: 1px solid var(--brass);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+  .stamp-text {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--brass);
+    text-align: center;
+    line-height: 1.9;
+    text-transform: uppercase;
+  }
+  .stamp-text strong { display: block; font-size: 13px; color: var(--parchment-light); letter-spacing: 0.04em; }
+
+  @media (max-width: 860px) {
+    .security-grid { grid-template-columns: 1fr; }
+    .security-copy { padding: 44px 30px; }
+    .stamp-side { border-left: none; border-top: 1px dashed rgba(248,244,226,0.25); padding: 40px 30px 50px; }
+  }
+
+  /* ------------------------------------------------------------- final cta */
+  .final-cta { text-align: center; padding: 110px 0 100px; }
+  .final-cta h2 { font-size: clamp(30px, 4.6vw, 52px); line-height: 1.08; max-width: 18ch; margin: 16px auto 26px; }
+  .final-cta .hero-form { margin: 0 auto; }
+  .final-cta .hero-micro { justify-content: center; }
+  .final-cta .eyebrow { justify-content: center; width: 100%; }
+
+  /* ------------------------------------------------------------------ footer */
+  footer.site {
+    border-top: 1px solid rgba(6,78,59,0.16);
+    padding: 48px 0 40px;
+  }
+  .footer-grid { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 30px; }
+  .footer-brand .brand { margin-bottom: 10px; }
+  .footer-brand p { font-size: 13px; color: var(--ink-soft); max-width: 34ch; line-height: 1.6; margin: 0; }
+  .footer-links { display: flex; gap: 44px; flex-wrap: wrap; }
+  .footer-col h5 {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 12px;
+  }
+  .footer-col a { display: block; font-size: 13.5px; color: var(--forest-deep); text-decoration: none; margin-bottom: 9px; font-weight: 600; }
+  .footer-col a:hover { color: var(--brass-deep); }
+
+  /* ------------------------------------------------------------ reveal-on-scroll */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--forest); color: var(--parchment-light);
+    padding: 13px 22px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+    box-shadow: 0 20px 40px -16px rgba(6,78,59,0.6);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 200; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast svg { width: 15px; height: 15px; color: var(--brass); flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <nav class="wrap">
+    <a href="#" class="brand">
+      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="mark-grad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#0b6e4f"/>
+            <stop offset="0.5" stop-color="#6e8f45"/>
+            <stop offset="1" stop-color="#d9a441"/>
+          </linearGradient>
+        </defs>
+        <path d="M 50 15.5 A 34 34 0 1 1 22.8 65.7" stroke="url(#mark-grad)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
+        <path d="M 8 62 L 34 55 L 30 81 Z" fill="#d9a441"/>
+      </svg>
+      <span>recur</span>
+    </a>
+    <div class="nav-links">
+      <span class="nav-only-links" style="display:contents">
+        <a href="#how">How it works</a>
+        <a href="#showcase">Product</a>
+        <a href="#security">Security</a>
+      </span>
+    </div>
+    <div class="nav-cta">
+      <a href="#waitlist" class="btn btn-primary btn-sm">Get early access</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <!-- ================================================================= HERO -->
+  <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <h1>Stop finding out<br>in a <em>debit alert.</em></h1>
+        <p class="lead">Recur reads your bank statement the way you wish you had time to, and shows you exactly what's about to leave your account before it leaves. Netflix, DStv, that gym you cancelled in March. All in one ledger.</p>
+
+        <form class="hero-form" id="waitlist-form">
+          <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email">
+          <button type="submit" class="btn btn-primary">Get early access</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-phone">
+        <div class="screen">
+          <img src="assets/onboarding-1.jpg" alt="Recur dashboard showing ₦63,033 repeating every month across 9 active subscriptions." loading="eager">
+        </div>
+      </div>
+      <div class="hero-chip">
+        <div class="lbl">Coming up</div>
+        <div class="val">DStv in 3 days · ₦12,500</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap"><hr class="rule strong"></div>
+
+  <!-- ================================================================= PROBLEM -->
+  <section id="problem">
+    <div class="wrap problem-grid">
+      <div class="reveal">
+        <span class="eyebrow">Sound familiar?</span>
+        <h2>None of this shows up as "Netflix." That's the problem.</h2>
+        <p style="color:var(--ink-soft); font-size:16px; line-height:1.6; max-width:52ch; margin:14px 0 0;">Nigerian bank statements narrate every charge in bank-speak, not brand names. Three real lines, and what they're actually hiding.</p>
+
+        <div class="problem-lines">
+          <p class="problem-line"><span class="narration">NETFLIX.COM 41725LAGOS NG</span> — <span class="amount">₦4,400.00</span>. You upgraded to the annual plan eight months ago and forgot.</p>
+          <p class="problem-line"><span class="narration">DSTV COMPACT-0022917463</span> — <span class="amount">₦12,500.00</span>. Renews whether anyone in the house watched it or not.</p>
+          <p class="problem-line"><span class="narration">GYM-MSHIP-DDCT-0091</span> — <span class="amount">₦15,000.00</span>. Cancelled at the front desk in March. Still charging in August.</p>
+        </div>
+      </div>
+
+      <div class="tx-card-wrap reveal">
+        <div class="tx-card">
+          <div class="tx-card-head"><span>GTBank</span><span>08 Aug</span></div>
+          <div class="tx-card-narration">NETFLIX.COM 41725LAGOS NG</div>
+          <div class="tx-card-amount">₦4,400.00</div>
+          <hr class="tx-card-divider">
+          <div class="tx-card-row"><span>Type</span><span>Debit</span></div>
+          <div class="tx-card-row"><span>Balance after</span><span>₦84,210.50</span></div>
+          <div class="tx-card-row"><span>Reference</span><span>000482-NG-08A</span></div>
+        </div>
+        <div class="tx-callout"><span class="tx-callout-dot"></span>Nobody reads this closely enough to catch it. Recur does.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">How it works</span>
+        <h2>Three steps. Nothing to maintain.</h2>
+        <p>No manual entry, no spreadsheet you'll abandon in a week. Recur does the reading; you do the deciding.</p>
+      </div>
+
+      <div class="steps reveal">
+        <div class="step">
+          <h3>Connect a bank</h3>
+          <p>Link your account in under two minutes through Mono, a licensed open banking provider. Recur never sees your login, only read-only access to transactions.</p>
+        </div>
+        <div class="step">
+          <h3>We find the pattern</h3>
+          <p>Recur scans your history for charges that repeat: same merchant, close to the same amount, on a rough schedule. Two matches is enough to flag it.</p>
+        </div>
+        <div class="step">
+          <h3>You take it from there</h3>
+          <p>See every recurring charge in one place, get a heads-up before the next one lands, and mark anything cancelled so Recur adjusts your total instantly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= SHOWCASE -->
+  <section id="showcase">
+    <div class="wrap showcase-wrap">
+      <div class="phones reveal">
+        <div class="phone p3">
+          <div class="screen">
+            <img src="assets/onboarding-3.jpg" alt="Recur notification reading 'DStv takes ₦19,000 in 2 days — still watching? Tap for how to cancel.'" loading="lazy">
+          </div>
+        </div>
+        <div class="phone p2">
+          <div class="screen">
+            <img src="assets/onboarding-2.jpg" alt="Recur statement view highlighting Netflix and DStv as recurring charges among a normal list of bank transactions." loading="lazy">
+          </div>
+        </div>
+        <div class="phone p1">
+          <div class="screen">
+            <img src="assets/onboarding-1.jpg" alt="Recur dashboard showing ₦63,033 repeating every month across 9 active subscriptions including Netflix, DStv, and MTN Data." loading="lazy">
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <span class="eyebrow">The product</span>
+        <h2 style="font-size:clamp(26px,3.2vw,36px); margin: 14px 0 30px; line-height:1.15;">Your statement, made legible.</h2>
+        <div class="showcase-list">
+          <div class="showcase-item">
+            <span class="idx">01</span>
+            <div><h4>One total, finally</h4><p>Every charge that repeats, grouped into the one number nobody ever sits down and adds up themselves.</p></div>
+          </div>
+          <div class="showcase-item">
+            <span class="idx">02</span>
+            <div><h4>It hides in your statement</h4><p>Netflix, DStv, a data plan renewing itself. None of it announces itself in your transaction list, so Recur reads every line for you.</p></div>
+          </div>
+          <div class="showcase-item">
+            <span class="idx">03</span>
+            <div><h4>Warned, not surprised</h4><p>A heads-up days before each renewal lands, with the exact steps to cancel if you're done with it.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= SECURITY -->
+  <section id="security">
+    <div class="wrap">
+      <div class="security reveal">
+        <div class="security-grid">
+          <div class="security-copy">
+            <span class="eyebrow">The fine print, plainly</span>
+            <h2>We can see it.<br>We can't touch it.</h2>
+            <p class="lead">Recur connects to your bank through Mono, a CBN-licensed open banking provider used across Nigerian fintech. That connection is read-only by design.</p>
+            <ul class="security-points">
+              <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Recur never sees or stores your bank login</li>
+              <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>No transfer, payment, or withdrawal capability, not now, not ever</li>
+              <li><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Unlink any account, or delete your data, in one tap</li>
+            </ul>
+          </div>
+          <div class="stamp-side">
+            <div class="stamp">
+              <div class="stamp-text">Read only<br>No transfers<br><strong>Licensed via Mono</strong><br>Est. 2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= FINAL CTA -->
+  <section class="final-cta" id="waitlist">
+    <div class="wrap">
+      <span class="eyebrow">Opening soon</span>
+      <h2>Be the first to see<br>your ledger.</h2>
+      <form class="hero-form" id="waitlist-form-2">
+        <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email-2">
+        <button type="submit" class="btn btn-primary">Get early access</button>
+      </form>
+      <div class="hero-micro"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>No spam. One email, when we open your city.</div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="brand">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="mark-grad-footer" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#0b6e4f"/>
+                <stop offset="0.5" stop-color="#6e8f45"/>
+                <stop offset="1" stop-color="#d9a441"/>
+              </linearGradient>
+            </defs>
+            <path d="M 50 15.5 A 34 34 0 1 1 22.8 65.7" stroke="url(#mark-grad-footer)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
+            <path d="M 8 62 L 34 55 L 30 81 Z" fill="#d9a441"/>
+          </svg>
+          <span>recur</span>
+        </a>
+        <p>A ledger for every subscription quietly leaving your Nigerian bank account. Built to be read, not decoded.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h5>Product</h5>
+          <a href="#how">How it works</a>
+          <a href="#showcase">Product</a>
+          <a href="#security">Security</a>
+        </div>
+        <div class="footer-col">
+          <h5>Support</h5>
+          <a href="mailto:support@recur.website">Contact support</a>
+          <a href="#waitlist">Get early access</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span id="toast-text">You're on the list.</span>
+</div>
+
+<script>
+  // ---- floating glass nav after first scroll ----
+  (function () {
+    var header = document.querySelector('header.site');
+    if (!header) return;
+    var THRESHOLD = 36;
+    var ticking = false;
+    function apply() {
+      header.classList.toggle('scrolled', window.scrollY > THRESHOLD);
+      ticking = false;
+    }
+    apply();
+    window.addEventListener('scroll', function () {
+      if (!ticking) { window.requestAnimationFrame(apply); ticking = true; }
+    }, { passive: true });
+  })();
+
+  // ---- reveal on scroll ----
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.14 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+
+  // ---- waitlist forms (no backend yet — local confirmation only) ----
+  (function () {
+    var toast = document.getElementById('toast');
+    var toastText = document.getElementById('toast-text');
+    function showToast(msg) {
+      toastText.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 3200);
+    }
+    ['waitlist-form', 'waitlist-form-2'].forEach(function (id) {
+      var form = document.getElementById(id);
+      if (!form) return;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var input = form.querySelector('input[type=email]');
+        if (!input.value) return;
+        showToast("You're on the list — we'll email you.");
+        input.value = '';
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

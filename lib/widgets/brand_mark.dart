@@ -54,10 +54,21 @@ class BrandMark extends StatelessWidget {
 
   String get _assetPath => 'assets/logos/$slug.png';
 
+  // Two letters reads as a deliberate monogram rather than "the first
+  // letter of a broken image" — first-letter-of-first-two-words for a
+  // multi-word name ("i-Fitness Gym" → "IG"), first two letters otherwise.
   String get _initials {
-    final trimmed = fallbackLabel.trim();
-    if (trimmed.isEmpty) return '?';
-    return trimmed.substring(0, 1).toUpperCase();
+    final words = fallbackLabel
+        .replaceAll(RegExp(r'[^A-Za-z ]'), '')
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return '?';
+    if (words.length == 1) {
+      final w = words.first;
+      return w.length >= 2 ? w.substring(0, 2).toUpperCase() : w.toUpperCase();
+    }
+    return (words[0].substring(0, 1) + words[1].substring(0, 1)).toUpperCase();
   }
 
   @override
@@ -118,6 +129,7 @@ class BrandMark extends StatelessWidget {
   }
 
   Widget _initial(double r) {
+    final initials = _initials;
     return Container(
       decoration: BoxDecoration(
         color: brandColor.withValues(alpha: 0.13),
@@ -125,11 +137,12 @@ class BrandMark extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        _initials,
+        initials,
         style: TextStyle(
-          fontSize: size * 0.38,
+          fontSize: initials.length > 1 ? size * 0.3 : size * 0.38,
           fontWeight: FontWeight.w800,
           color: brandColor,
+          letterSpacing: -0.5,
           height: 1.0,
         ),
       ),

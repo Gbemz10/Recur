@@ -2,51 +2,67 @@ import 'package:flutter/material.dart';
 
 /// Central color palette for the design system.
 ///
-/// Brand color is an indigo/violet that reads as modern and trustworthy
-/// without being generic "startup blue." Semantic colors (success, warning,
-/// danger, info) are tuned to have the same visual weight/saturation as the
-/// brand color so nothing in the UI accidentally shouts louder than it should.
+/// The concept: every Nigerian with a bank account knows the debit alert —
+/// abrupt, uppercase, monospaced, always a little alarming. Recur exists to
+/// turn that reactive dread into something calm and controllable, so the
+/// palette borrows the ledger's confidence (deep naira green, warm paper,
+/// ink-dark text) instead of the generic indigo-gradient look most fintech
+/// apps default to. Semantic colors stay in the same warm, muted family so
+/// nothing in the UI accidentally shouts louder than the number it's next
+/// to — except the one accent that's supposed to: `warning`, repointed to
+/// a vermilion "alert" tone, is the single loud color in the system, used
+/// only where money is genuinely about to move.
 class AppColors {
   AppColors._();
 
-  // Brand
-  static const Color primary = Color(0xFF6D5DF6); // indigo/violet
-  static const Color primaryDark = Color(0xFF5849D6);
-  static const Color primaryLight = Color(0xFFECEAFF);
+  // Brand — deep, confident naira green. Not a neon fintech-teal cliché;
+  // muted and a little serious, like ink on a ledger.
+  static const Color primary = Color(0xFF0B6E4F);
+  static const Color primaryDark = Color(0xFF084F39);
+  static const Color primaryLight = Color(0xFFDCF2E7);
 
-  // Neutrals (warm-neutral gray scale, not pure gray — pairs well with
-  // Plus Jakarta Sans' slightly rounded letterforms).
-  static const Color neutral900 = Color(0xFF15161A);
-  static const Color neutral800 = Color(0xFF23252B);
-  static const Color neutral700 = Color(0xFF3A3D46);
-  static const Color neutral600 = Color(0xFF5B5F6B);
-  static const Color neutral500 = Color(0xFF80838F);
-  static const Color neutral400 = Color(0xFFA6A9B4);
-  static const Color neutral300 = Color(0xFFD1D3DA);
-  static const Color neutral200 = Color(0xFFE7E8ED);
-  static const Color neutral100 = Color(0xFFF3F4F7);
-  static const Color neutral50 = Color(0xFFFAFAFC);
+  // Neutrals — warm, paper-toned scale (a hint of green undertone, not
+  // cool gray) so text and surfaces agree with the paper background.
+  static const Color neutral900 = Color(0xFF171A14);
+  static const Color neutral800 = Color(0xFF262A22);
+  static const Color neutral700 = Color(0xFF3E4238);
+  static const Color neutral600 = Color(0xFF5E6255);
+  static const Color neutral500 = Color(0xFF83867A);
+  static const Color neutral400 = Color(0xFFA8AB9E);
+  static const Color neutral300 = Color(0xFFD2D4C9);
+  static const Color neutral200 = Color(0xFFE8E9E0);
+  static const Color neutral100 = Color(0xFFF2F2EA);
+  static const Color neutral50 = Color(0xFFFAF9F4);
   static const Color white = Color(0xFFFFFFFF);
 
   // Semantic
-  static const Color success = Color(0xFF16A34A);
-  static const Color successBg = Color(0xFFE7F8ED);
-  static const Color warning = Color(0xFFD97706);
-  static const Color warningBg = Color(0xFFFDF3E3);
-  static const Color danger = Color(0xFFDC2626);
-  static const Color dangerBg = Color(0xFFFDEBEB);
-  static const Color info = Color(0xFF2563EB);
-  static const Color infoBg = Color(0xFFE9F0FE);
+  static const Color success = Color(0xFF1FAE73);
+  static const Color successBg = Color(0xFFE1F5EC);
 
-  // Light theme surfaces
+  /// The one loud color in the system. Used for "this is about to charge"
+  /// tension: due-soon badges, the attention strip, confidence meters. A
+  /// vermilion nod to the bank alert this app is designed to make obsolete.
+  static const Color warning = Color(0xFFE4572E);
+  static const Color warningBg = Color(0xFFFBE7DE);
+
+  static const Color danger = Color(0xFFA6291D);
+  static const Color dangerBg = Color(0xFFF7E4E1);
+
+  /// The one cool note against an otherwise warm palette — reserved for
+  /// purely informational moments so it never competes with the alert
+  /// accent above.
+  static const Color info = Color(0xFF2C6FA6);
+  static const Color infoBg = Color(0xFFE3EDF5);
+
+  // Light theme surfaces — warm paper, not stark white.
   static const Color lightBackground = neutral50;
   static const Color lightSurface = white;
   static const Color lightBorder = neutral200;
 
-  // Dark theme surfaces
-  static const Color darkBackground = Color(0xFF0E0F13);
-  static const Color darkSurface = Color(0xFF17181D);
-  static const Color darkBorder = Color(0xFF2B2D34);
+  // Dark theme / ink surfaces
+  static const Color darkBackground = Color(0xFF10130F);
+  static const Color darkSurface = Color(0xFF191D16);
+  static const Color darkBorder = Color(0xFF2C3127);
 
   // Built from `fromSeed` + `copyWith` rather than the raw ColorScheme()
   // constructor — fromSeed fills in every Material 3 role (container
@@ -78,11 +94,33 @@ class AppColors {
         onPrimary: white,
         secondary: neutral300,
         onSecondary: neutral900,
-        error: const Color(0xFFF87171),
+        error: const Color(0xFFE8897B),
         onError: neutral900,
         surface: darkSurface,
         onSurface: neutral50,
-        surfaceContainerHighest: const Color(0xFF1F2128),
+        surfaceContainerHighest: const Color(0xFF1F241C),
         outline: darkBorder,
       );
+
+  // ---- theme-aware lookups ----
+  //
+  // Most of the app was originally built referencing `lightBackground` /
+  // `neutral900` etc. directly rather than through `Theme.of(context)` —
+  // fine when there was only ever one theme, a real problem once dark mode
+  // exists. These give every screen a one-word swap (`AppColors.background(context)`
+  // instead of `AppColors.lightBackground`) rather than requiring a switch
+  // to full Theme-driven styling everywhere at once.
+  static bool _isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+
+  static Color background(BuildContext context) => _isDark(context) ? darkBackground : lightBackground;
+  static Color surface(BuildContext context) => _isDark(context) ? darkSurface : lightSurface;
+  static Color border(BuildContext context) => _isDark(context) ? darkBorder : lightBorder;
+
+  /// High-contrast "ink" — near-black on light backgrounds, near-white on
+  /// dark ones. What most hardcoded `neutral900` text-color usages meant.
+  static Color ink(BuildContext context) => _isDark(context) ? neutral50 : neutral900;
+
+  /// Secondary "ink" a shade softer — what hardcoded `neutral800` usually
+  /// meant.
+  static Color inkSoft(BuildContext context) => _isDark(context) ? neutral200 : neutral800;
 }

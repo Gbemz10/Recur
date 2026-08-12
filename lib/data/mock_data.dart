@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
-
 import '../models/subscription.dart';
+import 'merchants.dart';
 
 /// Stand-in data for UI work. Swap for the real detection API response
 /// once the backend is wired up — the shape here mirrors what the
@@ -26,14 +25,14 @@ class MockData {
   static final List<Subscription> subscriptions = [
     Subscription(
       id: 'netflix',
-      merchant: 'Netflix',
+      brand: Merchants.netflix,
+      displayName: 'Netflix',
       amount: 7000,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(3),
       category: SubscriptionCategory.streaming,
       status: SubscriptionStatus.active,
       confidence: 0.98,
-      accentColor: const Color(0xFFE50914),
       charges: _history(amount: 7000, narration: 'NETFLIX.COM NGN CARD DEBIT'),
       cancellationSteps: [
         'Open the Netflix app or netflix.com and sign in.',
@@ -44,14 +43,14 @@ class MockData {
     ),
     Subscription(
       id: 'dstv',
-      merchant: 'DStv Compact',
+      brand: Merchants.dstv,
+      displayName: 'DStv Compact',
       amount: 19000,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(6),
       category: SubscriptionCategory.streaming,
       status: SubscriptionStatus.active,
       confidence: 0.96,
-      accentColor: const Color(0xFF0072CE),
       charges: _history(amount: 19000, narration: 'MULTICHOICE NIG DSTV SUB'),
       cancellationSteps: [
         'Dial *288# from the phone number linked to your DStv account.',
@@ -61,14 +60,14 @@ class MockData {
     ),
     Subscription(
       id: 'spotify',
-      merchant: 'Spotify Premium',
+      brand: Merchants.spotify,
+      displayName: 'Spotify Premium',
       amount: 1300,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(11),
       category: SubscriptionCategory.streaming,
       status: SubscriptionStatus.active,
       confidence: 0.94,
-      accentColor: const Color(0xFF1DB954),
       charges: _history(amount: 1300, narration: 'SPOTIFY P17A9C NGN'),
       cancellationSteps: [
         'Go to spotify.com/account in a browser (not the app).',
@@ -78,14 +77,14 @@ class MockData {
     ),
     Subscription(
       id: 'mtn-data',
-      merchant: 'MTN Data Plan',
+      brand: Merchants.mtn,
+      displayName: 'MTN Data Plan',
       amount: 10000,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(1),
       category: SubscriptionCategory.telecom,
       status: SubscriptionStatus.active,
       confidence: 0.91,
-      accentColor: const Color(0xFFFFCB05),
       charges: _history(amount: 10000, narration: 'MTNNG DATA AUTORENEW'),
       cancellationSteps: [
         'Dial *312# and select Manage Auto-renewal.',
@@ -95,14 +94,14 @@ class MockData {
     ),
     Subscription(
       id: 'chatgpt',
-      merchant: 'OpenAI ChatGPT',
+      brand: Merchants.openai,
+      displayName: 'ChatGPT Plus',
       amount: 32000,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(9),
       category: SubscriptionCategory.software,
       status: SubscriptionStatus.active,
       confidence: 0.89,
-      accentColor: const Color(0xFF10A37F),
       charges: _history(amount: 32000, narration: 'OPENAI *CHATGPT USD'),
       cancellationSteps: [
         'Open ChatGPT and click your profile, then Settings.',
@@ -112,14 +111,14 @@ class MockData {
     ),
     Subscription(
       id: 'canva',
-      merchant: 'Canva Pro',
+      brand: Merchants.canva,
+      displayName: 'Canva Pro',
       amount: 64000,
       cycle: BillingCycle.yearly,
       nextChargeDate: _inDays(41),
       category: SubscriptionCategory.software,
       status: SubscriptionStatus.active,
       confidence: 0.87,
-      accentColor: const Color(0xFF7D2AE8),
       charges: _history(
         amount: 64000,
         narration: 'CANVA* I05LM2 SYDNEY AU',
@@ -132,14 +131,14 @@ class MockData {
     ),
     Subscription(
       id: 'gym',
-      merchant: 'i-Fitness Gym',
+      brand: Merchants.ifitness,
+      displayName: 'i-Fitness Gym',
       amount: 25000,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(17),
       category: SubscriptionCategory.fitness,
       status: SubscriptionStatus.unreviewed,
       confidence: 0.72,
-      accentColor: const Color(0xFFEF6C00),
       charges: _history(amount: 25000, narration: 'IFITNESS LEKKI POS'),
       cancellationSteps: [
         'Visit your registered branch, or email support@ifitness.com.ng.',
@@ -148,14 +147,14 @@ class MockData {
     ),
     Subscription(
       id: 'showmax',
-      merchant: 'Showmax',
+      brand: Merchants.showmax,
+      displayName: 'Showmax',
       amount: 3500,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(22),
       category: SubscriptionCategory.streaming,
       status: SubscriptionStatus.unreviewed,
       confidence: 0.66,
-      accentColor: const Color(0xFFE10098),
       charges: _history(
         amount: 3500,
         narration: 'SHOWMAX NG RECURRING',
@@ -168,14 +167,14 @@ class MockData {
     ),
     Subscription(
       id: 'apple-icloud',
-      merchant: 'Apple iCloud',
+      brand: Merchants.apple,
+      displayName: 'Apple iCloud',
       amount: 1100,
       cycle: BillingCycle.monthly,
       nextChargeDate: _inDays(14),
       category: SubscriptionCategory.software,
       status: SubscriptionStatus.cancelled,
       confidence: 0.93,
-      accentColor: const Color(0xFF555555),
       charges: _history(amount: 1100, narration: 'APPLE.COM/BILL ITUNES'),
       cancellationSteps: [
         'Open Settings, tap your name, then Subscriptions.',
@@ -212,9 +211,6 @@ class MockData {
       ..sort((a, b) => a.daysUntilCharge.compareTo(b.daysUntilCharge));
     return list;
   }
-
-  // Bank list lives in data/banks.dart — it carries CBN codes and logos,
-  // which this file has no business duplicating.
 }
 
 /// Formats a naira amount the way Nigerian users expect to read it.
@@ -229,4 +225,17 @@ String formatNaira(double amount, {bool decimals = false}) {
   }
   final formatted = buffer.toString();
   return decimals ? '₦$formatted.${parts.last}' : '₦$formatted';
+}
+
+/// Compact form for tight spaces: ₦63k, ₦1.2m.
+String formatNairaCompact(double amount) {
+  if (amount >= 1000000) {
+    final m = amount / 1000000;
+    return '₦${m.toStringAsFixed(m >= 10 ? 0 : 1)}m';
+  }
+  if (amount >= 1000) {
+    final k = amount / 1000;
+    return '₦${k.toStringAsFixed(k >= 100 ? 0 : 1)}k';
+  }
+  return formatNaira(amount);
 }

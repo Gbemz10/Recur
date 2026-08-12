@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../ui/ui.dart';
-
 /// A circular initial avatar for a human counterparty — the person on the
 /// other end of a transfer.
 ///

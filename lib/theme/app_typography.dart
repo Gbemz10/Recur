@@ -2,18 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
-/// Typography scale built on Plus Jakarta Sans.
+/// Typography scale built on two deliberately paired faces.
 ///
-/// Plus Jakarta Sans is a geometric sans with slightly rounded terminals —
-/// it reads as friendly but still precise, which is why it works for both
-/// marketing surfaces (hero headlines) and dense product UI (tables, forms).
+/// Plus Jakarta Sans carries every UI chrome, heading, and body-copy role —
+/// a geometric sans with slightly rounded terminals that reads as friendly
+/// but precise. IBM Plex Mono is the ledger face: every naira figure, date,
+/// and bank narration in the app renders in it, tabular figures locked so
+/// digits never jitter sideways while a total counts up. That split isn't
+/// decoration — it's the app's whole thesis in typographic form. A bank
+/// alert renders your money in a fixed-width font because a machine wrote
+/// it; Recur borrows that vernacular deliberately, so the one thing this
+/// app is about (the number) always looks like a number, not UI copy.
 ///
-/// Stick to three weights across the whole app: 500 (medium) for UI labels
-/// and body copy, 600 (semibold) for emphasis and headings, 800 (extrabold)
-/// reserved for hero/display text only. Mixing more weights than that is
-/// what makes hand-rolled design systems start to feel inconsistent.
+/// Stick to three weights in the Sans role across the whole app: 500
+/// (medium) for labels and body copy, 600 (semibold) for emphasis and
+/// headings, 800 (extrabold) reserved for hero/display text only. Mixing
+/// more weights than that is what makes hand-rolled design systems start
+/// to feel inconsistent.
 class AppTypography {
   AppTypography._();
+
+  /// Google Fonts ships static font files that sometimes omit less common
+  /// currency glyphs (₦ among them) — without an explicit fallback list,
+  /// Flutter can render that one glyph from a mismatched weight/baseline,
+  /// which is what caused the broken-looking ₦ in earlier builds. Every
+  /// text style below carries this fallback so the naira sign always
+  /// renders from a font that actually has it.
+  static const List<String> _glyphFallback = [
+    'Roboto',
+    'Noto Sans',
+    'Noto Sans Symbols',
+    'Arial',
+  ];
 
   static TextTheme textTheme(Color baseColor) {
     final base = GoogleFonts.plusJakartaSansTextTheme();
@@ -31,7 +51,7 @@ class AppTypography {
         height: height,
         letterSpacing: letterSpacing,
         color: color ?? baseColor,
-      );
+      ).copyWith(fontFamilyFallback: _glyphFallback);
     }
 
     return base.copyWith(
@@ -65,4 +85,25 @@ class AppTypography {
 
   static TextTheme get light => textTheme(AppColors.neutral900);
   static TextTheme get dark => textTheme(AppColors.neutral50);
+
+  /// The ledger face. Every naira amount, date, and raw bank narration in
+  /// the app should render through this, not the Sans styles above.
+  /// Tabular figures are load-bearing here — without them a counting-up
+  /// total visibly reflows as digit widths change.
+  static TextStyle mono({
+    required double size,
+    FontWeight weight = FontWeight.w600,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+  }) {
+    return GoogleFonts.ibmPlexMono(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ).copyWith(fontFamilyFallback: _glyphFallback);
+  }
 }

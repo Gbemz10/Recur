@@ -7,9 +7,10 @@ import '../theme/recur_brand.dart';
 import '../ui/ui.dart';
 import '../widgets/aurora_backdrop.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/dot_grid.dart';
 import '../widgets/onboarding_previews.dart';
 import '../widgets/phone_frame.dart';
-import 'link_bank_screen.dart';
+import '../widgets/recur_logo.dart';
 
 /// Three-beat pitch, then straight into bank linking.
 ///
@@ -35,7 +36,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
   final PageController _controller = PageController();
 
-  /// Drives every preview and the aurora. Long loop so nothing feels frantic.
+  /// Drives every preview and the aurora.
+  ///
+  /// Plays **once** per slide and then rests, rather than looping forever.
+  /// Two reasons, and the first is not optional:
+  ///
+  /// 1. WCAG 2.2.2 (Level A) requires a way to pause or stop any moving
+  ///    content that auto-starts, runs longer than five seconds, and sits
+  ///    alongside other content. An animation looping indefinitely behind
+  ///    body copy fails that outright, and it applies to every user, not
+  ///    just those who've set a reduce-motion preference.
+  /// 2. The loop was also telling the wrong story. A scan that finds three
+  ///    subscriptions and then immediately starts scanning again implies it
+  ///    failed. Playing once and holding the result is what actually
+  ///    happens in the product.
   late final AnimationController _ambient;
 
   /// Continuous page position, for parallax. Not the same as [_page], which
@@ -43,15 +57,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   double _offset = 0;
   int _page = 0;
 
+  bool _reduceMotion = false;
+
   static const List<_Slide> _slides = [
     _Slide(
       eyebrow: 'THE PROBLEM',
       title: 'It hides in your statement',
       body:
-          'Netflix, DStv, a data plan you set to auto-renew in 2023. Real '
-          'money, buried between Bolt rides and transfers.',
+          'Netflix. DStv. A data plan renewing itself. '
+          'None of it announces itself. It just leaves.',
       kind: _PreviewKind.statement,
-      aurora: [Color(0xFFFFB020), Color(0xFFFF6B6B), Color(0xFF8B7BFF)],
+      // Three warm, slightly clashing alarm tones — the chaos before
+      // Recur sorts it out. Resolves into the calm green identity on the
+      // next slide, on purpose.
+      aurora: [Color(0xFFFFB020), Color(0xFFFF6B6B), Color(0xFFB23A2E)],
     ),
     _Slide(
       eyebrow: 'WHAT RECUR DOES',
@@ -60,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           'We group every charge that repeats and show you the total nobody '
           'ever sits down and adds up.',
       kind: _PreviewKind.total,
-      aurora: [RecurBrand.gradientStart, RecurBrand.gradientEnd, Color(0xFFB9A5FF)],
+      aurora: [RecurBrand.gradientStart, RecurBrand.gradientEnd, Color(0xFFF2D9A0)],
     ),
     _Slide(
       eyebrow: 'BEFORE IT HAPPENS',
@@ -78,8 +97,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.initState();
     _ambient = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 7),
-    )..repeat();
+      duration: const Duration(milliseconds: 3000),
+    );
 
     _controller.addListener(() {
       final page = _controller.page;
@@ -87,6 +106,31 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         setState(() => _offset = page);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Respect the OS-level setting. Android's "Remove animations" doesn't
+    // reach app content on its own, so it has to be honoured explicitly.
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    if (reduce != _reduceMotion) {
+      _reduceMotion = reduce;
+      _playSlide();
+    } else if (!_ambient.isAnimating && _ambient.value == 0) {
+      _playSlide();
+    }
+  }
+
+  /// Runs the current slide's reveal from the start. With reduce-motion on,
+  /// jump straight to the resolved state — the user still sees the finished
+  /// composition, just without the journey to it.
+  void _playSlide() {
+    if (_reduceMotion) {
+      _ambient.value = 1;
+    } else {
+      _ambient.forward(from: 0);
+    }
   }
 
   @override
@@ -103,7 +147,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         curve: Curves.easeOutCubic,
       );
     } else {
-      _openLinkFlow();
+      widget.onFinished();
     }
   }
 
@@ -116,12 +160,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  Future<void> _openLinkFlow() async {
-    final linked = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const LinkBankScreen()),
-    );
-    if (linked == true) widget.onFinished();
-  }
 
   /// Aurora colours cross-fade between adjacent slides as you swipe.
   List<Color> get _blendedAurora {
@@ -153,6 +191,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 t: _ambient.value,
                 colors: _blendedAurora,
               ),
+            ),
+          ),
+
+          // Dot texture over the aurora. Drifts slightly against the page
+          // so it sits in the depth stack rather than feeling stuck to the
+          // glass, and fades out above the copy block.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DotGrid(offset: Offset(-_offset * 22, 0)),
             ),
           ),
 
@@ -208,7 +255,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           label: 'Skip',
                           variant: AppButtonVariant.ghost,
                           size: AppButtonSize.sm,
-                          onPressed: _openLinkFlow,
+                          onPressed: widget.onFinished,
                         ),
                       ],
                     ),
@@ -220,7 +267,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   child: PageView.builder(
                     controller: _controller,
                     itemCount: _slides.length,
-                    onPageChanged: (i) => setState(() => _page = i),
+                    onPageChanged: (i) {
+                      setState(() => _page = i);
+                      // Each slide tells its story once, when the user
+                      // actually arrives on it.
+                      _playSlide();
+                    },
                     itemBuilder: (context, i) => _SlideView(
                       slide: _slides[i],
                       ambient: _ambient,
@@ -264,12 +316,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     AppSpacing.xl,
                   ),
                   child: AppButton(
-                    label: isLast ? 'Link my bank' : 'Continue',
+                    label: isLast ? 'Get started' : 'Continue',
                     size: AppButtonSize.lg,
                     expand: true,
-                    trailingIcon: isLast
-                        ? Icons.lock_outline_rounded
-                        : Icons.arrow_forward_rounded,
+                    trailingIcon: Icons.arrow_forward_rounded,
                     onPressed: _next,
                   ),
                 ),
@@ -420,8 +470,10 @@ class _Stage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Gentle idle bob, so the composition is never completely static.
-    final bob = math.sin(t * 2 * math.pi) * 4;
+    // The device settles into place rather than bobbing forever. Three
+    // independent oscillations running at once — aurora, phone, cards —
+    // is what tipped this from "alive" into "restless".
+    final settle = (1 - Curves.easeOutCubic.transform(t.clamp(0.0, 1.0))) * -10;
 
     return Stack(
       alignment: Alignment.center,
@@ -429,7 +481,7 @@ class _Stage extends StatelessWidget {
       children: [
         // ---- the device ----
         Transform.translate(
-          offset: Offset(-delta * 70, bob),
+          offset: Offset(-delta * 70, settle),
           child: Transform(
             alignment: Alignment.center,
             transform: Matrix4.identity()
@@ -460,11 +512,13 @@ class _Stage extends StatelessWidget {
 
   /// How present the notification is, 0–1. Shared by the dimming inside the
   /// device and the floating card outside it so they stay in sync.
-  static double _notifPresence(double t) {
-    final inT = Curves.easeOutBack.transform(((t - 0.14) / 0.20).clamp(0.0, 1.0));
-    final outT = Curves.easeInCubic.transform(((t - 0.84) / 0.16).clamp(0.0, 1.0));
-    return (inT - outT).clamp(0.0, 1.0);
-  }
+  ///
+  /// Arrives and stays. It used to slide back out so the loop could replay,
+  /// which meant the slide's whole point — the alert — was absent half the
+  /// time the user was looking at it.
+  static double _notifPresence(double t) =>
+      Curves.easeOutBack.transform(((t - 0.14) / 0.26).clamp(0.0, 1.0))
+          .clamp(0.0, 1.0);
 
   /// Switch *expression* rather than a statement, so the compiler enforces
   /// that every preview kind has floating UI defined for it.
@@ -476,7 +530,7 @@ class _Stage extends StatelessWidget {
               delta: delta,
               parallax: 1.7,
               appear: ((t - 0.34) / 0.14).clamp(0.0, 1.0),
-              bob: math.sin(t * 2 * math.pi + 0.6) * 5,
+              bob: 0,
               child: _DetectedChip(merchant: Merchants.netflix, amount: '₦7,000'),
             ),
             _Floater(
@@ -484,7 +538,7 @@ class _Stage extends StatelessWidget {
               delta: delta,
               parallax: 2.1,
               appear: ((t - 0.52) / 0.14).clamp(0.0, 1.0),
-              bob: math.sin(t * 2 * math.pi + 2.1) * 6,
+              bob: 0,
               child: _DetectedChip(merchant: Merchants.dstv, amount: '₦19,000'),
             ),
           ],
@@ -496,7 +550,7 @@ class _Stage extends StatelessWidget {
               delta: delta,
               parallax: 1.9,
               appear: ((t - 0.60) / 0.16).clamp(0.0, 1.0),
-              bob: math.sin(t * 2 * math.pi + 1.2) * 5,
+              bob: 0,
               child: const _AnnualPill(),
             ),
           ],
@@ -508,7 +562,7 @@ class _Stage extends StatelessWidget {
               delta: delta,
               parallax: 1.8,
               appear: _notifPresence(t),
-              bob: math.sin(t * 2 * math.pi + 0.3) * 4,
+              bob: 0,
               child: const _AlertCard(),
             ),
           ],
@@ -711,6 +765,8 @@ class _AlertCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // The app icon as it would actually appear in a notification
+            // tray: the brand mark on the brand gradient.
             Container(
               width: 30,
               height: 30,
@@ -719,11 +775,7 @@ class _AlertCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9),
               ),
               alignment: Alignment.center,
-              child: const Icon(
-                Icons.autorenew_rounded,
-                size: 17,
-                color: Colors.white,
-              ),
+              child: const RecurLogo(size: 20, onDark: true, showNode: false),
             ),
             const SizedBox(width: 10),
             Expanded(

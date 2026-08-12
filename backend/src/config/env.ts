@@ -1,0 +1,69 @@
+import 'dotenv/config';
+import { z } from 'zod';
+
+/**
+ * Fail loudly at boot if the environment is misconfigured, rather than an
+ * hour into runtime when the first request that needs a missing value
+ * arrives. Every other module imports `env` from here instead of touching
+ * `process.env` directly, so this file is the single source of truth for
+ * what configuration the app actually needs.
+ */
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().positive().default(4000),
+
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+
+  // Now the ACCESS token's lifetime, not the whole session's — kept short
+  // because it's stateless and unrevocable by design (see refresh_tokens
+  // table). The session itself lives as long as REFRESH_TOKEN_TTL_DAYS,
+  // renewed silently by the client via POST /auth/refresh.
+  JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+
+  OTP_LENGTH: z.coerce.number().int().min(4).max(10).default(6),
+  OTP_TTL_MINUTES: z.coerce.number().int().positive().default(10),
+  OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+
+  EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  EMAIL_FROM: z.string().default('Recur <noreply@recur.website>'),
+  RESEND_API_KEY: z.string().optional().default(''),
+
+  // "*" allows any origin (fine in dev; only affects browser clients — see
+  // .env.example). In production, set this to a comma-separated allowlist.
+  CORS_ORIGIN: z.string().default('*'),
+
+  MONO_SECRET_KEY: z.string().optional().default(''),
+  MONO_WEBHOOK_SECRET: z.string().optional().default(''),
+  // Where Mono's hosted Connect Link page sends the user's browser/webview
+  // after they finish (or abandon) linking. The Flutter client watches for
+  // navigation to this URL to know when to close the webview — Mono
+  // doesn't pass anything useful in the redirect itself, the actual
+  // account id arrives separately via webhook.
+  MONO_REDIRECT_URL: z.string().default('https://recur.website/mono/callback'),
+
+  // Avatar uploads go straight to Supabase Storage (same project as
+  // DATABASE_URL) via its REST API — no SDK needed, just the project URL
+  // and the service_role key (Storage Settings -> API in the Supabase
+  // dashboard). Both optional: the app boots fine without them, the
+  // avatar-upload endpoint just returns a clear error until they're set.
+  SUPABASE_URL: z.string().optional().default(''),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(''),
+  SUPABASE_AVATARS_BUCKET: z.string().default('avatars'),
+});
+
+function loadEnv() {
+  const parsed = schema.safeParse(process.env);
+  if (!parsed.success) {
+    console.error('Invalid environment configuration:');
+    for (const issue of parsed.error.issues) {
+      console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+    }
+    process.exit(1);
+  }
+  return parsed.data;
+}
+
+export const env = loadEnv();
+export type Env = typeof env;

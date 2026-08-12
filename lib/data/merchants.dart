@@ -25,6 +25,34 @@ class Merchant {
   /// real assets before launch.
   String get logoUrl =>
       'https://www.google.com/s2/favicons?domain=$domain&sz=128';
+
+  /// Builds a [Merchant] from the backend's merchant JSON
+  /// (`{ slug, name, domain, brandColor }`, see `serializeSubscription` in
+  /// recur-backend). Prefers the curated [Merchants.all] entry by slug when
+  /// one exists — same slug, same bundled asset, no lookup needed on the
+  /// client — and only falls back to building one from the raw JSON
+  /// (parsing `brandColor` as hex) for a merchant the client doesn't know
+  /// about yet.
+  factory Merchant.fromJson(Map<String, dynamic> json) {
+    final slug = json['slug'] as String?;
+    final known = slug == null ? null : Merchants.bySlug(slug);
+    if (known != null) return known;
+
+    return Merchant(
+      slug: slug ?? 'unknown',
+      name: json['name'] as String? ?? 'Unknown',
+      domain: json['domain'] as String? ?? '',
+      brandColor: _parseHexColor(json['brandColor'] as String?) ?? const Color(0xFF6B7280),
+    );
+  }
+}
+
+Color? _parseHexColor(String? hex) {
+  if (hex == null || hex.isEmpty) return null;
+  var value = hex.replaceAll('#', '');
+  if (value.length == 6) value = 'FF$value';
+  final parsed = int.tryParse(value, radix: 16);
+  return parsed == null ? null : Color(parsed);
 }
 
 class Merchants {
@@ -93,7 +121,8 @@ class Merchants {
   static const chickenRepublic = Merchant(
     slug: 'chicken_republic',
     name: 'Chicken Republic',
-    domain: 'chickenrepublic.com',
+    // Hyphenated. The un-hyphenated domain isn't theirs.
+    domain: 'chicken-republic.com',
     brandColor: Color(0xFFE01F26),
   );
 
@@ -110,4 +139,21 @@ class Merchants {
     bolt,
     chickenRepublic,
   ];
+
+  static Merchant? bySlug(String slug) {
+    for (final merchant in all) {
+      if (merchant.slug == slug) return merchant;
+    }
+    return null;
+  }
+
+  /// A detected charge the engine couldn't match to a known merchant —
+  /// still needs *something* to carry a name/colour for [BrandMark]'s
+  /// initial fallback.
+  static Merchant unknown(String name) => Merchant(
+        slug: 'unknown',
+        name: name,
+        domain: '',
+        brandColor: const Color(0xFF6B7280),
+      );
 }
