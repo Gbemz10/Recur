@@ -29,6 +29,13 @@
       "when": 1786563351505,
       "tag": "0003_aberrant_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786620800559,
+      "tag": "0004_overjoyed_prowler",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { renderOtpEmail } from './emailTemplates.js';
+import { renderOtpEmail, renderWaitlistEmail } from './emailTemplates.js';
 
 interface SendEmailInput {
   to: string;
@@ -55,4 +55,9 @@ export async function sendEmail(input: SendEmailInput): Promise<void> {
 /** Branded OTP email — see emailTemplates.ts for the actual markup/design. */
 export function otpEmail(code: string, purpose: 'SIGNUP' | 'RESET_PASSWORD') {
   return renderOtpEmail(code, purpose, env.OTP_TTL_MINUTES);
+}
+
+/** Branded waitlist-confirmation email — see emailTemplates.ts. */
+export function waitlistEmail() {
+  return renderWaitlistEmail();
 }

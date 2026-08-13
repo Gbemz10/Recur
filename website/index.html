@@ -7,7 +7,7 @@
 <meta name="description" content="Recur reads your Nigerian bank statement and shows you every recurring charge leaving your account, before it leaves. Read-only, licensed, and calm about it.">
 <link rel="canonical" href="https://recur.website/">
 
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='100' y2='100' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%230b6e4f'/%3E%3Cstop offset='0.5' stop-color='%236e8f45'/%3E%3Cstop offset='1' stop-color='%23d9a441'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='%23f8e7c9'/%3E%3Cpath d='M 50 20 A 30 30 0 1 1 25.9 63.3' stroke='url(%23g)' stroke-width='13.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M 12 60 L 35 54 L 31 78 Z' fill='%23d9a441'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='100' y2='100' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%230b6e4f'/%3E%3Cstop offset='0.5' stop-color='%236e8f45'/%3E%3Cstop offset='1' stop-color='%23d9a441'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='%23f8e7c9'/%3E%3Cpath d='M 50 22 A 28 28 0 1 1 22 50' stroke='url(%23g)' stroke-width='13.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M 14 43 L 30 43 L 22 63 Z' fill='%23d9a441'/%3E%3C/svg%3E">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Recur — See every subscription before it debits">
@@ -255,7 +255,12 @@
     color: var(--ink-soft);
     transition: gap 0.4s ease, font-size 0.4s ease;
   }
-  .nav-links a { text-decoration: none; position: relative; }
+  /* was an inline style="display:contents" before — inline styles beat any
+     stylesheet rule (including the @media hide below) no matter what, so
+     the links never actually disappeared on mobile, just got crushed into
+     whatever room was left. This has to live in the stylesheet instead. */
+  .nav-only-links { display: contents; }
+  .nav-links a { text-decoration: none; position: relative; white-space: nowrap; }
   .nav-links a:not(.btn)::after {
     content: "";
     position: absolute;
@@ -274,7 +279,34 @@
   .nav-cta .btn { transition: padding 0.4s ease, font-size 0.4s ease; }
   header.site.scrolled .nav-cta .btn { padding: 9px 16px; font-size: 13px; }
 
-  .nav-menu-btn { display: none; }
+  .nav-menu-btn { display: none; color: var(--forest-deep); }
+  .nav-menu-btn svg { width: 17px; height: 17px; }
+  .nav-menu-btn .icon-close { display: none; }
+  .nav-menu-btn[aria-expanded="true"] .icon-open { display: none; }
+  .nav-menu-btn[aria-expanded="true"] .icon-close { display: block; }
+
+  /* mobile dropdown panel — the links that live under .nav-only-links on
+     desktop move here once the header collapses to a hamburger */
+  .mobile-menu {
+    display: none;
+    flex-direction: column;
+    background: rgba(248,231,201,0.97);
+    backdrop-filter: blur(16px) saturate(1.1);
+    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+    border-bottom: 1px solid rgba(6,78,59,0.14);
+    box-shadow: 0 20px 40px -24px rgba(6,78,59,0.4);
+  }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a {
+    padding: 15px var(--edge);
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-top: 1px solid rgba(6,78,59,0.08);
+  }
+  .mobile-menu a:first-child { border-top: none; }
+  .mobile-menu a:active { color: var(--forest-deep); background: rgba(6,78,59,0.05); }
 
   @media (max-width: 860px) {
     .nav-links .nav-only-links { display: none; }
@@ -282,7 +314,14 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 40px; height: 40px; border-radius: 50%;
       border: 1.5px solid rgba(6,78,59,0.25); background: transparent; cursor: pointer;
+      flex-shrink: 0;
     }
+  }
+  /* very small phones: brand + CTA + hamburger get tight — trim each a touch */
+  @media (max-width: 380px) {
+    .brand span { font-size: 18px; }
+    .nav-cta { gap: 8px; }
+    .nav-cta .btn { padding: 8px 12px; font-size: 12px; }
   }
 
   /* ---------------------------------------------------------------- hero */
@@ -356,7 +395,10 @@
     flex: 1;
     font-family: var(--sans);
     font-size: 14.5px;
-    padding: 0 16px;
+    /* explicit vertical padding, not just relying on flex row "stretch" —
+       that trick silently breaks the moment the form goes flex-direction:
+       column on mobile, leaving a short input above a tall button. */
+    padding: 14px 16px;
     border-radius: 11px;
     border: 1.5px solid rgba(6,78,59,0.28);
     background: var(--parchment-light);
@@ -366,6 +408,22 @@
   }
   .hero-form input::placeholder { color: #8a9187; }
   .hero-form input:focus { border-color: var(--forest); box-shadow: 0 0 0 4px rgba(6,78,59,0.1); }
+  .hero-form input.invalid { border-color: var(--alert); }
+  .hero-form input.invalid:focus { box-shadow: 0 0 0 4px var(--alert-soft); }
+  /* subtle inline validation text, replaces the browser's native "please
+     fill out this field" bubble — space is reserved so it doesn't shift
+     the layout when it appears. */
+  .field-error {
+    display: block;
+    min-height: 18px;
+    margin-top: 7px;
+    font-size: 12.5px;
+    color: var(--alert);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease;
+  }
+  .field-error.show { opacity: 1; visibility: visible; }
   .hero-micro {
     margin-top: 14px;
     font-size: 12.5px;
@@ -425,15 +483,20 @@
   .hero-chip .lbl::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--alert); flex-shrink: 0; }
   .hero-chip .val { font-family: var(--serif); font-size: 17px; font-weight: 600; margin-top: 6px; }
 
-  @media (max-width: 1180px) {
+  /* The right-edge bleed is a desktop-only flourish — there's enough spare
+     width for it to read as intentional. Below 1024px (tablets, narrowed
+     browser windows) it just looked like the phone was cut off, so it
+     switches to fully centered well before the classic 768/980 phone
+     breakpoint. */
+  @media (max-width: 1180px) and (min-width: 1025px) {
     .hero-visual { right: -20px; width: 340px; }
   }
-  @media (max-width: 980px) {
+  @media (max-width: 1024px) {
     .hero { padding-top: 60px; }
     .hero-copy { max-width: 100%; padding-bottom: 0; }
     .hero-visual {
       position: relative;
-      top: auto; right: auto;
+      top: auto; right: auto; left: auto;
       width: 260px;
       margin: 40px auto 0;
       transform: rotate(-4deg);
@@ -467,25 +530,46 @@
     color: var(--ink-soft);
   }
   .problem-line + .problem-line { border-top: 1px solid rgba(6,78,59,0.12); }
-  .problem-line .narration { font-family: var(--mono); font-weight: 600; color: var(--forest-deep); letter-spacing: -0.01em; }
+  .problem-line .narration { font-family: var(--mono); font-weight: 600; color: var(--forest-deep); letter-spacing: -0.01em; transition: color 0.3s ease; }
   .problem-line .amount { font-weight: 700; color: var(--ink); }
+  .problem-line.is-active .narration { color: var(--brass-deep); }
 
   .tx-card-wrap { position: relative; padding: 20px 10px 46px; }
+  .tx-stack { position: relative; max-width: 340px; margin: 0 auto; min-height: 336px; }
   .tx-card {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
     background: #fff;
     border-radius: 20px;
     padding: 28px 26px;
     box-shadow: 0 40px 70px -30px rgba(6,78,59,0.4);
-    transform: rotate(2.5deg);
-    max-width: 340px;
-    margin: 0 auto;
+    border: none;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    /* slow enough to actually watch the card rise from behind the stack —
+       a fast swap read as a flicker rather than a motion. */
+    transition: transform 0.95s cubic-bezier(.16,1,.3,1), opacity 0.8s ease, box-shadow 0.6s ease;
   }
+  .tx-card:focus-visible { outline: 2.5px solid var(--forest); outline-offset: 3px; }
+  .tx-card.pos-0 { transform: rotate(2.5deg) translateY(0) scale(1); z-index: 3; opacity: 1; }
+  .tx-card.pos-1 { transform: rotate(2.5deg) translateY(22px) scale(0.94); z-index: 2; opacity: 0.75; pointer-events: none; }
+  .tx-card.pos-2 { transform: rotate(2.5deg) translateY(38px) scale(0.88); z-index: 1; opacity: 0.4; pointer-events: none; }
   .tx-card-head { display: flex; align-items: center; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
-  .tx-card-narration { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--forest-deep); margin-top: 18px; letter-spacing: -0.01em; }
+  .tx-card-narration { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--forest-deep); margin-top: 18px; letter-spacing: -0.01em; overflow-wrap: break-word; }
   .tx-card-amount { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--ink); margin-top: 8px; }
   .tx-card-divider { border: none; border-top: 1px solid rgba(6,78,59,0.12); margin: 18px 0; }
   .tx-card-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); padding: 5px 0; }
   .tx-card-row span:last-child { color: var(--ink); font-weight: 600; }
+
+  .tx-dots { display: flex; justify-content: center; gap: 7px; margin-top: 14px; }
+  .tx-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(6,78,59,0.2); transition: background 0.3s ease, transform 0.3s ease; }
+  .tx-dots span.is-active { background: var(--brass-deep); transform: scale(1.3); }
 
   .tx-callout {
     position: absolute;
@@ -512,19 +596,50 @@
     .tx-card-wrap { order: -1; padding-bottom: 56px; }
   }
   @media (max-width: 520px) {
-    .tx-card { max-width: 280px; padding: 22px 20px; }
+    .tx-stack { max-width: 280px; min-height: 306px; }
+    .tx-card { padding: 22px 20px; }
     .tx-card-amount { font-size: 25px; }
   }
 
   /* --------------------------------------------------------- how it works */
-  /* Plain typographic grid — no border, no icon boxes, no numbering.
-     Whitespace and hierarchy do the work. */
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px; }
-  .step h3 { font-size: 20px; margin: 0 0 10px; }
-  .step p { font-size: 14.5px; line-height: 1.62; color: var(--ink-soft); margin: 0; }
+  /* Same green-panel language as the security section below it — dark
+     forest background, brass eyebrow, parchment text — so the two feel
+     like one family rather than two different design systems. */
+  .how-panel { background: var(--forest); color: var(--parchment-light); border-radius: var(--radius-lg); padding: 64px; }
+  .how-panel .eyebrow { color: var(--brass); }
+  .how-panel .eyebrow::before { background: var(--brass); }
+  .how-panel h2 { color: var(--parchment-light); }
+  .how-panel .section-head p { color: rgba(248,244,226,0.78); }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 12px; }
+  /* every animated property below — transform, background, shadow, text
+     color, size — shares the exact same duration and easing curve, so the
+     whole card reads as one continuous segue rather than several
+     properties settling at their own pace. box-shadow is given a real
+     zero-alpha starting value (not the keyword "none") so it can actually
+     interpolate instead of snapping in. */
+  .step {
+    padding: 24px 22px;
+    border-radius: 14px;
+    box-shadow: 0 20px 40px -18px rgba(3,48,36,0);
+    transition: transform 0.7s cubic-bezier(.16,1,.3,1),
+                background 0.7s cubic-bezier(.16,1,.3,1),
+                box-shadow 0.7s cubic-bezier(.16,1,.3,1);
+  }
+  .step h3 { font-size: 19px; margin: 0 0 10px; color: rgba(248,244,226,0.88); transition: color 0.7s cubic-bezier(.16,1,.3,1), font-size 0.7s cubic-bezier(.16,1,.3,1); }
+  .step p { font-size: 14.5px; line-height: 1.62; color: rgba(248,244,226,0.55); margin: 0; transition: color 0.7s cubic-bezier(.16,1,.3,1); }
+
+  /* the focused step takes the spotlight: bigger, and lifted onto the same
+     cream card surface used elsewhere on the page — one at a time, cycling
+     through all three. */
+  .step.is-focused { background: var(--parchment-light); transform: scale(1.06); box-shadow: 0 20px 40px -18px rgba(3,48,36,0.5); }
+  .step.is-focused h3 { color: var(--forest-deep); font-size: 21px; }
+  .step.is-focused p { color: var(--ink-soft); }
 
   @media (max-width: 860px) {
-    .steps { grid-template-columns: 1fr; gap: 36px; }
+    .how-panel { padding: 44px 30px; }
+    .steps { grid-template-columns: 1fr; gap: 8px; }
+    .step.is-focused { transform: scale(1.02); }
   }
 
   /* ------------------------------------------------------------ showcase */
@@ -556,13 +671,23 @@
 
   @media (max-width: 980px) {
     .showcase-wrap { grid-template-columns: 1fr; }
-    .phones { height: 480px; margin: 0 auto; max-width: 380px; }
+    /* the fan's own box is capped well under any mobile viewport's content
+       width, so the rotated phones — which extend past their own box —
+       still land inside the page's edge padding instead of bleeding past
+       the viewport, the way the hero phone did before it was fixed. */
+    .phones { height: 420px; margin: 0 auto; max-width: 320px; width: 100%; }
+    .phone { width: 170px; }
+    .phone .screen { height: 340px; }
+    .phone.p1 { left: 8px; top: 30px; }
+    .phone.p2 { left: 90px; top: 0; }
+    .phone.p3 { left: 55px; top: 105px; }
   }
-  @media (max-width: 520px) {
-    .phone { width: 190px; }
-    .phone .screen { height: 380px; }
-    .phone.p2 { left: 100px; }
-    .phone.p3 { left: 60px; top: 110px; }
+  @media (max-width: 400px) {
+    .phones { max-width: 280px; height: 380px; }
+    .phone { width: 150px; }
+    .phone .screen { height: 300px; }
+    .phone.p2 { left: 78px; }
+    .phone.p3 { left: 48px; top: 95px; }
   }
 
   /* ----------------------------------------------------------- security */
@@ -581,6 +706,7 @@
     display: flex; align-items: center; justify-content: center;
     padding: 40px;
     border-left: 1px dashed rgba(248,244,226,0.25);
+    position: relative;
   }
   .stamp {
     width: 200px; height: 200px;
@@ -621,6 +747,21 @@
   .final-cta .hero-form { margin: 0 auto; }
   .final-cta .hero-micro { justify-content: center; }
   .final-cta .eyebrow { justify-content: center; width: 100%; }
+
+  /* ------------------------------------------------------ mobile spacing */
+  /* Desktop paddings (100px sections, 64px gaps) are too generous once the
+     content stacks to one column — tighten the whole rhythm down, not just
+     individual components. */
+  @media (max-width: 640px) {
+    section { padding: 60px 0; }
+    .section-head { margin-bottom: 32px; }
+    .problem-grid { gap: 40px; }
+    .showcase-wrap { gap: 40px; }
+    .final-cta { padding: 70px 0 64px; }
+    footer.site { padding: 40px 0 32px; }
+    .footer-grid { gap: 28px; }
+    .footer-links { gap: 32px; }
+  }
 
   /* ------------------------------------------------------------------ footer */
   footer.site {
@@ -671,13 +812,13 @@
             <stop offset="1" stop-color="#d9a441"/>
           </linearGradient>
         </defs>
-        <path d="M 50 15.5 A 34 34 0 1 1 22.8 65.7" stroke="url(#mark-grad)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
-        <path d="M 8 62 L 34 55 L 30 81 Z" fill="#d9a441"/>
+        <path d="M 50 18 A 32 32 0 1 1 18 50" stroke="url(#mark-grad)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
+        <path d="M 9 42 L 27 42 L 18 65 Z" fill="#d9a441"/>
       </svg>
       <span>recur</span>
     </a>
     <div class="nav-links">
-      <span class="nav-only-links" style="display:contents">
+      <span class="nav-only-links">
         <a href="#how">How it works</a>
         <a href="#showcase">Product</a>
         <a href="#security">Security</a>
@@ -685,8 +826,17 @@
     </div>
     <div class="nav-cta">
       <a href="#waitlist" class="btn btn-primary btn-sm">Get early access</a>
+      <button type="button" class="nav-menu-btn" id="nav-menu-btn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg class="icon-open" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h14M3 10h14M3 14h14"/></svg>
+        <svg class="icon-close" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+      </button>
     </div>
   </nav>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="#how">How it works</a>
+    <a href="#showcase">Product</a>
+    <a href="#security">Security</a>
+  </div>
 </header>
 
 <main>
@@ -698,10 +848,11 @@
         <h1>Stop finding out<br>in a <em>debit alert.</em></h1>
         <p class="lead">Recur reads your bank statement the way you wish you had time to, and shows you exactly what's about to leave your account before it leaves. Netflix, DStv, that gym you cancelled in March. All in one ledger.</p>
 
-        <form class="hero-form" id="waitlist-form">
-          <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email">
+        <form class="hero-form" id="waitlist-form" novalidate>
+          <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email" aria-describedby="waitlist-email-error">
           <button type="submit" class="btn btn-primary">Get early access</button>
         </form>
+        <span class="field-error" id="waitlist-email-error" role="alert"></span>
       </div>
     </div>
 
@@ -728,7 +879,7 @@
         <h2>None of this shows up as "Netflix." That's the problem.</h2>
         <p style="color:var(--ink-soft); font-size:16px; line-height:1.6; max-width:52ch; margin:14px 0 0;">Nigerian bank statements narrate every charge in bank-speak, not brand names. Three real lines, and what they're actually hiding.</p>
 
-        <div class="problem-lines">
+        <div class="problem-lines" id="problem-lines">
           <p class="problem-line"><span class="narration">NETFLIX.COM 41725LAGOS NG</span> — <span class="amount">₦4,400.00</span>. You upgraded to the annual plan eight months ago and forgot.</p>
           <p class="problem-line"><span class="narration">DSTV COMPACT-0022917463</span> — <span class="amount">₦12,500.00</span>. Renews whether anyone in the house watched it or not.</p>
           <p class="problem-line"><span class="narration">GYM-MSHIP-DDCT-0091</span> — <span class="amount">₦15,000.00</span>. Cancelled at the front desk in March. Still charging in August.</p>
@@ -736,16 +887,39 @@
       </div>
 
       <div class="tx-card-wrap reveal">
-        <div class="tx-card">
-          <div class="tx-card-head"><span>GTBank</span><span>08 Aug</span></div>
-          <div class="tx-card-narration">NETFLIX.COM 41725LAGOS NG</div>
-          <div class="tx-card-amount">₦4,400.00</div>
-          <hr class="tx-card-divider">
-          <div class="tx-card-row"><span>Type</span><span>Debit</span></div>
-          <div class="tx-card-row"><span>Balance after</span><span>₦84,210.50</span></div>
-          <div class="tx-card-row"><span>Reference</span><span>000482-NG-08A</span></div>
+        <div class="tx-stack" id="tx-stack">
+          <button class="tx-card" type="button" aria-label="Netflix transaction detail — tap to see the next one">
+            <div class="tx-card-head"><span>GTBank</span><span>08 Aug</span></div>
+            <div class="tx-card-narration">NETFLIX.COM 41725LAGOS NG</div>
+            <div class="tx-card-amount">₦4,400.00</div>
+            <hr class="tx-card-divider">
+            <div class="tx-card-row"><span>Type</span><span>Debit</span></div>
+            <div class="tx-card-row"><span>Balance after</span><span>₦84,210.50</span></div>
+            <div class="tx-card-row"><span>Reference</span><span>000482-NG-08A</span></div>
+          </button>
+          <button class="tx-card" type="button" aria-label="DStv transaction detail — tap to see the next one">
+            <div class="tx-card-head"><span>Access Bank</span><span>05 Aug</span></div>
+            <div class="tx-card-narration">DSTV COMPACT-0022917463</div>
+            <div class="tx-card-amount">₦12,500.00</div>
+            <hr class="tx-card-divider">
+            <div class="tx-card-row"><span>Type</span><span>Debit</span></div>
+            <div class="tx-card-row"><span>Balance after</span><span>₦71,710.50</span></div>
+            <div class="tx-card-row"><span>Reference</span><span>000481-NG-05A</span></div>
+          </button>
+          <button class="tx-card" type="button" aria-label="Gym membership transaction detail — tap to see the next one">
+            <div class="tx-card-head"><span>Kuda</span><span>02 Aug</span></div>
+            <div class="tx-card-narration">GYM-MSHIP-DDCT-0091</div>
+            <div class="tx-card-amount">₦15,000.00</div>
+            <hr class="tx-card-divider">
+            <div class="tx-card-row"><span>Type</span><span>Debit</span></div>
+            <div class="tx-card-row"><span>Balance after</span><span>₦59,210.50</span></div>
+            <div class="tx-card-row"><span>Reference</span><span>000480-NG-02A</span></div>
+          </button>
         </div>
-        <div class="tx-callout"><span class="tx-callout-dot"></span>Nobody reads this closely enough to catch it. Recur does.</div>
+        <div class="tx-dots" id="tx-dots">
+          <span class="is-active"></span><span></span><span></span>
+        </div>
+        <div class="tx-callout"><span class="tx-callout-dot"></span><span id="tx-callout-text">You upgraded to the annual plan eight months ago and forgot.</span></div>
       </div>
     </div>
   </section>
@@ -753,24 +927,26 @@
   <!-- ================================================================= HOW IT WORKS -->
   <section id="how">
     <div class="wrap">
-      <div class="section-head reveal">
-        <span class="eyebrow">How it works</span>
-        <h2>Three steps. Nothing to maintain.</h2>
-        <p>No manual entry, no spreadsheet you'll abandon in a week. Recur does the reading; you do the deciding.</p>
-      </div>
+      <div class="how-panel reveal">
+        <div class="section-head">
+          <span class="eyebrow">How it works</span>
+          <h2>Three steps. Nothing to maintain.</h2>
+          <p>No manual entry, no spreadsheet you'll abandon in a week. Recur does the reading; you do the deciding.</p>
+        </div>
 
-      <div class="steps reveal">
-        <div class="step">
-          <h3>Connect a bank</h3>
-          <p>Link your account in under two minutes through Mono, a licensed open banking provider. Recur never sees your login, only read-only access to transactions.</p>
-        </div>
-        <div class="step">
-          <h3>We find the pattern</h3>
-          <p>Recur scans your history for charges that repeat: same merchant, close to the same amount, on a rough schedule. Two matches is enough to flag it.</p>
-        </div>
-        <div class="step">
-          <h3>You take it from there</h3>
-          <p>See every recurring charge in one place, get a heads-up before the next one lands, and mark anything cancelled so Recur adjusts your total instantly.</p>
+        <div class="steps">
+          <div class="step is-focused">
+            <h3>Connect a bank</h3>
+            <p>Link your account in under two minutes through Mono, a licensed open banking provider. Recur never sees your login, only read-only access to transactions.</p>
+          </div>
+          <div class="step">
+            <h3>We find the pattern</h3>
+            <p>Recur scans your history for charges that repeat: same merchant, close to the same amount, on a rough schedule. Two matches is enough to flag it.</p>
+          </div>
+          <div class="step">
+            <h3>You take it from there</h3>
+            <p>See every recurring charge in one place, get a heads-up before the next one lands, and mark anything cancelled so Recur adjusts your total instantly.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -848,10 +1024,11 @@
     <div class="wrap">
       <span class="eyebrow">Opening soon</span>
       <h2>Be the first to see<br>your ledger.</h2>
-      <form class="hero-form" id="waitlist-form-2">
-        <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email-2">
+      <form class="hero-form" id="waitlist-form-2" novalidate>
+        <input type="email" required placeholder="you@example.com" aria-label="Email address" id="waitlist-email-2" aria-describedby="waitlist-email-2-error">
         <button type="submit" class="btn btn-primary">Get early access</button>
       </form>
+      <span class="field-error" id="waitlist-email-2-error" role="alert"></span>
       <div class="hero-micro"><svg viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>No spam. One email, when we open your city.</div>
     </div>
   </section>
@@ -870,8 +1047,8 @@
                 <stop offset="1" stop-color="#d9a441"/>
               </linearGradient>
             </defs>
-            <path d="M 50 15.5 A 34 34 0 1 1 22.8 65.7" stroke="url(#mark-grad-footer)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
-            <path d="M 8 62 L 34 55 L 30 81 Z" fill="#d9a441"/>
+            <path d="M 50 18 A 32 32 0 1 1 18 50" stroke="url(#mark-grad-footer)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
+            <path d="M 9 42 L 27 42 L 18 65 Z" fill="#d9a441"/>
           </svg>
           <span>recur</span>
         </a>
@@ -900,6 +1077,28 @@
 </div>
 
 <script>
+  // ---- mobile menu toggle ----
+  (function () {
+    var btn = document.getElementById('nav-menu-btn');
+    var menu = document.getElementById('mobile-menu');
+    if (!btn || !menu) return;
+    function close() {
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    btn.addEventListener('click', function () {
+      var open = menu.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', close);
+    });
+    // close if the viewport grows past the mobile breakpoint while open
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 860) close();
+    });
+  })();
+
   // ---- floating glass nav after first scroll ----
   (function () {
     var header = document.querySelector('header.site');
@@ -914,6 +1113,60 @@
     window.addEventListener('scroll', function () {
       if (!ticking) { window.requestAnimationFrame(apply); ticking = true; }
     }, { passive: true });
+  })();
+
+  // ---- problem section: 3-card stack, auto-advances, tap to switch ----
+  (function () {
+    var stack = document.getElementById('tx-stack');
+    if (!stack) return;
+    var cards = Array.prototype.slice.call(stack.querySelectorAll('.tx-card'));
+    var dots = Array.prototype.slice.call(document.querySelectorAll('#tx-dots span'));
+    var lines = Array.prototype.slice.call(document.querySelectorAll('#problem-lines .problem-line'));
+    var calloutText = document.getElementById('tx-callout-text');
+    var callouts = [
+      "You upgraded to the annual plan eight months ago and forgot.",
+      "Renews whether anyone in the house watched it or not.",
+      "Cancelled at the front desk in March. Still charging in August."
+    ];
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var active = 0;
+    var timer = null;
+
+    function render() {
+      cards.forEach(function (card, i) {
+        var pos = (i - active + cards.length) % cards.length;
+        card.classList.remove('pos-0', 'pos-1', 'pos-2');
+        card.classList.add('pos-' + pos);
+      });
+      dots.forEach(function (d, i) { d.classList.toggle('is-active', i === active); });
+      lines.forEach(function (l, i) { l.classList.toggle('is-active', i === active); });
+      if (calloutText) calloutText.textContent = callouts[active];
+    }
+    function advance() { active = (active + 1) % cards.length; render(); }
+    function restartTimer() {
+      if (reduced) return; // don't auto-rotate for reduced-motion users; tap still works
+      clearInterval(timer);
+      timer = setInterval(advance, 5000);
+    }
+    cards.forEach(function (card) {
+      card.addEventListener('click', function () { advance(); restartTimer(); });
+    });
+    render();
+    restartTimer();
+  })();
+
+  // ---- how it works: one step at a time takes the spotlight ----
+  (function () {
+    var steps = Array.prototype.slice.call(document.querySelectorAll('#how .step'));
+    if (steps.length < 2) return;
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return; // first step is already marked is-focused in markup
+    var active = 0;
+    setInterval(function () {
+      steps[active].classList.remove('is-focused');
+      active = (active + 1) % steps.length;
+      steps[active].classList.add('is-focused');
+    }, 3200);
   })();
 
   // ---- reveal on scroll ----
@@ -931,8 +1184,14 @@
     els.forEach(function (e) { io.observe(e); });
   })();
 
-  // ---- waitlist forms (no backend yet — local confirmation only) ----
+  // ---- waitlist forms — real signups against the Recur API ----
   (function () {
+    // TODO: point this at wherever recur-backend is actually deployed
+    // (Render/Railway/Fly, etc). Whatever that host is, its CORS_ORIGIN env
+    // var needs https://recur.website in it or the browser will block this
+    // request even though the server itself is up.
+    var API_BASE = 'https://api.recur.website';
+
     var toast = document.getElementById('toast');
     var toastText = document.getElementById('toast-text');
     function showToast(msg) {
@@ -940,15 +1199,71 @@
       toast.classList.add('show');
       setTimeout(function () { toast.classList.remove('show'); }, 3200);
     }
-    ['waitlist-form', 'waitlist-form-2'].forEach(function (id) {
+
+    // { 'waitlist-form': 'hero', 'waitlist-form-2': 'final_cta' } — lets the
+    // backend see which CTA a signup actually came from.
+    var sourceByFormId = { 'waitlist-form': 'hero', 'waitlist-form-2': 'final_cta' };
+
+    Object.keys(sourceByFormId).forEach(function (id) {
       var form = document.getElementById(id);
       if (!form) return;
+      var input = form.querySelector('input[type=email]');
+      var button = form.querySelector('button[type=submit]');
+      var buttonLabel = button.textContent;
+      var errorEl = document.getElementById(input.getAttribute('aria-describedby'));
+
+      function setError(msg) {
+        if (!errorEl) return;
+        if (msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.add('show');
+          input.classList.add('invalid');
+        } else {
+          errorEl.classList.remove('show');
+          input.classList.remove('invalid');
+        }
+      }
+
+      input.addEventListener('input', function () { setError(''); });
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        var input = form.querySelector('input[type=email]');
-        if (!input.value) return;
-        showToast("You're on the list — we'll email you.");
-        input.value = '';
+        if (!input.value.trim()) {
+          setError('Enter your email to join the waitlist.');
+          input.focus();
+          return;
+        }
+        if (!input.checkValidity()) {
+          setError("That doesn't look like a valid email.");
+          input.focus();
+          return;
+        }
+        setError('');
+        button.disabled = true;
+        button.textContent = 'Joining…';
+
+        fetch(API_BASE + '/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: input.value.trim(), source: sourceByFormId[id] }),
+        })
+          .then(function (res) {
+            if (res.ok) return res.json();
+            return res.json().catch(function () { return {}; }).then(function (body) {
+              throw new Error((body.error && body.error.message) || 'Something went wrong — try again.');
+            });
+          })
+          .then(function () {
+            showToast("You're on the list — we'll email you.");
+            input.value = '';
+          })
+          .catch(function (err) {
+            setError(err.message || 'Something went wrong — try again.');
+          })
+          .finally(function () {
+            button.disabled = false;
+            button.textContent = buttonLabel;
+          });
       });
     });
   })();

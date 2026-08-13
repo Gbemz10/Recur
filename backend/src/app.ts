@@ -12,6 +12,7 @@ import { healthRoutes } from './modules/health/routes.js';
 import { bankingRoutes } from './modules/banking/routes.js';
 import { webhookRoutes } from './modules/webhooks/routes.js';
 import { detectionRoutes } from './modules/detection/routes.js';
+import { waitlistRoutes } from './modules/waitlist/routes.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -113,6 +114,7 @@ export function buildApp() {
   app.register(bankingRoutes);
   app.register(webhookRoutes);
   app.register(detectionRoutes);
+  app.register(waitlistRoutes);
 
   return app;
 }

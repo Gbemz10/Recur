@@ -33,6 +33,23 @@ export const subscriptionCategoryEnum = pgEnum('subscription_category', [
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['UNREVIEWED', 'ACTIVE', 'CANCELLED']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['DEBIT', 'CREDIT']);
 
+// ----------------------------------------------------------------- waitlist
+
+// Pre-launch marketing-site signups (recur.website) — deliberately its own
+// table rather than a stub row in `users`, since there's no password/auth
+// concept here at all, just an email and where it came from. A signup here
+// creates no account; when the app actually launches, converting a waitlist
+// row into a real `users` row (if ever needed) is a one-off migration, not
+// something this table needs to model up front.
+export const waitlistSignups = pgTable('waitlist_signups', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  email: text('email').notNull().unique(),
+  // Which form on the page it came from ("hero" | "final_cta") — cheap to
+  // capture now, useful later for seeing which CTA actually converts.
+  source: text('source'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // --------------------------------------------------------------------- auth
 
 export const users = pgTable('users', {

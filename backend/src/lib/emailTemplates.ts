@@ -229,6 +229,47 @@ Didn&rsquo;t request this? You can safely ignore this email &mdash; no changes h
   };
 }
 
+/** Sent the moment someone joins the waitlist from recur.website — a quick,
+ *  honest confirmation rather than a hard sell. No unsubscribe link for the
+ *  same reason the OTP email skips one: this was triggered by the
+ *  recipient's own action seconds earlier, not an ongoing marketing list. */
+export function renderWaitlistEmail(): RenderedEmail {
+  const preheaderText = "You're on the Recur waitlist — we'll email you the moment it's your turn.";
+
+  const html = emailShell(
+    `
+<p class="ink-500" style="margin:0 0 8px; font-family:${sansFont}; font-size:12px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:${light.ink500};">Waitlist confirmed</p>
+<h1 class="ink-900" style="margin:0 0 12px; font-family:${sansFont}; font-size:23px; font-weight:800; letter-spacing:-0.3px; color:${light.ink900};">You're on the list</h1>
+<p class="ink-600" style="margin:0 0 4px; font-family:${sansFont}; font-size:14px; line-height:1.6; color:${light.ink600};">
+Thanks for signing up. We're opening Recur city by city — you'll get one email, right when it's your turn, with a link to get started. No spam before then.
+</p>
+
+<div class="divider" style="border-top:1px dashed ${light.borderDashed}; margin:28px 0;"></div>
+
+<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.6; color:${light.ink500};">
+Didn&rsquo;t sign up for this? You can safely ignore this email &mdash; no account was created, and you won&rsquo;t hear from us again.
+</p>
+`,
+    preheaderText,
+  );
+
+  const text = [
+    'Waitlist confirmed',
+    '',
+    "Thanks for signing up. We're opening Recur city by city — you'll get one email, right when it's your turn, with a link to get started. No spam before then.",
+    '',
+    "Didn't sign up for this? You can safely ignore this email — no account was created.",
+    '',
+    'Recur · Lagos, Nigeria',
+  ].join('\n');
+
+  return {
+    subject: "You're on the Recur waitlist",
+    text,
+    html,
+  };
+}
+
 // Exported for anything that wants the raw shell for a future email type
 // (e.g. a renewal reminder) without duplicating the header/footer markup.
 export { emailShell, escapeHtml, light as emailColorsLight, dark as emailColorsDark, sansFont, monoFont };
