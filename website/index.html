@@ -1186,11 +1186,10 @@
 
   // ---- waitlist forms — real signups against the Recur API ----
   (function () {
-    // TODO: point this at wherever recur-backend is actually deployed
-    // (Render/Railway/Fly, etc). Whatever that host is, its CORS_ORIGIN env
-    // var needs https://recur.website in it or the browser will block this
-    // request even though the server itself is up.
-    var API_BASE = 'https://api.recur.website';
+    // Deployed on Render — update this if the backend ever moves to its own
+    // custom domain (e.g. api.recur.website). CORS_ORIGIN on that service
+    // needs to include https://recur.website or the browser blocks this.
+    var API_BASE = 'https://recur-z7q0.onrender.com';
 
     var toast = document.getElementById('toast');
     var toastText = document.getElementById('toast-text');
