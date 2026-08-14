@@ -61,7 +61,12 @@
   }
 
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  /* overflow-x needs to be hidden on BOTH html and body — several elements
+     (hero-chip, hero-glow) deliberately bleed past their container edges
+     as a visual flourish, and mobile Safari specifically doesn't reliably
+     clip that at the body level alone, letting the whole page scroll
+     sideways by a few px on phones. */
+  html { scroll-behavior: smooth; overflow-x: hidden; }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
