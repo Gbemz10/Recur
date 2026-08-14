@@ -61,12 +61,12 @@
   }
 
   * { box-sizing: border-box; }
-  /* overflow-x needs to be hidden on BOTH html and body — several elements
-     (hero-chip, hero-glow) deliberately bleed past their container edges
-     as a visual flourish, and mobile Safari specifically doesn't reliably
-     clip that at the body level alone, letting the whole page scroll
-     sideways by a few px on phones. */
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  /* `clip`, not `hidden` — hidden makes the browser treat html as a scroll
+     container, which changes the nearest-scrolling-ancestor calculation for
+     position:sticky and silently breaks the floating nav. clip prevents the
+     same horizontal bleed (hero-chip, hero-glow poke past their box on
+     purpose) without creating a scroll container, so sticky keeps working. */
+  html { scroll-behavior: smooth; overflow-x: clip; }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -84,7 +84,7 @@
     color: var(--ink);
     font-family: var(--sans);
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   img { max-width: 100%; display: block; }
