@@ -43,6 +43,13 @@
       "when": 1786793685349,
       "tag": "0005_productive_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786799727983,
+      "tag": "0006_add_biweekly_irregular_cycles",
+      "breakpoints": true
     }
   ]
 }

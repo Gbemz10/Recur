@@ -65,17 +65,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
       widget.store.all.where((s) => s.status != SubscriptionStatus.cancelled).toList();
 
   /// Steps a date forward or backward by one full billing cycle.
-  DateTime _step(DateTime d, BillingCycle cycle, int dir) {
-    switch (cycle) {
+  DateTime _step(DateTime d, Subscription sub, int dir) {
+    switch (sub.cycle) {
       case BillingCycle.weekly:
         return d.add(Duration(days: 7 * dir));
+      case BillingCycle.biweekly:
+        return d.add(Duration(days: 14 * dir));
       case BillingCycle.monthly:
         return DateTime(d.year, d.month + dir, d.day);
       case BillingCycle.quarterly:
         return DateTime(d.year, d.month + 3 * dir, d.day);
       case BillingCycle.yearly:
         return DateTime(d.year + dir, d.month, d.day);
+      case BillingCycle.irregular:
+        return d.add(Duration(days: _irregularIntervalDays(sub) * dir));
     }
+  }
+
+  /// Irregular has no fixed cadence by definition — estimate a step from
+  /// the subscription's own charge history (median gap between charges),
+  /// falling back to a month if there isn't enough history to measure
+  /// from yet (matches the trial-watch/first-detection default elsewhere).
+  int _irregularIntervalDays(Subscription sub) {
+    if (sub.charges.length < 2) return 30;
+    final sorted = [...sub.charges]..sort((a, b) => a.date.compareTo(b.date));
+    final deltas = <int>[
+      for (var i = 1; i < sorted.length; i++) sorted[i].date.difference(sorted[i - 1].date).inDays,
+    ]..sort();
+    final mid = deltas.length ~/ 2;
+    final medianDays = deltas.length.isOdd ? deltas[mid] : ((deltas[mid - 1] + deltas[mid]) / 2).round();
+    return medianDays > 0 ? medianDays : 30;
   }
 
   /// Every occurrence of every tracked subscription that lands within
@@ -94,7 +113,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // Rewind to well before the visible month.
       var guard = 0;
       while (cursor.isAfter(start) && guard < 60) {
-        cursor = _step(cursor, sub.cycle, -1);
+        cursor = _step(cursor, sub, -1);
         guard++;
       }
       // Walk forward, collecting anything inside the visible month.
@@ -103,7 +122,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (!cursor.isBefore(start)) {
           result.add(_Occurrence(date: cursor, subscription: sub));
         }
-        cursor = _step(cursor, sub.cycle, 1);
+        cursor = _step(cursor, sub, 1);
         guard++;
       }
     }

@@ -3,7 +3,8 @@ import { db } from '../../db/client.js';
 import { rawTransactions, merchants, subscriptions, chargeRecords } from '../../db/schema.js';
 
 type Merchant = typeof merchants.$inferSelect;
-type Cycle = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+type NamedCycle = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+type Cycle = NamedCycle | 'IRREGULAR';
 
 interface Txn {
   id: string;
@@ -15,18 +16,37 @@ interface Txn {
 // Median-interval bands (in days) a cluster's charges have to fall into to
 // be classified as that cycle. Wide enough to absorb bank-processing jitter
 // (a "monthly" charge landing anywhere from the 24th to the 36th day is
-// still monthly) without WEEKLY and MONTHLY bands overlapping.
-const CYCLE_DAY_BANDS: [Cycle, number, number][] = [
+// still monthly) without adjacent bands overlapping. BIWEEKLY fills what
+// used to be a dead zone between WEEKLY and MONTHLY (11–23 days) where a
+// genuine ~14-day billing cycle would match no band and get dropped —
+// see classifyCycle for what still happens to a median that lands in the
+// narrower gap now left between BIWEEKLY and MONTHLY (19–23 days).
+const CYCLE_DAY_BANDS: [NamedCycle, number, number][] = [
   ['WEEKLY', 5, 10],
+  ['BIWEEKLY', 11, 18],
   ['MONTHLY', 24, 36],
   ['QUARTERLY', 80, 100],
   ['YEARLY', 335, 395],
 ];
-const CYCLE_DAYS: Record<Cycle, number> = { WEEKLY: 7, MONTHLY: 30, QUARTERLY: 91, YEARLY: 365 };
+const CYCLE_DAYS: Record<NamedCycle, number> = { WEEKLY: 7, BIWEEKLY: 14, MONTHLY: 30, QUARTERLY: 91, YEARLY: 365 };
 
 // Need at least two occurrences to establish any periodicity at all — a
 // single transaction carries no signal about whether it repeats.
 const MIN_OCCURRENCES = 2;
+
+// A charge whose interval falls between named bands needs a stronger case
+// before it's trusted as "IRREGULAR" rather than dropped — there's no
+// real-world billing convention backing the cadence up the way there is
+// for e.g. MONTHLY, so it's easy to mistake two coincidentally-equal
+// one-off purchases for a subscription. One more occurrence than the
+// normal minimum, tighter spacing consistency, and a plausible day range
+// (anything under 3 days is more likely a retry/duplicate than a real
+// cycle; anything past 400 days is beyond even YEARLY's band) all have to
+// hold before it counts.
+const MIN_IRREGULAR_OCCURRENCES = 3;
+const MIN_IRREGULAR_REGULARITY = 0.6;
+const MIN_IRREGULAR_DAYS = 3;
+const MAX_IRREGULAR_DAYS = 400;
 
 function normalizeNarration(raw: string): string {
   return raw
@@ -91,7 +111,7 @@ function clusterByAmount(txns: Txn[]): Txn[][] {
   return clusters;
 }
 
-function classifyCycle(sortedDates: Date[]): { cycle: Cycle; regularity: number } | null {
+function classifyCycle(sortedDates: Date[]): { cycle: Cycle; regularity: number; intervalDays: number } | null {
   if (sortedDates.length < MIN_OCCURRENCES) return null;
   const deltas: number[] = [];
   for (let i = 1; i < sortedDates.length; i++) {
@@ -99,31 +119,54 @@ function classifyCycle(sortedDates: Date[]): { cycle: Cycle; regularity: number 
     deltas.push(days);
   }
   const med = median(deltas);
-  const band = CYCLE_DAY_BANDS.find(([, lo, hi]) => med >= lo && med <= hi);
-  if (!band) return null;
   const avgAbsDeviation = deltas.reduce((sum, d) => sum + Math.abs(d - med), 0) / deltas.length;
   const regularity = Math.max(0, Math.min(1, 1 - avgAbsDeviation / med));
-  return { cycle: band[0], regularity };
+
+  const band = CYCLE_DAY_BANDS.find(([, lo, hi]) => med >= lo && med <= hi);
+  if (band) {
+    return { cycle: band[0], regularity, intervalDays: CYCLE_DAYS[band[0]] };
+  }
+
+  // Falls in none of the named bands. Previously this was a dead end —
+  // classifyCycle returned null and the caller silently discarded the
+  // cluster, so a real subscription billing every 45 or 100 days never
+  // surfaced at all, with nothing telling the user it was even seen. Now
+  // it gets one more chance: if the pattern is well-established (extra
+  // occurrence, tighter regularity, a sane day range), it's surfaced as
+  // IRREGULAR using its own measured interval rather than dropped.
+  if (
+    sortedDates.length >= MIN_IRREGULAR_OCCURRENCES &&
+    regularity >= MIN_IRREGULAR_REGULARITY &&
+    med >= MIN_IRREGULAR_DAYS &&
+    med <= MAX_IRREGULAR_DAYS
+  ) {
+    return { cycle: 'IRREGULAR', regularity, intervalDays: Math.round(med) };
+  }
+
+  return null;
 }
 
 /**
  * 0.3–0.99. Weighted toward interval regularity and occurrence count, with
  * a bonus for hitting the curated merchant table — a narration match on
  * "NETFLIX" is a much stronger signal than three same-amount charges from
- * an unrecognized narration.
+ * an unrecognized narration. IRREGULAR cycles take a small penalty on top
+ * of that: there's no real-world billing convention corroborating the
+ * cadence the way there is for a named cycle, so it shouldn't outrank an
+ * equally-fresh WEEKLY/MONTHLY/etc. detection in the UI.
  */
-function computeConfidence(occurrences: number, regularity: number, merchantMatched: boolean): number {
+function computeConfidence(occurrences: number, regularity: number, merchantMatched: boolean, cycle: Cycle): number {
   const occurrenceScore = Math.min(1, (occurrences - 1) / 4);
-  const confidence = 0.35 + occurrenceScore * 0.3 + regularity * 0.25 + (merchantMatched ? 0.1 : 0);
+  let confidence = 0.35 + occurrenceScore * 0.3 + regularity * 0.25 + (merchantMatched ? 0.1 : 0);
+  if (cycle === 'IRREGULAR') confidence -= 0.1;
   return Math.min(0.99, Math.max(0.3, Number(confidence.toFixed(2))));
 }
 
-function projectNextChargeDate(lastDate: Date, cycle: Cycle): Date {
-  const days = CYCLE_DAYS[cycle];
+function projectNextChargeDate(lastDate: Date, intervalDays: number): Date {
   let next = new Date(lastDate.getTime());
   const now = new Date();
   while (next.getTime() <= now.getTime()) {
-    next = new Date(next.getTime() + days * 24 * 60 * 60 * 1000);
+    next = new Date(next.getTime() + intervalDays * 24 * 60 * 60 * 1000);
   }
   return next;
 }
@@ -136,6 +179,7 @@ interface AmountCluster {
   txns: Txn[];
   cycle: Cycle;
   regularity: number;
+  intervalDays: number;
   amountBucket: number;
   medianAmount: number;
   firstDate: Date;
@@ -154,6 +198,7 @@ function buildAmountClusters(txns: Txn[]): AmountCluster[] {
       txns: sorted,
       cycle: classification.cycle,
       regularity: classification.regularity,
+      intervalDays: classification.intervalDays,
       amountBucket: Math.round(medianAmount / 100) * 100,
       medianAmount,
       firstDate: sorted[0]!.date,
@@ -181,7 +226,7 @@ function buildChains(clusters: AmountCluster[]): Chain[] {
   const sorted = [...clusters].sort((a, b) => a.firstDate.getTime() - b.firstDate.getTime());
   const chains: Chain[] = [];
   for (const cluster of sorted) {
-    const maxGapMs = CYCLE_DAYS[cluster.cycle] * 3 * 24 * 60 * 60 * 1000;
+    const maxGapMs = cluster.intervalDays * 3 * 24 * 60 * 60 * 1000;
     const target = chains.find((chain) => {
       const last = chain.segments[chain.segments.length - 1]!;
       return (
@@ -248,7 +293,7 @@ export async function runDetectionForUser(userId: string) {
       const allTxns = chain.segments.flatMap((segment) => segment.txns).sort((a, b) => a.date.getTime() - b.date.getTime());
       const latestSegment = chain.segments[chain.segments.length - 1]!;
       const priorSegment = chain.segments.length > 1 ? chain.segments[chain.segments.length - 2]! : null;
-      const { cycle, regularity } = latestSegment;
+      const { cycle, regularity, intervalDays } = latestSegment;
 
       // Keyed off the FIRST segment's price, not the current one — this is
       // what makes the key stable across a plan change. Every future
@@ -259,9 +304,12 @@ export async function runDetectionForUser(userId: string) {
       // subscriptions (which never merge into one chain in the first
       // place) keep their own distinct keys.
       const detectionKey = `${groupKey}:${cycle}:${chain.segments[0]!.amountBucket}`;
-      const confidence = computeConfidence(allTxns.length, regularity, Boolean(merchant));
+      const confidence = computeConfidence(allTxns.length, regularity, Boolean(merchant), cycle);
       const lastTxn = allTxns[allTxns.length - 1]!;
-      const nextChargeDate = projectNextChargeDate(lastTxn.date, cycle);
+      // Named cycles project off their fixed CYCLE_DAYS constant (already
+      // baked into intervalDays by classifyCycle); IRREGULAR projects off
+      // its own measured interval, since there's no fixed constant for it.
+      const nextChargeDate = projectNextChargeDate(lastTxn.date, intervalDays);
       const displayName =
         merchant?.name ?? (titleCase(normalizeNarration(lastTxn.narration).split(' ').slice(0, 4).join(' ')) || 'Unknown charge');
       const category = merchant?.category ?? 'OTHER';
@@ -339,7 +387,7 @@ export async function runDetectionForUser(userId: string) {
         // Cycle is a guess (monthly is the overwhelmingly common trial
         // cadence) — confidence is deliberately capped low so this never
         // outranks a real, multi-occurrence detection in the UI.
-        const nextChargeDate = projectNextChargeDate(txn.date, 'MONTHLY');
+        const nextChargeDate = projectNextChargeDate(txn.date, CYCLE_DAYS.MONTHLY);
         await db.insert(subscriptions).values({
           userId,
           merchantId: merchant.id,

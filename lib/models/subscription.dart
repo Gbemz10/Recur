@@ -3,23 +3,37 @@ import 'package:flutter/material.dart';
 import '../data/merchants.dart';
 
 /// How often a detected charge repeats.
-enum BillingCycle { weekly, monthly, quarterly, yearly }
+///
+/// `biweekly` and `irregular` mirror the backend's detection engine (see
+/// `NamedCycle`/`Cycle` in recur-backend's detection/service.ts):
+/// `biweekly` is a real ~14-day billing cadence that used to fall in the
+/// gap between weekly and monthly and get silently dropped; `irregular` is
+/// a repeating charge whose interval doesn't match any named cadence at
+/// all, surfaced instead of discarded once the pattern is well-established.
+enum BillingCycle { weekly, biweekly, monthly, quarterly, yearly, irregular }
 
 extension BillingCycleLabel on BillingCycle {
   String get label => switch (this) {
         BillingCycle.weekly => 'Weekly',
+        BillingCycle.biweekly => 'Biweekly',
         BillingCycle.monthly => 'Monthly',
         BillingCycle.quarterly => 'Quarterly',
         BillingCycle.yearly => 'Yearly',
+        BillingCycle.irregular => 'Irregular',
       };
 
   /// Rough number of charges per year — used to normalise spend so a yearly
-  /// plan and a monthly plan can be compared on the same axis.
+  /// plan and a monthly plan can be compared on the same axis. `irregular`
+  /// has no fixed cadence by definition, so this is just a fallback;
+  /// `Subscription.yearlyCost` prefers estimating a real interval from the
+  /// subscription's own charge history when there's enough of it.
   int get chargesPerYear => switch (this) {
         BillingCycle.weekly => 52,
+        BillingCycle.biweekly => 26,
         BillingCycle.monthly => 12,
         BillingCycle.quarterly => 4,
         BillingCycle.yearly => 1,
+        BillingCycle.irregular => 12,
       };
 }
 
@@ -159,7 +173,21 @@ class Subscription {
   /// Plain-language steps for cancelling with this merchant in Nigeria.
   final List<String> cancellationSteps;
 
-  double get yearlyCost => amount * cycle.chargesPerYear;
+  double get yearlyCost {
+    // An irregular cadence's real interval can be anywhere from a few
+    // weeks to over a year — the enum-level fallback (12/yr) is too rough
+    // to trust once there's actual charge history to measure from instead.
+    if (cycle == BillingCycle.irregular && charges.length >= 2) {
+      final sorted = [...charges]..sort((a, b) => a.date.compareTo(b.date));
+      final totalDays = sorted.last.date.difference(sorted.first.date).inDays;
+      final gaps = sorted.length - 1;
+      if (totalDays > 0 && gaps > 0) {
+        final avgIntervalDays = totalDays / gaps;
+        return amount * (365 / avgIntervalDays);
+      }
+    }
+    return amount * cycle.chargesPerYear;
+  }
 
   /// Normalised monthly figure so totals are comparable across cycles.
   double get monthlyEquivalent => yearlyCost / 12;

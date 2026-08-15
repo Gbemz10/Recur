@@ -22,7 +22,19 @@ import {
 
 export const otpPurposeEnum = pgEnum('otp_purpose', ['SIGNUP', 'RESET_PASSWORD']);
 export const bankLinkStatusEnum = pgEnum('bank_link_status', ['ACTIVE', 'REVOKED', 'ERROR']);
-export const billingCycleEnum = pgEnum('billing_cycle', ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']);
+// BIWEEKLY covers real ~14-day billing (a band that used to fall in the gap
+// between WEEKLY and MONTHLY and get silently dropped). IRREGULAR is a
+// catch-all for a repeating charge whose cadence doesn't match any named
+// band at all — still surfaced to the user instead of discarded, just
+// flagged as unusual. See detection/service.ts's classifyCycle.
+export const billingCycleEnum = pgEnum('billing_cycle', [
+  'WEEKLY',
+  'BIWEEKLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'YEARLY',
+  'IRREGULAR',
+]);
 export const subscriptionCategoryEnum = pgEnum('subscription_category', [
   'STREAMING',
   'TELECOM',
