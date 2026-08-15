@@ -36,6 +36,13 @@
       "when": 1786620800559,
       "tag": "0004_overjoyed_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786793685349,
+      "tag": "0005_productive_shadow_king",
+      "breakpoints": true
     }
   ]
 }

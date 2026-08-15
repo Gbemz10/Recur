@@ -5,11 +5,14 @@ import '../data/mock_data.dart' show formatNaira;
 import '../data/profile.dart';
 import '../data/profile_service.dart';
 import '../data/subscription_store.dart';
+import '../data/trial_store.dart';
 import '../models/subscription.dart';
+import '../models/trial.dart';
 import '../ui/ui.dart';
 import '../widgets/subscription_tile.dart';
 import 'profile_screen.dart';
 import 'subscription_detail_screen.dart';
+import 'trial_reminders_screen.dart';
 
 /// The home screen.
 ///
@@ -28,11 +31,14 @@ import 'subscription_detail_screen.dart';
 /// alphabetical list of equal-weight rows hides exactly the information
 /// someone opened the app to find.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.store});
+  const DashboardScreen({super.key, required this.store, required this.trialStore});
 
   /// Shared across every tab in [AppShell], so a status change here is
   /// immediately visible on Calendar and Settings too.
   final SubscriptionStore store;
+
+  /// Manually-entered trial reminders — see [TrialStore].
+  final TrialStore trialStore;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -52,11 +58,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     widget.store.addListener(_handleStoreChange);
+    widget.trialStore.addListener(_handleStoreChange);
   }
 
   @override
   void dispose() {
     widget.store.removeListener(_handleStoreChange);
+    widget.trialStore.removeListener(_handleStoreChange);
     super.dispose();
   }
 
@@ -109,6 +117,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   double get _thisWeekTotal =>
       _thisWeek.fold(0.0, (sum, s) => sum + s.amount);
+
+  /// Trial reminders converting soon enough to be worth interrupting the
+  /// dashboard for — same "only when genuinely imminent" bar as
+  /// [_thisWeek] above.
+  List<TrialReminder> get _trialsDueSoon {
+    final list = widget.trialStore.upcoming.where((t) => t.isDueSoon || t.isOverdue).toList();
+    return list;
+  }
+
+  Future<void> _openTrialReminders() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TrialRemindersScreen(store: widget.trialStore),
+      ),
+    );
+  }
 
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
     try {
@@ -170,6 +194,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: _AttentionStrip(
                     total: _thisWeekTotal,
                     subs: _thisWeek,
+                  ),
+                ),
+              ),
+
+            // A trial converting soon is the same kind of tension as a
+            // charge landing soon — it just hasn't happened yet, so it gets
+            // its own strip rather than being folded into the one above.
+            if (_trialsDueSoon.isNotEmpty && _tab == 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    _thisWeek.isEmpty ? AppSpacing.lg : AppSpacing.md,
+                    AppSpacing.xl,
+                    0,
+                  ),
+                  child: _TrialStrip(
+                    trials: _trialsDueSoon,
+                    onTap: _openTrialReminders,
                   ),
                 ),
               ),
@@ -702,6 +745,84 @@ class _AttentionStrip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown only when a manually-logged trial is close to converting — the
+/// exact "only when genuinely imminent" bar as [_AttentionStrip], applied
+/// to trials the detection engine can't see yet.
+class _TrialStrip extends StatelessWidget {
+  const _TrialStrip({required this.trials, required this.onTap});
+
+  final List<TrialReminder> trials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final soonest = trials.first;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: AppRadius.lgBR,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.warningBg,
+            borderRadius: AppRadius.lgBR,
+            border: Border.all(
+              color: AppColors.warning.withValues(alpha: 0.28),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.16),
+                  borderRadius: AppRadius.mdBR,
+                ),
+                child: const Icon(
+                  Icons.hourglass_bottom_rounded,
+                  size: 18,
+                  color: AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      trials.length == 1
+                          ? '${soonest.label} trial ${soonest.endsLabel.toLowerCase()}'
+                          : '${trials.length} trials ending soon',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.neutral900,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    const Text(
+                      'Tap to review and cancel before they charge',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.neutral600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.warning, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

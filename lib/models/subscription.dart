@@ -99,6 +99,7 @@ class Subscription {
     required this.confidence,
     required this.charges,
     this.cancellationSteps = const [],
+    this.previousAmount,
   });
 
   final String id;
@@ -111,6 +112,13 @@ class Subscription {
   final String displayName;
 
   final double amount;
+
+  /// What this subscription was charging before its most recent price
+  /// change, e.g. a Spotify Individual→Family upgrade. Null for the
+  /// overwhelming majority of subscriptions, which have never changed
+  /// price since Recur started tracking them.
+  final double? previousAmount;
+
   final BillingCycle cycle;
   final DateTime nextChargeDate;
   final SubscriptionCategory category;
@@ -138,6 +146,7 @@ class Subscription {
       brand: merchantJson != null ? Merchant.fromJson(merchantJson) : Merchants.unknown(displayName),
       displayName: displayName,
       amount: (json['amount'] as num).toDouble(),
+      previousAmount: (json['previousAmount'] as num?)?.toDouble(),
       cycle: BillingCycle.values.byName(json['cycle'] as String),
       nextChargeDate: DateTime.parse(json['nextChargeDate'] as String),
       category: SubscriptionCategory.values.byName(json['category'] as String),
@@ -168,6 +177,18 @@ class Subscription {
 
   bool get isDueSoon => daysUntilCharge >= 0 && daysUntilCharge <= 7;
 
+  /// True when Recur has actually observed this subscription's price
+  /// change — as opposed to `previousAmount` just being null because no
+  /// change has ever happened.
+  bool get hasPriceChange => previousAmount != null && previousAmount != amount;
+
+  bool get priceIncreased => hasPriceChange && amount > previousAmount!;
+
+  /// e.g. "+₦600/mo" — the sign carries the meaning, formatting the naira
+  /// figure is left to the caller (keeps this model free of a
+  /// currency-formatting dependency).
+  double get priceDelta => hasPriceChange ? amount - previousAmount! : 0;
+
   /// Human-readable countdown, e.g. "Charges tomorrow".
   String get nextChargeLabel {
     final d = daysUntilCharge;
@@ -182,6 +203,7 @@ class Subscription {
         brand: brand,
         displayName: displayName,
         amount: amount,
+        previousAmount: previousAmount,
         cycle: cycle,
         nextChargeDate: nextChargeDate,
         category: category,

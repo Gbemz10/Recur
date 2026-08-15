@@ -118,6 +118,74 @@ class SubscriptionDetailScreen extends StatelessWidget {
 
             const SizedBox(height: AppSpacing.xxl),
 
+            // ---- price change ----
+            if (subscription.hasPriceChange) ...[
+              Text('Price change', style: text.titleMedium),
+              const SizedBox(height: AppSpacing.md),
+              AppCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Was',
+                            style: text.bodySmall
+                                ?.copyWith(color: AppColors.neutral500),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            formatNaira(subscription.previousAmount!),
+                            style: AppTypography.mono(
+                              size: 18,
+                              weight: FontWeight.w600,
+                              color: AppColors.neutral500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 18,
+                      color: AppColors.neutral400,
+                    ),
+                    const SizedBox(width: AppSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Now',
+                            style: text.bodySmall
+                                ?.copyWith(color: AppColors.neutral500),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            formatNaira(subscription.amount),
+                            style: AppTypography.mono(
+                              size: 18,
+                              weight: FontWeight.w600,
+                              color: AppColors.ink(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppBadge(
+                      label:
+                          '${subscription.priceIncreased ? '+' : '−'}${formatNaira(subscription.priceDelta.abs())}',
+                      variant: subscription.priceIncreased
+                          ? AppBadgeVariant.warning
+                          : AppBadgeVariant.success,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+            ],
+
             // ---- why we flagged it ----
             Text('Why we flagged this', style: text.titleMedium),
             const SizedBox(height: AppSpacing.md),

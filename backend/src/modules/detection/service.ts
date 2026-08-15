@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { rawTransactions, merchants, subscriptions, chargeRecords } from '../../db/schema.js';
 
@@ -128,6 +128,77 @@ function projectNextChargeDate(lastDate: Date, cycle: Cycle): Date {
   return next;
 }
 
+// --------------------------------------------------------- plan-change chains
+
+// A single amount-consistent, cycle-classified run of charges — the output
+// of clusterByAmount + classifyCycle for one price tier.
+interface AmountCluster {
+  txns: Txn[];
+  cycle: Cycle;
+  regularity: number;
+  amountBucket: number;
+  medianAmount: number;
+  firstDate: Date;
+  lastDate: Date;
+}
+
+function buildAmountClusters(txns: Txn[]): AmountCluster[] {
+  const clusters: AmountCluster[] = [];
+  for (const cluster of clusterByAmount(txns)) {
+    if (cluster.length < MIN_OCCURRENCES) continue;
+    const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const classification = classifyCycle(sorted.map((t) => t.date));
+    if (!classification) continue;
+    const medianAmount = median(sorted.map((t) => t.amount));
+    clusters.push({
+      txns: sorted,
+      cycle: classification.cycle,
+      regularity: classification.regularity,
+      amountBucket: Math.round(medianAmount / 100) * 100,
+      medianAmount,
+      firstDate: sorted[0]!.date,
+      lastDate: sorted[sorted.length - 1]!.date,
+    });
+  }
+  return clusters;
+}
+
+// A "chain" is one or more amount clusters strung together over time —
+// the full price history of a single subscription. A plan change (e.g.
+// Spotify Individual ₦1,900 → Family ₦2,500) shows up as two amount
+// clusters that are otherwise identical in every way that matters: same
+// merchant/narration group, same billing cycle, and the second one starts
+// only after the first one stops. That's the signal used to merge them
+// into one chain instead of treating the price change as a brand new
+// subscription. Clusters that overlap in time, or that never abut within
+// a few cycles of each other, are left unmerged — that's what a genuinely
+// separate, concurrent same-merchant subscription looks like.
+interface Chain {
+  segments: AmountCluster[]; // chronological, earliest first
+}
+
+function buildChains(clusters: AmountCluster[]): Chain[] {
+  const sorted = [...clusters].sort((a, b) => a.firstDate.getTime() - b.firstDate.getTime());
+  const chains: Chain[] = [];
+  for (const cluster of sorted) {
+    const maxGapMs = CYCLE_DAYS[cluster.cycle] * 3 * 24 * 60 * 60 * 1000;
+    const target = chains.find((chain) => {
+      const last = chain.segments[chain.segments.length - 1]!;
+      return (
+        last.cycle === cluster.cycle &&
+        last.lastDate.getTime() < cluster.firstDate.getTime() &&
+        cluster.firstDate.getTime() - last.lastDate.getTime() <= maxGapMs
+      );
+    });
+    if (target) {
+      target.segments.push(cluster);
+    } else {
+      chains.push({ segments: [cluster] });
+    }
+  }
+  return chains;
+}
+
 /**
  * Scans a user's raw transaction history for recurring debit patterns and
  * upserts the result into `subscriptions` + `charge_records`, keyed by a
@@ -162,24 +233,36 @@ export async function runDetectionForUser(userId: string) {
   }
 
   let clustersFound = 0;
+  const merchantSlugsWithRealDetection = new Set<string>();
 
   for (const [groupKey, { merchant, txns }] of groups) {
-    for (const cluster of clusterByAmount(txns)) {
-      if (cluster.length < MIN_OCCURRENCES) continue;
+    const amountClusters = buildAmountClusters(txns);
+    const chains = buildChains(amountClusters);
 
-      const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
-      const classification = classifyCycle(sorted.map((t) => t.date));
-      if (!classification) continue;
+    for (const chain of chains) {
+      const allTxns = chain.segments.flatMap((segment) => segment.txns).sort((a, b) => a.date.getTime() - b.date.getTime());
+      const latestSegment = chain.segments[chain.segments.length - 1]!;
+      const priorSegment = chain.segments.length > 1 ? chain.segments[chain.segments.length - 2]! : null;
+      const { cycle, regularity } = latestSegment;
 
-      const { cycle, regularity } = classification;
-      const amountBucket = Math.round(median(sorted.map((t) => t.amount)) / 100) * 100;
-      const detectionKey = `${groupKey}:${cycle}:${amountBucket}`;
-      const confidence = computeConfidence(cluster.length, regularity, Boolean(merchant));
-      const lastTxn = sorted[sorted.length - 1]!;
+      // Keyed off the FIRST segment's price, not the current one — this is
+      // what makes the key stable across a plan change. Every future
+      // re-run of detection still sees the same original first-observed
+      // price for this chain (raw transaction history never gets pruned),
+      // so a Family-plan upgrade updates the same row instead of minting
+      // a new one, while two genuinely concurrent same-merchant
+      // subscriptions (which never merge into one chain in the first
+      // place) keep their own distinct keys.
+      const detectionKey = `${groupKey}:${cycle}:${chain.segments[0]!.amountBucket}`;
+      const confidence = computeConfidence(allTxns.length, regularity, Boolean(merchant));
+      const lastTxn = allTxns[allTxns.length - 1]!;
       const nextChargeDate = projectNextChargeDate(lastTxn.date, cycle);
       const displayName =
         merchant?.name ?? (titleCase(normalizeNarration(lastTxn.narration).split(' ').slice(0, 4).join(' ')) || 'Unknown charge');
       const category = merchant?.category ?? 'OTHER';
+      // Only set when this chain actually contains more than one price
+      // tier — i.e. a real change was observed, not just "no prior data."
+      const previousAmount = priorSegment ? priorSegment.medianAmount.toFixed(2) : null;
 
       const [existing] = await db
         .select()
@@ -194,7 +277,7 @@ export async function runDetectionForUser(userId: string) {
         subscriptionId = existing.id;
         await db
           .update(subscriptions)
-          .set({ amount: lastTxn.amount.toFixed(2), nextChargeDate, confidence, updatedAt: new Date() })
+          .set({ amount: lastTxn.amount.toFixed(2), previousAmount, nextChargeDate, confidence, updatedAt: new Date() })
           .where(eq(subscriptions.id, existing.id));
       } else {
         const [created] = await db
@@ -204,6 +287,7 @@ export async function runDetectionForUser(userId: string) {
             merchantId: merchant?.id ?? null,
             displayName,
             amount: lastTxn.amount.toFixed(2),
+            previousAmount,
             cycle,
             nextChargeDate,
             category,
@@ -217,8 +301,9 @@ export async function runDetectionForUser(userId: string) {
       }
 
       clustersFound += 1;
+      if (merchant) merchantSlugsWithRealDetection.add(merchant.slug);
 
-      const chargeRows = cluster.map((txn) => ({
+      const chargeRows = allTxns.map((txn) => ({
         subscriptionId,
         date: txn.date,
         amount: txn.amount.toFixed(2),
@@ -227,6 +312,64 @@ export async function runDetectionForUser(userId: string) {
       }));
       await db.insert(chargeRecords).values(chargeRows).onConflictDoNothing({ target: chargeRecords.rawTransactionId });
     }
+
+    // ---- trial-prone first-charge heuristic ----
+    //
+    // A free trial converting to paid is, by definition, a SINGLE debit at
+    // the point of detection — there's no second occurrence yet to prove a
+    // pattern, which is exactly what the normal >= MIN_OCCURRENCES path
+    // requires. For merchants known to run trial-then-charge signups
+    // (Netflix, Spotify, etc. — see merchants.trialProne), a lone debit is
+    // itself the signal worth surfacing: better a low-confidence heads-up
+    // than silence until the second, harder-to-refund charge lands.
+    if (merchant?.trialProne && txns.length === 1) {
+      const txn = txns[0]!;
+      const detectionKey = `merchant:${merchant.slug}:TRIAL_WATCH`;
+      const [existing] = await db
+        .select()
+        .from(subscriptions)
+        .where(and(eq(subscriptions.userId, userId), eq(subscriptions.detectionKey, detectionKey)))
+        .limit(1);
+      if (!existing) {
+        // Cycle is a guess (monthly is the overwhelmingly common trial
+        // cadence) — confidence is deliberately capped low so this never
+        // outranks a real, multi-occurrence detection in the UI.
+        const nextChargeDate = projectNextChargeDate(txn.date, 'MONTHLY');
+        await db.insert(subscriptions).values({
+          userId,
+          merchantId: merchant.id,
+          displayName: `${merchant.name} (possible trial)`,
+          amount: txn.amount.toFixed(2),
+          cycle: 'MONTHLY',
+          nextChargeDate,
+          category: merchant.category,
+          status: 'UNREVIEWED',
+          confidence: 0.35,
+          detectionKey,
+        });
+        clustersFound += 1;
+      }
+    }
+  }
+
+  // A TRIAL_WATCH row is a placeholder for "we saw one charge and can't
+  // confirm a pattern yet." Once the merchant graduates to a real,
+  // multi-occurrence detection in this same run, the placeholder is
+  // redundant — clean it up so the user doesn't see the same merchant
+  // twice. Only ever deletes rows still sitting at UNREVIEWED, so a
+  // placeholder the user has already acted on (dismissed to CANCELLED, or
+  // somehow marked ACTIVE) is left alone rather than silently vanishing.
+  if (merchantSlugsWithRealDetection.size > 0) {
+    const staleKeys = [...merchantSlugsWithRealDetection].map((slug) => `merchant:${slug}:TRIAL_WATCH`);
+    await db
+      .delete(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.userId, userId),
+          eq(subscriptions.status, 'UNREVIEWED'),
+          inArray(subscriptions.detectionKey, staleKeys),
+        ),
+      );
   }
 
   return { clustersFound };

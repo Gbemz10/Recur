@@ -10,12 +10,14 @@ import '../data/profile.dart';
 import '../data/profile_service.dart';
 import '../data/subscription_store.dart';
 import '../data/theme_controller.dart';
+import '../data/trial_store.dart';
 import '../ui/ui.dart';
 import '../widgets/bank_logo.dart';
 import '../widgets/brand_mark.dart';
 import 'help_centre_screen.dart';
 import 'link_bank_screen.dart';
 import 'profile_screen.dart';
+import 'trial_reminders_screen.dart';
 
 /// Settings: linked account, notification timing, and data controls.
 ///
@@ -24,9 +26,12 @@ import 'profile_screen.dart';
 /// you, then what it does with your data. Predictable structure matters
 /// more than cleverness here; this is a screen people scan, not read.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.store, required this.onSignOut});
+  const SettingsScreen({super.key, required this.store, required this.trialStore, required this.onSignOut});
 
   final SubscriptionStore store;
+
+  /// Manually-entered trial reminders — see [TrialStore].
+  final TrialStore trialStore;
 
   /// Called after the session token is cleared, so the root flow can send
   /// the user back to the auth screen.
@@ -320,6 +325,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _linkBank,
             ),
           ],
+
+          _SectionLabel('Trial reminders'),
+          ListenableBuilder(
+            listenable: widget.trialStore,
+            builder: (context, _) {
+              final count = widget.trialStore.upcoming.length;
+              return AppCard(
+                padding: EdgeInsets.zero,
+                child: _NavRow(
+                  icon: Icons.hourglass_bottom_rounded,
+                  title: count == 0
+                      ? 'No trials being tracked'
+                      : '$count trial${count == 1 ? '' : 's'} being tracked',
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TrialRemindersScreen(store: widget.trialStore),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
 
           _SectionLabel('Appearance'),
           ListenableBuilder(

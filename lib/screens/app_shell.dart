@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/subscription_store.dart';
+import '../data/trial_store.dart';
 import '../ui/ui.dart';
 import 'calendar_screen.dart';
 import 'dashboard_screen.dart';
@@ -27,6 +28,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
   final SubscriptionStore _store = SubscriptionStore();
+  final TrialStore _trialStore = TrialStore();
 
   static const _items = [
     AppNavItem(label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home_rounded),
@@ -37,6 +39,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _store.dispose();
+    _trialStore.dispose();
     super.dispose();
   }
 
@@ -47,9 +50,9 @@ class _AppShellState extends State<AppShell> {
       body: IndexedStack(
         index: _index,
         children: [
-          DashboardScreen(store: _store),
+          DashboardScreen(store: _store, trialStore: _trialStore),
           CalendarScreen(store: _store),
-          SettingsScreen(store: _store, onSignOut: widget.onSignOut),
+          SettingsScreen(store: _store, trialStore: _trialStore, onSignOut: widget.onSignOut),
         ],
       ),
       bottomNavigationBar: AppBottomNav(

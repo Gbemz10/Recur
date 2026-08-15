@@ -9,6 +9,7 @@ import {
   integer,
   numeric,
   doublePrecision,
+  boolean,
   unique,
 } from 'drizzle-orm/pg-core';
 
@@ -136,6 +137,13 @@ export const merchants = pgTable('merchants', {
   domain: text('domain').notNull(),
   brandColor: text('brand_color').notNull(),
   category: subscriptionCategoryEnum('category').notNull().default('OTHER'),
+  // True for merchants known to run free-trial-then-charge signups
+  // (Netflix, Spotify, Showmax, Canva, ChatGPT Plus, iFitness, ...). The
+  // detection engine bypasses its usual MIN_OCCURRENCES=2 requirement for
+  // these — a single matching debit is enough to flag it, since waiting
+  // for a second occurrence would mean waiting for the SECOND real charge,
+  // which defeats the point of a trial-forgetting warning.
+  trialProne: boolean('trial_prone').notNull().default(false),
 });
 
 export const subscriptions = pgTable('subscriptions', {
@@ -153,6 +161,14 @@ export const subscriptions = pgTable('subscriptions', {
   // and conversion happens deliberately at the API boundary, in
   // `serializeSubscription`, rather than silently through a column mode.
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+
+  // The amount this subscription was charging immediately before its most
+  // recent price change, e.g. a Spotify Individual→Family upgrade. Null
+  // until the detection engine (or a manual edit) actually observes a
+  // change — most subscriptions never have one. Lets the UI show "was
+  // ₦1,900, now ₦2,500" instead of just silently updating the number.
+  previousAmount: numeric('previous_amount', { precision: 12, scale: 2 }),
+
   cycle: billingCycleEnum('cycle').notNull(),
   nextChargeDate: timestamp('next_charge_date', { withTimezone: true }).notNull(),
   category: subscriptionCategoryEnum('category').notNull(),
@@ -223,6 +239,36 @@ export const rawTransactions = pgTable('raw_transactions', {
   uniqueMonoTransaction: unique().on(table.linkedBankId, table.monoTransactionId),
 }));
 
+// -------------------------------------------------------------------- trials
+
+// A manually-entered "remind me before this trial converts" note. This is
+// deliberately separate from the merchant `trialProne` heuristic below —
+// this table is for trials the detection engine has no way to see yet
+// (nothing's been charged, so there's no raw transaction to match on),
+// entered by the user right after they sign up somewhere. `merchantSlug`
+// is optional free text matching, not a foreign key, so a user can log a
+// trial for a merchant Recur doesn't know about yet.
+export const trialReminders = pgTable('trial_reminders', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  merchantSlug: text('merchant_slug'),
+  // What the user typed for it, e.g. "Netflix Premium" — shown verbatim
+  // since merchantSlug may be null.
+  label: text('label').notNull(),
+  trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }).notNull(),
+  // Set once a reminder notification has actually gone out, so a
+  // scheduled job can find "due and not yet reminded" rows without
+  // double-sending.
+  remindedAt: timestamp('reminded_at', { withTimezone: true }),
+  // Set when the user cancels the trial or dismisses the reminder — kept
+  // as a soft flag rather than a delete so past reminders still show up
+  // in history.
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ------------------------------------------------------------------ relations
 //
 // Lets service code use Drizzle's relational query API
@@ -236,6 +282,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   otpCodes: many(otpCodes),
   rawTransactions: many(rawTransactions),
   refreshTokens: many(refreshTokens),
+  trialReminders: many(trialReminders),
+}));
+
+export const trialRemindersRelations = relations(trialReminders, ({ one }) => ({
+  user: one(users, { fields: [trialReminders.userId], references: [users.id] }),
 }));
 
 export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
