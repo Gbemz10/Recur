@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
 import '../data/mock_data.dart' show formatNaira;
-import '../data/profile.dart';
-import '../data/profile_service.dart';
+import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
 import '../models/subscription.dart';
@@ -34,6 +33,7 @@ class DashboardScreen extends StatefulWidget {
     super.key,
     required this.store,
     required this.trialStore,
+    required this.profileStore,
     required this.onOpenTrials,
   });
 
@@ -43,6 +43,9 @@ class DashboardScreen extends StatefulWidget {
 
   /// Manually-entered trial reminders — see [TrialStore].
   final TrialStore trialStore;
+
+  /// Shared with every other tab — see [ProfileStore].
+  final ProfileStore profileStore;
 
   /// Switches [AppShell] to the Trials tab — the strip below surfaces a
   /// due-soon trial inline, but managing it happens on its own tab, not a
@@ -68,12 +71,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     widget.store.addListener(_handleStoreChange);
     widget.trialStore.addListener(_handleStoreChange);
+    widget.profileStore.addListener(_handleStoreChange);
   }
 
   @override
   void dispose() {
     widget.store.removeListener(_handleStoreChange);
     widget.trialStore.removeListener(_handleStoreChange);
+    widget.profileStore.removeListener(_handleStoreChange);
     super.dispose();
   }
 
@@ -164,7 +169,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Future<void>.delayed(const Duration(milliseconds: 900)),
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _Greeting(store: widget.store)),
+            SliverToBoxAdapter(
+              child: _Greeting(store: widget.store, profileStore: widget.profileStore),
+            ),
 
             SliverToBoxAdapter(
               child: Padding(
@@ -449,33 +456,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 // ---------------------------------------------------------------------------
 
-class _Greeting extends StatefulWidget {
-  const _Greeting({required this.store});
+/// Reads [ProfileStore] directly rather than fetching its own copy — the
+/// parent `DashboardScreen` already listens to it and rebuilds this on
+/// every change, so there's exactly one load for the whole tab, not one
+/// per widget that happens to show an avatar. During that one load this
+/// shows a plain skeleton circle instead of a placeholder name/initial —
+/// "A" for "Account" flashing before the real initial arrives read as a
+/// glitch, not a loading state.
+class _Greeting extends StatelessWidget {
+  const _Greeting({required this.store, required this.profileStore});
 
   final SubscriptionStore store;
-
-  @override
-  State<_Greeting> createState() => _GreetingState();
-}
-
-class _GreetingState extends State<_Greeting> {
-  Profile? _profile;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProfile();
-  }
-
-  Future<void> _loadProfile() async {
-    try {
-      final profile = await ProfileService.getProfile();
-      if (!mounted) return;
-      setState(() => _profile = profile);
-    } on ApiException {
-      // Header avatar just falls back to a generic mark below.
-    }
-  }
+  final ProfileStore profileStore;
 
   String get _timeOfDay {
     final h = DateTime.now().hour;
@@ -487,6 +479,8 @@ class _GreetingState extends State<_Greeting> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final profile = profileStore.profile;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.xl,
@@ -512,13 +506,14 @@ class _GreetingState extends State<_Greeting> {
             ),
           ),
           GestureDetector(
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ProfileScreen(store: widget.store)),
-              );
-              _loadProfile();
-            },
-            child: AppAvatar(name: _profile?.displayLabel ?? 'Account', imageUrl: _profile?.avatarUrl),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(store: store, profileStore: profileStore),
+              ),
+            ),
+            child: profileStore.isInitialLoad
+                ? const ClipOval(child: AppSkeleton(width: 40, height: 40))
+                : AppAvatar(name: profile?.displayLabel ?? 'Account', imageUrl: profile?.avatarUrl),
           ),
         ],
       ),

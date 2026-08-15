@@ -6,6 +6,7 @@ import '../data/auth_service.dart';
 import '../data/mock_data.dart' show formatNairaCompact;
 import '../data/profile.dart';
 import '../data/profile_service.dart';
+import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
 import '../models/subscription.dart';
 import '../ui/ui.dart';
@@ -23,55 +24,53 @@ import '../ui/ui.dart';
 /// dashboard and Settings both show a brief loading state before their
 /// numbers appear.
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, required this.store});
+  const ProfileScreen({super.key, required this.store, required this.profileStore});
 
   /// Shared store, so stats here stay correct if something changes status
   /// while this screen happens to still be on the stack.
   final SubscriptionStore store;
+
+  /// Shared with every other tab — see [ProfileStore]. Edits made here
+  /// (name, photo) go through this store rather than local state, so the
+  /// dashboard header and Settings' account card pick them up immediately,
+  /// even though `AppShell` keeps both of those tabs alive in the
+  /// background the whole time this screen is open.
+  final ProfileStore profileStore;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Profile? _profile;
-  bool _loading = true;
   bool _uploadingPhoto = false;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    widget.profileStore.addListener(_handleProfileChange);
+    // Always reached with a profile already loaded (every entry point sits
+    // behind AppShell, which loads this on startup) — this is a background
+    // refresh for "did anything change on another device", not the first
+    // load, so it never needs its own loading flash.
+    widget.profileStore.load();
   }
 
-  Future<void> _load() async {
-    // Also reached from the "Try again" retry button after a failed load —
-    // without resetting this, a retry ran silently with no visible feedback
-    // while the request was in flight (it only ever went true->false once,
-    // never back to true on a second attempt).
-    setState(() => _loading = true);
-    try {
-      final profile = await ProfileService.getProfile();
-      if (!mounted) return;
-      setState(() {
-        _profile = profile;
-        _loading = false;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
-    }
+  @override
+  void dispose() {
+    widget.profileStore.removeListener(_handleProfileChange);
+    super.dispose();
+  }
+
+  void _handleProfileChange() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _quickChangePhoto() async {
     setState(() => _uploadingPhoto = true);
     final updated = await pickAndUploadAvatar(context);
     if (!mounted) return;
-    setState(() {
-      _uploadingPhoto = false;
-      if (updated != null) _profile = updated;
-    });
+    setState(() => _uploadingPhoto = false);
+    if (updated != null) widget.profileStore.setProfile(updated);
   }
 
   /// Single entry point for "change anything about who I am" — both the
@@ -79,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// one place that edits identity instead of the name field, the photo,
   /// and a button that only did one of those all pointing different ways.
   Future<void> _openEditProfile() async {
-    final profile = _profile;
+    final profile = widget.profileStore.profile;
     if (profile == null) return;
 
     final updated = await showModalBottomSheet<Profile>(
@@ -89,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (_) => _EditProfileSheet(profile: profile),
     );
     if (updated == null || !mounted) return;
-    setState(() => _profile = updated);
+    widget.profileStore.setProfile(updated);
   }
 
   Future<void> _openChangePassword() async {
@@ -130,7 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .byStatus(SubscriptionStatus.cancelled)
         .fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
 
-    final profile = _profile;
+    final profile = widget.profileStore.profile;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -142,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: _loading
+        child: widget.profileStore.isInitialLoad
             ? const Center(child: AppLoadingIndicator())
             : profile == null
                 ? Center(
@@ -153,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Text("Couldn't load your profile", style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: AppSpacing.md),
-                          AppButton(label: 'Try again', onPressed: _load),
+                          AppButton(label: 'Try again', onPressed: widget.profileStore.load),
                         ],
                       ),
                     ),

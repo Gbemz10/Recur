@@ -258,8 +258,9 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await showAppDatePicker(
+      context,
+      title: 'Trial ends',
       initialDate: _trialEndsAt,
       firstDate: now,
       lastDate: now.add(const Duration(days: 730)),

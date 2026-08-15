@@ -6,8 +6,7 @@ import '../data/auth_service.dart';
 import '../data/banking_service.dart';
 import '../data/banks.dart';
 import '../data/linked_bank.dart';
-import '../data/profile.dart';
-import '../data/profile_service.dart';
+import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
 import '../data/theme_controller.dart';
 import '../ui/ui.dart';
@@ -24,9 +23,15 @@ import 'profile_screen.dart';
 /// you, then what it does with your data. Predictable structure matters
 /// more than cleverness here; this is a screen people scan, not read.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.store, required this.onSignOut});
+  const SettingsScreen({super.key, required this.store, required this.profileStore, required this.onSignOut});
 
   final SubscriptionStore store;
+
+  /// Shared with every other tab — see [ProfileStore]. Reading from this
+  /// instead of fetching its own copy is what makes a photo changed on the
+  /// Profile screen show up here immediately, even though `AppShell` keeps
+  /// this tab alive in the background the whole time.
+  final ProfileStore profileStore;
 
   /// Called after the session token is cleared, so the root flow can send
   /// the user back to the auth screen.
@@ -45,24 +50,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<LinkedBank> _banks = [];
   bool _loadingBanks = true;
 
-  Profile? _profile;
-
   @override
   void initState() {
     super.initState();
     _loadBanks();
-    _loadProfile();
+    widget.profileStore.addListener(_handleProfileChange);
   }
 
-  Future<void> _loadProfile() async {
-    try {
-      final profile = await ProfileService.getProfile();
-      if (!mounted) return;
-      setState(() => _profile = profile);
-    } on ApiException {
-      // Non-fatal here — the account card just falls back to the email
-      // local part below rather than blocking the whole Settings screen.
-    }
+  @override
+  void dispose() {
+    widget.profileStore.removeListener(_handleProfileChange);
+    super.dispose();
+  }
+
+  void _handleProfileChange() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadBanks() async {
@@ -134,7 +136,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final subject = Uri.encodeComponent('Recur support');
     final body = Uri.encodeComponent(
       'Tell us what\'s going on — the more detail, the faster we can help.\n\n'
-      'Account email: ${_profile?.email ?? ''}\n\n',
+      'Account email: ${widget.profileStore.profile?.email ?? ''}\n\n',
     );
     final uri = Uri.parse('mailto:support@recur.website?subject=$subject&body=$body');
 
@@ -204,36 +206,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: AppSpacing.xxl),
 
           // ---- account ----
-          AppCard(
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ProfileScreen(store: widget.store)),
-              );
-              _loadProfile();
-            },
-            child: Row(
-              children: [
-                AppAvatar(name: _profile?.displayLabel ?? 'Account', imageUrl: _profile?.avatarUrl, size: 44),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _profile?.displayLabel ?? 'Loading…',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _profile?.email ?? '',
-                        style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
-                      ),
-                    ],
+          Builder(
+            builder: (context) {
+              final profile = widget.profileStore.profile;
+              return AppCard(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(store: widget.store, profileStore: widget.profileStore),
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.neutral400),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    widget.profileStore.isInitialLoad
+                        ? const ClipOval(child: AppSkeleton(width: 44, height: 44))
+                        : AppAvatar(name: profile?.displayLabel ?? 'Account', imageUrl: profile?.avatarUrl, size: 44),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile?.displayLabel ?? 'Loading…',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            profile?.email ?? '',
+                            style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.neutral400),
+                  ],
+                ),
+              );
+            },
           ),
 
           _SectionLabel(_banks.length > 1 ? 'Linked accounts' : 'Linked account'),
