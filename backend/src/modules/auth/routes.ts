@@ -50,6 +50,13 @@ const otpVerifyEmailLimit = rateLimit({ name: 'auth:otp-verify:email', windowMs:
 const loginIpLimit = rateLimit({ name: 'auth:login:ip', windowMs: 15 * 60 * 1000, max: 30 });
 const loginEmailLimit = rateLimit({ name: 'auth:login:email', windowMs: 15 * 60 * 1000, max: 8, keyGenerator: emailKey });
 
+// setPassword already requires a recent OTP verification internally
+// (assertRecentlyVerified in service.ts), but every sibling endpoint here
+// gets an explicit limiter too rather than leaning on another endpoint's
+// side effect as its only defense — consistent with the rest of this file.
+const setPasswordIpLimit = rateLimit({ name: 'auth:password:ip', windowMs: 60 * 60 * 1000, max: 20 });
+const setPasswordEmailLimit = rateLimit({ name: 'auth:password:email', windowMs: 60 * 60 * 1000, max: 10, keyGenerator: emailKey });
+
 const avatarUploadLimit = rateLimit({ name: 'auth:me:avatar', windowMs: 15 * 60 * 1000, max: 10 });
 
 // Refresh tokens are high-entropy (384 bits) — brute-forcing one isn't
@@ -79,7 +86,7 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ verified: true });
   });
 
-  app.post('/auth/password', async (request, reply) => {
+  app.post('/auth/password', { preHandler: [setPasswordIpLimit, setPasswordEmailLimit] }, async (request, reply) => {
     const { email, password, purpose } = parseOrThrow(setPasswordSchema, request.body);
     const user = await authService.setPassword(email, password, purpose);
     const accessToken = await reply.jwtSign({ sub: user.id, email: user.email });

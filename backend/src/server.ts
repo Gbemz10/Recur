@@ -7,8 +7,17 @@ const app = buildApp();
 
 closeWithGrace({ delay: 5000 }, async ({ err }) => {
   if (err) app.log.error(err);
-  await app.close();
-  await pool.end();
+  // `pool.end()` must run even if `app.close()` throws mid-shutdown —
+  // otherwise a failed close leaves the Postgres pool (and its open
+  // connections) dangling for the process's remaining lifetime instead of
+  // actually releasing them.
+  try {
+    await app.close();
+  } catch (closeError) {
+    app.log.error(closeError, 'Error while closing Fastify during shutdown');
+  } finally {
+    await pool.end();
+  }
 });
 
 try {

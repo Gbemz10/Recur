@@ -43,6 +43,11 @@ class ProfileStore extends ChangeNotifier {
       error = null;
     } on ApiException catch (e) {
       error = e.message;
+    } catch (_) {
+      // See SubscriptionStore.load()'s equivalent catch — a malformed
+      // response otherwise leaves `isLoading` stuck true with nothing
+      // telling the user (or the "Try again" button) that anything failed.
+      error = "Couldn't load your profile — try again.";
     } finally {
       isLoading = false;
       notifyListeners();

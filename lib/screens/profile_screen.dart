@@ -434,13 +434,12 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.xxl),
-            Text('Name', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.neutral500)),
-            const SizedBox(height: AppSpacing.xs),
-            TextField(
+            AppTextField(
+              label: 'Name',
+              hint: 'Your name',
               controller: _nameController,
               autofocus: true,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(hintText: 'Your name'),
               onSubmitted: (_) => _save(),
             ),
             const SizedBox(height: AppSpacing.xl),

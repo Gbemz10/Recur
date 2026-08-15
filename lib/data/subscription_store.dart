@@ -49,6 +49,13 @@ class SubscriptionStore extends ChangeNotifier {
       _subscriptions = rows.map((row) => Subscription.fromJson(row as Map<String, dynamic>)).toList();
     } on ApiException catch (e) {
       error = e.message;
+    } catch (_) {
+      // A malformed response (e.g. an enum value the client doesn't know
+      // about yet) throws a plain TypeError from Subscription.fromJson, not
+      // an ApiException. Without this, that left `error` null forever — a
+      // spinner that spins forever with no path to retry, worse than a
+      // network failure that at least surfaces a message.
+      error = "Couldn't load your subscriptions — try again.";
     } finally {
       isLoading = false;
       notifyListeners();
@@ -56,8 +63,9 @@ class SubscriptionStore extends ChangeNotifier {
   }
 
   /// Updates optimistically (screens feel instant) and reverts if the
-  /// backend rejects the change. Rethrows on failure so a caller can show
-  /// its own error message — the revert already happened either way.
+  /// backend rejects the change. Rethrows an [ApiException] on failure so a
+  /// caller can show its own error message — the revert already happened
+  /// either way.
   Future<void> updateStatus(Subscription sub, SubscriptionStatus status) async {
     final i = _subscriptions.indexWhere((s) => s.id == sub.id);
     if (i == -1) return;
@@ -68,10 +76,18 @@ class SubscriptionStore extends ChangeNotifier {
 
     try {
       await apiClient.patch('/subscriptions/${sub.id}/status', body: {'status': status.name});
-    } on ApiException {
-      _subscriptions[i] = previous;
+    } catch (e) {
+      // Re-find by id rather than reusing `i` — `load()` can legitimately
+      // replace `_subscriptions` wholesale while this request is still in
+      // flight (e.g. a pull-to-refresh started right after a status tap),
+      // and writing back to a stale numeric index into a since-replaced
+      // list would either silently corrupt the wrong row or throw a
+      // RangeError if the new list is shorter.
+      final current = _subscriptions.indexWhere((s) => s.id == sub.id);
+      if (current != -1) _subscriptions[current] = previous;
       notifyListeners();
-      rethrow;
+      if (e is ApiException) rethrow;
+      throw ApiException("Couldn't save that change — try again.", code: 'CLIENT_ERROR');
     }
   }
 }

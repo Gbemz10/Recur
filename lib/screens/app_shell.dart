@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/bank_store.dart';
 import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
@@ -33,6 +34,7 @@ class _AppShellState extends State<AppShell> {
   final SubscriptionStore _store = SubscriptionStore();
   final TrialStore _trialStore = TrialStore();
   final ProfileStore _profileStore = ProfileStore();
+  final BankStore _bankStore = BankStore();
 
   static const _items = [
     AppNavItem(label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home_rounded),
@@ -51,6 +53,7 @@ class _AppShellState extends State<AppShell> {
     _store.dispose();
     _trialStore.dispose();
     _profileStore.dispose();
+    _bankStore.dispose();
     super.dispose();
   }
 
@@ -69,7 +72,12 @@ class _AppShellState extends State<AppShell> {
           ),
           CalendarScreen(store: _store),
           TrialRemindersScreen(store: _trialStore),
-          SettingsScreen(store: _store, profileStore: _profileStore, onSignOut: widget.onSignOut),
+          SettingsScreen(
+            store: _store,
+            profileStore: _profileStore,
+            bankStore: _bankStore,
+            onSignOut: widget.onSignOut,
+          ),
         ],
       ),
       bottomNavigationBar: AppBottomNav(

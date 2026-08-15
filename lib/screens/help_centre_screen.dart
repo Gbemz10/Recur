@@ -47,8 +47,8 @@ class HelpCentreScreen extends StatelessWidget {
         'A newly linked account needs at least two matching charges before '
         'Recur is confident enough to flag something — a single Netflix debit '
         'looks the same as a one-off purchase until it repeats. If it\'s been a '
-        'while, try a manual sync from Settings, or check that your bank '
-        'connection is still marked "Connected".',
+        'while, pull down to refresh on the Home or Calendar tab, or check '
+        'that your bank connection is still marked "Connected" in Settings.',
         style: TextStyle(color: AppColors.neutral600, fontSize: 13.5, height: 1.5),
       ),
     ),

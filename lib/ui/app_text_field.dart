@@ -22,6 +22,9 @@ class AppTextField extends StatelessWidget {
     this.enabled = true,
     this.maxLines = 1,
     this.onChanged,
+    this.onSubmitted,
+    this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final String? label;
@@ -37,6 +40,9 @@ class AppTextField extends StatelessWidget {
   final bool enabled;
   final int maxLines;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final bool autofocus;
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +63,9 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           maxLines: obscureText ? 1 : maxLines,
           onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          autofocus: autofocus,
+          textCapitalization: textCapitalization,
           style: Theme.of(context).textTheme.bodyLarge,
           decoration: InputDecoration(
             hintText: hint,

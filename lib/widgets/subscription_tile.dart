@@ -20,6 +20,7 @@ class SubscriptionTile extends StatelessWidget {
     this.showConfidence = false,
     this.onConfirm,
     this.onDismiss,
+    this.busy = false,
   });
 
   final Subscription subscription;
@@ -33,6 +34,11 @@ class SubscriptionTile extends StatelessWidget {
   final bool showConfidence;
   final VoidCallback? onConfirm;
   final VoidCallback? onDismiss;
+
+  /// True while this row's own Confirm/Dismiss request is in flight —
+  /// disables both buttons and shows a loading state on whichever variant
+  /// is relevant, so a fast double-tap can't fire the request twice.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +152,8 @@ class SubscriptionTile extends StatelessWidget {
                     variant: AppButtonVariant.outline,
                     size: AppButtonSize.sm,
                     expand: true,
-                    onPressed: onDismiss,
+                    isLoading: busy,
+                    onPressed: busy ? null : onDismiss,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -155,7 +162,8 @@ class SubscriptionTile extends StatelessWidget {
                     label: 'Yes, it is',
                     size: AppButtonSize.sm,
                     expand: true,
-                    onPressed: onConfirm,
+                    isLoading: busy,
+                    onPressed: busy ? null : onConfirm,
                   ),
                 ),
               ],

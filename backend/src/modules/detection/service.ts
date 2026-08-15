@@ -215,7 +215,12 @@ function buildChains(clusters: AmountCluster[]): Chain[] {
 export async function runDetectionForUser(userId: string) {
   const [transactions, merchantList] = await Promise.all([
     db.query.rawTransactions.findMany({ where: and(eq(rawTransactions.userId, userId), eq(rawTransactions.type, 'DEBIT')) }),
-    db.select().from(merchants),
+    // Ordered explicitly — matchMerchant returns the first keyword match,
+    // and Postgres makes no row-order guarantee without an ORDER BY. Two
+    // merchants whose keywords could both plausibly match the same
+    // narration should resolve the same way on every run, not flip
+    // depending on the query planner's mood.
+    db.select().from(merchants).orderBy(merchants.slug),
   ]);
   if (transactions.length === 0) return { clustersFound: 0 };
 

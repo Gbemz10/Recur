@@ -39,6 +39,11 @@ class TrialStore extends ChangeNotifier {
       _trialReminders = rows.map((row) => TrialReminder.fromJson(row as Map<String, dynamic>)).toList();
     } on ApiException catch (e) {
       error = e.message;
+    } catch (_) {
+      // See SubscriptionStore.load()'s equivalent catch for why a plain
+      // parse failure needs its own message — otherwise it's a spinner
+      // that never resolves into either data or a visible error.
+      error = "Couldn't load your trial reminders — try again.";
     } finally {
       isLoading = false;
       notifyListeners();
@@ -77,10 +82,11 @@ class TrialStore extends ChangeNotifier {
       final i = _trialReminders.indexWhere((t) => t.id == tempId);
       if (i != -1) _trialReminders[i] = created;
       notifyListeners();
-    } on ApiException {
+    } catch (e) {
       _trialReminders = _trialReminders.where((t) => t.id != tempId).toList();
       notifyListeners();
-      rethrow;
+      if (e is ApiException) rethrow;
+      throw ApiException("Couldn't add that reminder — try again.", code: 'CLIENT_ERROR');
     }
   }
 
@@ -94,10 +100,11 @@ class TrialStore extends ChangeNotifier {
 
     try {
       await apiClient.patch('/trials/${trial.id}/dismiss');
-    } on ApiException {
+    } catch (e) {
       _trialReminders = previous;
       notifyListeners();
-      rethrow;
+      if (e is ApiException) rethrow;
+      throw ApiException("Couldn't dismiss that reminder — try again.", code: 'CLIENT_ERROR');
     }
   }
 }

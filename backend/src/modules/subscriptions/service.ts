@@ -26,6 +26,10 @@ function serializeSubscription(sub: SubscriptionWithRelations) {
       : null,
     displayName: sub.displayName,
     amount: Number(sub.amount),
+    // Null for the overwhelming majority of subscriptions, which have
+    // never had a detected price change — see detection/service.ts's
+    // chain-merging for how this gets set.
+    previousAmount: sub.previousAmount == null ? null : Number(sub.previousAmount),
     cycle: sub.cycle.toLowerCase(),
     nextChargeDate: sub.nextChargeDate.toISOString(),
     category: sub.category.toLowerCase(),

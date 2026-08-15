@@ -66,6 +66,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   static const _tabs = ['Active', 'Review', 'Cancelled'];
 
+  /// Subscription ids with a status change currently in flight — checked
+  /// before starting another one, and used to disable a tile's own
+  /// Confirm/Dismiss buttons while it's mid-request. Without this, a fast
+  /// double-tap fires two overlapping PATCH requests for the same id
+  /// before the first one's response even removes the row from Review.
+  final Set<String> _pendingIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -142,11 +149,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
+    if (_pendingIds.contains(sub.id)) return;
+    setState(() => _pendingIds.add(sub.id));
     try {
       await widget.store.updateStatus(sub, status);
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    } finally {
+      if (mounted) setState(() => _pendingIds.remove(sub.id));
     }
   }
 
@@ -161,12 +172,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Only takes over the whole screen for the very first load — once
+    // there's data on hand, a failed background refresh shouldn't rip the
+    // dashboard out from under someone who was already looking at it.
+    if (widget.store.isLoading && widget.store.all.isEmpty) {
+      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+    }
+
+    if (widget.store.error != null && widget.store.all.isEmpty) {
+      return SafeArea(
+        bottom: false,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Couldn't load your subscriptions", style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(label: 'Try again', onPressed: widget.store.load),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
         color: AppColors.primary,
-        onRefresh: () async =>
-            Future<void>.delayed(const Duration(milliseconds: 900)),
+        onRefresh: () => Future.wait([
+          widget.store.load(),
+          widget.trialStore.load(),
+          widget.profileStore.load(),
+        ]),
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -438,6 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? items[i].monthlyEquivalent / total
                   : null,
               showConfidence: review,
+              busy: _pendingIds.contains(items[i].id),
               onTap: () => _openDetail(items[i]),
               onConfirm: review
                   ? () => _updateStatus(items[i], SubscriptionStatus.active)

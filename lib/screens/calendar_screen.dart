@@ -127,20 +127,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Same "only take over the screen for the very first load" rule as
+    // dashboard_screen.dart — a background refresh failing shouldn't blank
+    // out a calendar someone's already looking at.
+    if (widget.store.isLoading && widget.store.all.isEmpty) {
+      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+    }
+
+    if (widget.store.error != null && widget.store.all.isEmpty) {
+      return SafeArea(
+        bottom: false,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Couldn't load your calendar", style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(label: 'Try again', onPressed: widget.store.load),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final today = DateTime.now();
     final isCurrentMonth = _month.year == today.year && _month.month == today.month;
     final selectedOccurrences = _onDay(_selected);
 
     return SafeArea(
       bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.lg,
-          AppSpacing.xl,
-          AppSpacing.huge,
-        ),
-        children: [
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: widget.store.load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.huge,
+          ),
+          children: [
           Text('Calendar', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
           const SizedBox(height: 4),
           Text(
@@ -152,7 +181,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           // ---- month switcher ----
           Row(
             children: [
-              _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: () => _changeMonth(-1)),
+              _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: () => _changeMonth(-1), tooltip: 'Previous month'),
               Expanded(
                 child: Column(
                   children: [
@@ -167,7 +196,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ],
                 ),
               ),
-              _RoundIconButton(icon: Icons.chevron_right_rounded, onTap: () => _changeMonth(1)),
+              _RoundIconButton(icon: Icons.chevron_right_rounded, onTap: () => _changeMonth(1), tooltip: 'Next month'),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -238,7 +267,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ],
               ],
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -408,23 +438,27 @@ class _OccurrenceRow extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
+  const _RoundIconButton({required this.icon, required this.onTap, required this.tooltip});
 
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.neutral100,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 20, color: AppColors.neutral700),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.neutral100,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, size: 20, color: AppColors.neutral700),
+          ),
         ),
       ),
     );

@@ -19,6 +19,12 @@ class LinkedBank {
   /// set at that point (see banking/service.ts `handleAccountConnected`).
   bool get isSyncing => bankName.isEmpty || bankName == 'Syncing…';
 
+  /// `status` is a raw backend string rather than a Dart enum (see the
+  /// model comment above) — this is the one place that gets compared
+  /// against the literal `'ACTIVE'`, so every caller checks the same
+  /// spelling instead of each hardcoding its own string match.
+  bool get isActive => status == 'ACTIVE';
+
   factory LinkedBank.fromJson(Map<String, dynamic> json) => LinkedBank(
         id: json['id'] as String,
         bankName: json['bankName'] as String? ?? '',

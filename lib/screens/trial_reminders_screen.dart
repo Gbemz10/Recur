@@ -58,57 +58,94 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    if (widget.store.isLoading) {
+      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+    }
+
     final trials = widget.store.upcoming;
+
+    // A failed fetch and a genuinely empty list both leave `trials` empty —
+    // without this check they'd render identically, and a real failure
+    // would look exactly like "you have nothing to track" with no way to
+    // tell the difference or retry.
+    if (widget.store.error != null && trials.isEmpty) {
+      return SafeArea(
+        bottom: false,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Couldn't load your trial reminders", style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(label: 'Try again', onPressed: widget.store.load),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Nothing tracked yet: the screen's only job is telling the user what
+    // this tab is for and getting them to add the first one — centered,
+    // not pinned under a header the way a populated list needs one.
+    if (trials.isEmpty) {
+      return SafeArea(
+        bottom: false,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: AppEmptyState(
+              icon: Icons.hourglass_empty_rounded,
+              title: 'No trials being tracked',
+              message: 'Log a trial the moment you sign up, so nothing '
+                  'converts to a real charge without you noticing.',
+              actionLabel: 'Add a trial reminder',
+              onAction: _addReminder,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Once there's real content, the screen is just that content — the
+    // bottom nav already says "Trials", so a repeated headline plus an
+    // explainer paragraph above the list would be re-introducing itself to
+    // someone who's already here. Adding another one moves to a floating
+    // button instead of competing with the list for the top of the screen.
     final endingSoon = trials.where((t) => t.isDueSoon || t.isOverdue).toList();
     final tracking = trials.where((t) => !t.isDueSoon && !t.isOverdue).toList();
 
     return SafeArea(
       bottom: false,
-      child: widget.store.isLoading
-          ? const Center(child: AppLoadingIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                AppSpacing.lg,
-                AppSpacing.xl,
-                AppSpacing.huge,
-              ),
-              children: [
-                Text('Trials', style: text.headlineSmall?.copyWith(letterSpacing: -0.4)),
-                const SizedBox(height: 4),
-                Text(
-                  'Log a trial the moment you sign up, so nothing converts to a '
-                  'real charge without you noticing.',
-                  style: text.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                AppButton(
-                  label: 'Add a trial reminder',
-                  icon: Icons.add_rounded,
-                  expand: true,
-                  onPressed: _addReminder,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (trials.isEmpty)
-                  const AppEmptyState(
-                    icon: Icons.hourglass_empty_rounded,
-                    title: 'Nothing being tracked',
-                    message: 'Add a trial right after you sign up somewhere new — '
-                        'we will surface it here as the end date gets close.',
-                  )
-                else ...[
-                  if (endingSoon.isNotEmpty) ...[
-                    _sectionHeader(context, 'Ending soon', '${endingSoon.length}'),
-                    _list(endingSoon),
-                  ],
-                  if (tracking.isNotEmpty) ...[
-                    _sectionHeader(context, 'Tracking', '${tracking.length}'),
-                    _list(tracking),
-                  ],
-                ],
-              ],
+      child: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.lg,
+              AppSpacing.xl,
+              AppSpacing.huge,
             ),
+            children: [
+              if (endingSoon.isNotEmpty) ...[
+                _sectionHeader(context, 'Ending soon', '${endingSoon.length}'),
+                _list(endingSoon),
+              ],
+              if (tracking.isNotEmpty) ...[
+                _sectionHeader(context, 'Tracking', '${tracking.length}'),
+                _list(tracking),
+              ],
+            ],
+          ),
+          Positioned(
+            right: AppSpacing.xl,
+            bottom: AppSpacing.xl,
+            child: _AddTrialFab(onPressed: _addReminder),
+          ),
+        ],
+      ),
     );
   }
 
@@ -161,6 +198,36 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         ],
         const SizedBox(height: AppSpacing.lg),
       ],
+    );
+  }
+}
+
+/// Bottom-right floating action button for adding another trial once the
+/// list already has content. Hand-rolled rather than `Scaffold.
+/// floatingActionButton` — this screen is one tab inside `AppShell`'s
+/// single `Scaffold` (the `IndexedStack` body), not its own `Scaffold`, so
+/// the button is just a `Positioned` layer over the list instead.
+class _AddTrialFab extends StatelessWidget {
+  const _AddTrialFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.primary,
+      shape: const CircleBorder(),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.3),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: const SizedBox(
+          width: 56,
+          height: 56,
+          child: Icon(Icons.add_rounded, color: Colors.white, size: 26),
+        ),
+      ),
     );
   }
 }

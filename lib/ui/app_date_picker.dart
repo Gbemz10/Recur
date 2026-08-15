@@ -25,6 +25,14 @@ Future<DateTime?> showAppDatePicker(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    // This picker is always opened from a field inside another modal sheet
+    // (the trial-reminder form, so far). That sheet already has its own
+    // barrier darkening the screen behind it; without this, a second
+    // stock-black54 barrier stacks on top and darkens the *first* sheet
+    // too — including whatever of it is still visible around this one,
+    // like its Cancel/Save row. One barrier, from the outer sheet, is
+    // already the correct amount of dimming.
+    barrierColor: Colors.transparent,
     builder: (_) => _AppDatePickerSheet(
       initialDate: initialDate,
       firstDate: firstDate ?? DateTime(2000),
@@ -120,6 +128,7 @@ class _AppDatePickerSheetState extends State<_AppDatePickerSheet> {
               _RoundIconButton(
                 icon: Icons.chevron_left_rounded,
                 onTap: _canGoBack ? () => _changeMonth(-1) : null,
+                tooltip: 'Previous month',
               ),
               Expanded(
                 child: Center(
@@ -132,6 +141,7 @@ class _AppDatePickerSheetState extends State<_AppDatePickerSheet> {
               _RoundIconButton(
                 icon: Icons.chevron_right_rounded,
                 onTap: _canGoForward ? () => _changeMonth(1) : null,
+                tooltip: 'Next month',
               ),
             ],
           ),
@@ -247,24 +257,28 @@ class _DatePickerGrid extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
+  const _RoundIconButton({required this.icon, required this.onTap, required this.tooltip});
 
   final IconData icon;
   final VoidCallback? onTap;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
     final disabled = onTap == null;
-    return Material(
-      color: AppColors.neutral100,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(icon, size: 20, color: disabled ? AppColors.neutral300 : AppColors.neutral700),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.neutral100,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, size: 20, color: disabled ? AppColors.neutral300 : AppColors.neutral700),
+          ),
         ),
       ),
     );

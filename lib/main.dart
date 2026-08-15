@@ -62,7 +62,7 @@ class _RootFlowState extends State<_RootFlow> {
     var hasActiveBank = false;
     try {
       final banks = await BankingService.listAccounts();
-      hasActiveBank = banks.any((b) => b.status == 'ACTIVE');
+      hasActiveBank = banks.any((b) => b.isActive);
     } on ApiException {
       // Can't tell either way — fall through to the link-bank screen rather
       // than silently dropping a genuinely new user onto an empty app shell

@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/api_client.dart';
 import '../data/auth_service.dart';
-import '../data/banking_service.dart';
+import '../data/bank_store.dart';
 import '../data/banks.dart';
 import '../data/linked_bank.dart';
 import '../data/profile_store.dart';
@@ -23,7 +23,13 @@ import 'profile_screen.dart';
 /// you, then what it does with your data. Predictable structure matters
 /// more than cleverness here; this is a screen people scan, not read.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.store, required this.profileStore, required this.onSignOut});
+  const SettingsScreen({
+    super.key,
+    required this.store,
+    required this.profileStore,
+    required this.bankStore,
+    required this.onSignOut,
+  });
 
   final SubscriptionStore store;
 
@@ -32,6 +38,11 @@ class SettingsScreen extends StatefulWidget {
   /// Profile screen show up here immediately, even though `AppShell` keeps
   /// this tab alive in the background the whole time.
   final ProfileStore profileStore;
+
+  /// Shared with every other tab — see [BankStore]. Same reasoning as
+  /// [profileStore]: a bank linked or unlinked from anywhere shows up here
+  /// without this tab needing to have been the one that did it.
+  final BankStore bankStore;
 
   /// Called after the session token is cleared, so the root flow can send
   /// the user back to the auth screen.
@@ -47,39 +58,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushEnabled = true;
   int _reminderDays = 3;
 
-  List<LinkedBank> _banks = [];
-  bool _loadingBanks = true;
-
   @override
   void initState() {
     super.initState();
-    _loadBanks();
-    widget.profileStore.addListener(_handleProfileChange);
+    widget.profileStore.addListener(_handleStoreChange);
+    widget.bankStore.addListener(_handleStoreChange);
   }
 
   @override
   void dispose() {
-    widget.profileStore.removeListener(_handleProfileChange);
+    widget.profileStore.removeListener(_handleStoreChange);
+    widget.bankStore.removeListener(_handleStoreChange);
     super.dispose();
   }
 
-  void _handleProfileChange() {
+  void _handleStoreChange() {
     if (mounted) setState(() {});
-  }
-
-  Future<void> _loadBanks() async {
-    setState(() => _loadingBanks = true);
-    try {
-      final banks = await BankingService.listAccounts();
-      if (!mounted) return;
-      setState(() {
-        _banks = banks.where((b) => b.status == 'ACTIVE').toList();
-        _loadingBanks = false;
-      });
-    } on ApiException {
-      if (!mounted) return;
-      setState(() => _loadingBanks = false);
-    }
   }
 
   /// The curated [Banks] list only covers real CBN-registered institutions
@@ -161,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (_) => LinkBankScreen(onDone: () => Navigator.of(context).pop()),
       ),
     );
-    if (mounted) _loadBanks();
+    if (mounted) widget.bankStore.load();
   }
 
   Future<void> _unlinkBank(LinkedBank bank) async {
@@ -175,9 +169,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!confirmed || !mounted) return;
 
     try {
-      await BankingService.unlinkAccount(bank.id);
+      await widget.bankStore.unlink(bank);
       if (!mounted) return;
-      setState(() => _banks = _banks.where((b) => b.id != bank.id).toList());
       showAppSnackbar(context, message: 'Bank unlinked', variant: AppAlertVariant.info);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -244,8 +237,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          _SectionLabel(_banks.length > 1 ? 'Linked accounts' : 'Linked account'),
-          if (_loadingBanks)
+          _SectionLabel(widget.bankStore.active.length > 1 ? 'Linked accounts' : 'Linked account'),
+          if (widget.bankStore.isLoading && widget.bankStore.all.isEmpty)
             const AppCard(
               child: Center(
                 child: Padding(
@@ -254,7 +247,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             )
-          else if (_banks.isEmpty) ...[
+          else if (widget.bankStore.error != null && widget.bankStore.all.isEmpty) ...[
+            AppCard(
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      widget.bankStore.error!,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.neutral600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Try again',
+              variant: AppButtonVariant.outline,
+              size: AppButtonSize.sm,
+              expand: true,
+              onPressed: widget.bankStore.load,
+            ),
+          ] else if (widget.bankStore.active.isEmpty) ...[
             const AppCard(
               child: Row(
                 children: [
@@ -281,7 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Each linked bank gets its own card and its own unlink action —
             // the backend has always supported more than one, this is just
             // the first Settings UI that shows more than the first one.
-            for (final bank in _banks) ...[
+            for (final bank in widget.bankStore.active) ...[
               AppCard(
                 child: Row(
                   children: [
