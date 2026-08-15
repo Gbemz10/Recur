@@ -458,7 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          const Expanded(child: Divider(color: AppColors.neutral200)),
+          Expanded(child: Divider(color: AppColors.border(context))),
         ],
       ),
     );
@@ -592,9 +592,14 @@ class _HeroTotal extends StatelessWidget {
         AppSpacing.lg,
       ),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        // Was hardcoded AppColors.white/neutral200 — the single most
+        // prominent card on the whole screen stayed a bright light-mode
+        // card regardless of theme, which is likely the worst offender
+        // behind "no contrast in some screens." surface()/border() already
+        // resolve to the right tone for whichever theme is active.
+        color: AppColors.surface(context),
         borderRadius: AppRadius.xlBR,
-        border: Border.all(color: AppColors.neutral200),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: AppShadows.sm,
       ),
       child: Column(
@@ -630,7 +635,7 @@ class _HeroTotal extends StatelessWidget {
                 style: AppTypography.mono(
                   size: 40,
                   weight: FontWeight.w600,
-                  color: AppColors.neutral900,
+                  color: AppColors.ink(context),
                 ),
               ),
             ),
@@ -694,7 +699,10 @@ class _NextUpPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.neutral100,
+        // Now that the hero card around this pill correctly darkens (see
+        // _HeroTotal), a hardcoded light neutral100 here would read as an
+        // odd bright pill inside an otherwise dark card.
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: AppRadius.fullBR,
       ),
       child: Row(
@@ -711,7 +719,7 @@ class _NextUpPill extends StatelessWidget {
               '${subscription.brand.name} $label',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.neutral700),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.inkSoft(context)),
             ),
           ),
         ],

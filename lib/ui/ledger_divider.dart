@@ -26,8 +26,13 @@ class LedgerDivider extends StatelessWidget {
       height: thickness,
       width: double.infinity,
       child: CustomPaint(
+        // neutral300 was hardcoded here — a subtle ~1.5:1 hairline against
+        // the light surfaces it was tuned for, but the same fixed color
+        // reads as a bright, prominent line against a dark surface instead
+        // of a subtle one. AppColors.border(context) already carries an
+        // equivalently subtle tone for whichever theme is active.
         painter: _DashPainter(
-          color: color ?? AppColors.neutral300,
+          color: color ?? AppColors.border(context),
           thickness: thickness,
           dashWidth: dashWidth,
           gapWidth: gapWidth,

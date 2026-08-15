@@ -265,9 +265,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           children: [
                             _EditableRow(label: 'Full name', value: profile.displayName ?? 'Not set', onTap: _openEditProfile),
-                            const Divider(height: 1, color: AppColors.neutral100),
+                            Divider(height: 1, color: AppColors.border(context)),
                             _EditableRow(label: 'Email address', value: profile.email),
-                            const Divider(height: 1, color: AppColors.neutral100),
+                            Divider(height: 1, color: AppColors.border(context)),
                             _EditableRow(label: 'Password', value: '••••••••', onTap: _openChangePassword),
                           ],
                         ),
@@ -657,7 +657,7 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.neutral700 : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
             ),
           ),
         ],

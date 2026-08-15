@@ -52,7 +52,7 @@ Future<bool> showAppConfirmDialog(
   final result = await showAppModal<bool>(
     context,
     title: title,
-    content: Text(message, style: const TextStyle(color: AppColors.neutral600, fontSize: 14, height: 1.5)),
+    content: Text(message, style: TextStyle(color: AppColors.muted(context), fontSize: 14, height: 1.5)),
     actions: [
       AppButton(
         label: cancelLabel,

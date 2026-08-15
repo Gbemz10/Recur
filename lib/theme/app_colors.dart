@@ -123,4 +123,14 @@ class AppColors {
   /// Secondary "ink" a shade softer — what hardcoded `neutral800` usually
   /// meant.
   static Color inkSoft(BuildContext context) => _isDark(context) ? neutral200 : neutral800;
+
+  /// Tertiary/caption text — help copy, FAQ answers, muted metadata. What
+  /// hardcoded `neutral600` usually meant. `neutral600` itself measures a
+  /// respectable ~6:1 contrast against the light surfaces it was written
+  /// for, but only ~2.7:1 against the dark ones — well under WCAG AA's 4.5:1
+  /// floor for normal text, which is what made this text unreadable in dark
+  /// mode rather than just "a little dim." `neutral400` clears ~7:1 against
+  /// both dark surfaces while still reading as visibly softer than
+  /// `ink()`/`inkSoft()`.
+  static Color muted(BuildContext context) => _isDark(context) ? neutral400 : neutral600;
 }

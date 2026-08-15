@@ -256,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: Text(
                       widget.bankStore.error!,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.neutral600),
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted(context)),
                     ),
                   ),
                 ],
@@ -271,15 +271,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: widget.bankStore.load,
             ),
           ] else if (widget.bankStore.active.isEmpty) ...[
-            const AppCard(
+            AppCard(
               child: Row(
                 children: [
-                  Icon(Icons.account_balance_outlined, color: AppColors.neutral400),
-                  SizedBox(width: AppSpacing.md),
+                  const Icon(Icons.account_balance_outlined, color: AppColors.neutral400),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       'No bank connected yet',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.neutral600),
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted(context)),
                     ),
                   ),
                 ],
@@ -389,14 +389,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (v) => setState(() => _renewalReminders = v),
                 ),
                 if (_renewalReminders) ...[
-                  const Divider(height: 1, color: AppColors.neutral100),
+                  Divider(height: 1, color: AppColors.border(context)),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
                     child: Row(
                       children: [
                         Text(
                           'Remind me',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral600),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
                         ),
                         const Spacer(),
                         for (final d in [1, 3, 7]) ...[
@@ -411,7 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
-                const Divider(height: 1, color: AppColors.neutral100),
+                Divider(height: 1, color: AppColors.border(context)),
                 _ToggleRow(
                   icon: Icons.mail_outline_rounded,
                   title: 'Weekly digest',
@@ -419,7 +419,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _weeklyDigest,
                   onChanged: (v) => setState(() => _weeklyDigest = v),
                 ),
-                const Divider(height: 1, color: AppColors.neutral100),
+                Divider(height: 1, color: AppColors.border(context)),
                 _ToggleRow(
                   icon: Icons.phone_iphone_rounded,
                   title: 'Push notifications',
@@ -445,13 +445,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     variant: AppAlertVariant.success,
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.neutral100),
+                Divider(height: 1, color: AppColors.border(context)),
                 _NavRow(
                   icon: Icons.shield_outlined,
                   title: 'Privacy policy',
                   onTap: () {},
                 ),
-                const Divider(height: 1, color: AppColors.neutral100),
+                Divider(height: 1, color: AppColors.border(context)),
                 _NavRow(
                   icon: Icons.delete_outline_rounded,
                   title: 'Delete account',
@@ -468,7 +468,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 _NavRow(icon: Icons.help_outline_rounded, title: 'Help centre', onTap: _openHelpCentre),
-                const Divider(height: 1, color: AppColors.neutral100),
+                Divider(height: 1, color: AppColors.border(context)),
                 _NavRow(icon: Icons.chat_bubble_outline_rounded, title: 'Contact support', onTap: _contactSupport),
               ],
             ),
@@ -567,7 +567,7 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
             Text(
               'This permanently removes your linked bank connections and everything '
               'Recur has detected. This cannot be undone.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral600, height: 1.5),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(

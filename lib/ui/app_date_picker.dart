@@ -269,7 +269,12 @@ class _RoundIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.neutral100,
+        // Was a hardcoded AppColors.neutral100 — always light, regardless
+        // of theme, which read as a bright circle stuck inside this
+        // otherwise dark-adaptive sheet. surfaceContainerHighest already
+        // carries the right "one step up from the surface" tone for
+        // whichever theme is active (see AppColors.lightScheme/darkScheme).
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: const CircleBorder(),
         child: InkWell(
           onTap: onTap,
@@ -277,7 +282,7 @@ class _RoundIconButton extends StatelessWidget {
           child: SizedBox(
             width: 36,
             height: 36,
-            child: Icon(icon, size: 20, color: disabled ? AppColors.neutral300 : AppColors.neutral700),
+            child: Icon(icon, size: 20, color: disabled ? AppColors.neutral300 : AppColors.inkSoft(context)),
           ),
         ),
       ),

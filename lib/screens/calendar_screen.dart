@@ -468,7 +468,9 @@ class _RoundIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.neutral100,
+        // See app_date_picker.dart's twin of this widget for why this
+        // isn't a hardcoded AppColors.neutral100 anymore.
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: const CircleBorder(),
         child: InkWell(
           onTap: onTap,
@@ -476,7 +478,7 @@ class _RoundIconButton extends StatelessWidget {
           child: SizedBox(
             width: 36,
             height: 36,
-            child: Icon(icon, size: 20, color: AppColors.neutral700),
+            child: Icon(icon, size: 20, color: AppColors.inkSoft(context)),
           ),
         ),
       ),

@@ -193,7 +193,7 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          const Expanded(child: Divider(color: AppColors.neutral200)),
+          Expanded(child: Divider(color: AppColors.border(context))),
         ],
       ),
     );
@@ -420,7 +420,7 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               'We will show this on your dashboard as the end date gets close.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral600, height: 1.5),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppTextField(

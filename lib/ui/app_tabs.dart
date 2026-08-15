@@ -28,6 +28,7 @@ class AppTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
         const padding = 4.0;
@@ -37,7 +38,12 @@ class AppTabs extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: AppColors.neutral100,
+            // Track and indicator were hardcoded neutral100/white — always
+            // light, so this control stayed a bright light-mode pill
+            // sitting on an otherwise dark screen. surfaceContainerHighest
+            // and surface already carry the right tones per theme (see
+            // AppColors.lightScheme/darkScheme).
+            color: scheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Stack(
@@ -52,7 +58,7 @@ class AppTabs extends StatelessWidget {
                 width: tabWidth,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: scheme.surface,
                     borderRadius: BorderRadius.circular(9),
                     boxShadow: [
                       BoxShadow(
@@ -84,7 +90,7 @@ class AppTabs extends StatelessWidget {
                                   ? FontWeight.w700
                                   : FontWeight.w600,
                               color: i == selectedIndex
-                                  ? AppColors.neutral900
+                                  ? AppColors.ink(context)
                                   : AppColors.neutral500,
                             ),
                             child: Text(

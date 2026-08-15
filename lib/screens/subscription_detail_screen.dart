@@ -199,7 +199,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     '${subscription.cycle.label.toLowerCase()} from the same '
                     'merchant.',
                     style: text.bodyMedium?.copyWith(
-                      color: AppColors.neutral600,
+                      color: AppColors.muted(context),
                       height: 1.5,
                     ),
                   ),
@@ -242,7 +242,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 children: [
                   for (var i = 0; i < subscription.charges.length; i++) ...[
                     if (i > 0)
-                      const Divider(height: 1, color: AppColors.neutral200),
+                      Divider(height: 1, color: AppColors.border(context)),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.lg,
@@ -329,7 +329,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                               child: Text(
                                 subscription.cancellationSteps[i],
                                 style: text.bodyMedium?.copyWith(
-                                  color: AppColors.neutral700,
+                                  color: AppColors.inkSoft(context),
                                   height: 1.5,
                                 ),
                               ),
