@@ -22,6 +22,14 @@ const schema = z.object({
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
 
+  // AES-256 key for lib/encryption.ts — encrypts provider secrets (e.g.
+  // linkedBanks.providerToken) at rest. 32 raw bytes, hex-encoded. Generate
+  // with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  ENCRYPTION_KEY: z
+    .string()
+    .length(64, 'ENCRYPTION_KEY must be a 64-character hex string (32 bytes) — see .env.example')
+    .regex(/^[0-9a-fA-F]+$/, 'ENCRYPTION_KEY must be hex-encoded'),
+
   OTP_LENGTH: z.coerce.number().int().min(4).max(10).default(6),
   OTP_TTL_MINUTES: z.coerce.number().int().positive().default(10),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),

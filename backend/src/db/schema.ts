@@ -119,9 +119,12 @@ export const refreshTokens = pgTable('refresh_tokens', {
 // (`providerAccountId`) is the persistent identifier, paired with the
 // app-level MONO_SECRET_KEY for every subsequent API call. `providerToken`
 // is kept for provider-agnostic shape (a future provider might need one)
-// and currently mirrors `providerAccountId`; if it's ever a real secret,
-// it must be encrypted at rest before this goes anywhere near production —
-// left plain here as an explicit MVP TODO, not an oversight.
+// and currently just mirrors `providerAccountId` (so there's nothing
+// sensitive in it yet) — but it's written through `encryptSecret()` from
+// lib/encryption.ts regardless, so the column is already encrypted at
+// rest and ready for the day a provider hands out a real per-account
+// secret, with no migration or call-site scramble needed when that
+// happens. Read it back out with `decryptSecret()`.
 export const linkedBanks = pgTable('linked_banks', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   userId: uuid('user_id')

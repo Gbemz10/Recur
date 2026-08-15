@@ -4,6 +4,7 @@ import { db } from '../../db/client.js';
 import { linkedBanks, users } from '../../db/schema.js';
 import { AppError } from '../../lib/errors.js';
 import { env } from '../../config/env.js';
+import { encryptSecret } from '../../lib/encryption.js';
 import { initiateAccountLinking, unlinkMonoAccount } from '../../lib/mono.js';
 import { syncLinkedBank } from './sync.js';
 import { runDetectionForUser } from '../detection/service.js';
@@ -125,7 +126,11 @@ export async function handleAccountConnected(monoAccountId: string, ref: string)
     bankCode: '',
     accountNumberMask: '',
     providerAccountId: monoAccountId,
-    providerToken: monoAccountId,
+    // Encrypted at rest even though it's just a copy of monoAccountId
+    // today (see the comment on providerToken in db/schema.ts) — the
+    // moment this holds a real provider secret instead, nothing here
+    // needs to change. Decrypt with decryptSecret() from lib/encryption.
+    providerToken: encryptSecret(monoAccountId),
     status: 'ACTIVE',
   });
 }
