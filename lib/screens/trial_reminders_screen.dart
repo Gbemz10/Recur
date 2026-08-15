@@ -345,15 +345,41 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
     if (picked != null) setState(() => _trialEndsAt = picked);
   }
 
+  /// True if an existing trial already has this exact label (trimmed,
+  /// case-insensitive) and end date. Nothing stops a user from tracking two
+  /// genuinely separate trials with the same name, so this warns rather
+  /// than blocks — but two rows that read identically with no way to tell
+  /// them apart is worth a beat of "are you sure" before creating one.
+  bool _isDuplicate(String label) {
+    return widget.store.all.any((t) =>
+        t.label.trim().toLowerCase() == label.toLowerCase() &&
+        t.trialEndsAt.year == _trialEndsAt.year &&
+        t.trialEndsAt.month == _trialEndsAt.month &&
+        t.trialEndsAt.day == _trialEndsAt.day);
+  }
+
   Future<void> _submit() async {
-    if (_label.text.trim().isEmpty) return;
+    final label = _label.text.trim();
+    if (label.isEmpty) return;
+
+    if (_isDuplicate(label)) {
+      final proceed = await showAppConfirmDialog(
+        context,
+        title: 'Already tracking this trial',
+        message: 'You already have a "$label" trial ending on ${_formatDate(_trialEndsAt)}. '
+            'Add another one anyway?',
+        confirmLabel: 'Add anyway',
+      );
+      if (!proceed || !mounted) return;
+    }
+
     FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
       _serverError = null;
     });
     try {
-      await widget.store.addTrialReminder(label: _label.text.trim(), trialEndsAt: _trialEndsAt);
+      await widget.store.addTrialReminder(label: label, trialEndsAt: _trialEndsAt);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {

@@ -56,6 +56,18 @@ class AppButton extends StatelessWidget {
     final c = _colors(context);
     final disabled = onPressed == null || isLoading;
 
+    // Dimming a fully-transparent background (the ghost and outline
+    // variants both start from `Colors.transparent`, which is black at 0%
+    // opacity) by raising its alpha doesn't fade it — it turns invisible
+    // black into visible black, which read as the button "going dark" the
+    // moment it was disabled (e.g. Cancel next to a submitting button).
+    // Only opaque backgrounds fade correctly by raising alpha, so leave a
+    // transparent background alone and dim the foreground instead — that
+    // gives every variant, including ghost/outline, a real disabled look.
+    final fg = disabled ? c.fg.withValues(alpha: 0.5) : c.fg;
+    final bg = disabled && c.bg.a > 0 ? c.bg.withValues(alpha: 0.5) : c.bg;
+    final border = disabled && c.border != null ? c.border!.withValues(alpha: 0.5) : c.border;
+
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -67,7 +79,7 @@ class AppButton extends StatelessWidget {
           AppDotsLoader(size: _fontSize * 0.5, color: c.fg)
         else ...[
           if (icon != null) ...[
-            Icon(icon, size: 18, color: c.fg),
+            Icon(icon, size: 18, color: fg),
             const SizedBox(width: AppSpacing.sm),
           ],
           Text(
@@ -75,13 +87,13 @@ class AppButton extends StatelessWidget {
             style: TextStyle(
               fontSize: _fontSize,
               fontWeight: FontWeight.w600,
-              color: c.fg,
+              color: fg,
               height: 1,
             ),
           ),
           if (trailingIcon != null) ...[
             const SizedBox(width: AppSpacing.sm),
-            Icon(trailingIcon, size: 18, color: c.fg),
+            Icon(trailingIcon, size: 18, color: fg),
           ],
         ],
       ],
@@ -91,10 +103,10 @@ class AppButton extends StatelessWidget {
       height: _height,
       width: expand ? double.infinity : null,
       child: Material(
-        color: disabled ? c.bg.withValues(alpha: 0.5) : c.bg,
+        color: bg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: c.border != null ? BorderSide(color: c.border!) : BorderSide.none,
+          side: border != null ? BorderSide(color: border) : BorderSide.none,
         ),
         child: InkWell(
           onTap: disabled ? null : onPressed,
