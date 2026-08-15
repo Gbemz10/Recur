@@ -52,7 +52,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // behind AppShell, which loads this on startup) — this is a background
     // refresh for "did anything change on another device", not the first
     // load, so it never needs its own loading flash.
-    widget.profileStore.load();
+    //
+    // Deferred to after this frame rather than called directly: `load()`
+    // calls `notifyListeners()` synchronously before its first `await`, and
+    // this runs inside `initState`, which itself runs while the framework
+    // is still building the widget tree (this screen is being pushed). A
+    // synchronous notify at that point reaches every other listener of the
+    // same shared ProfileStore — including DashboardScreen, which is kept
+    // alive in AppShell's IndexedStack — and its `setState` call lands
+    // mid-build, which Flutter throws on ("setState() or markNeedsBuild()
+    // called during build"). Waiting for the post-frame callback lets this
+    // screen finish mounting first, so the notify lands in a safe window.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.profileStore.load();
+    });
   }
 
   @override

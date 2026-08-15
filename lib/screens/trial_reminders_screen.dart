@@ -58,8 +58,29 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A persistent title, same weight and placement as Calendar's and
+    // Settings' — the only thing it says is "Trials" (no explainer
+    // paragraph underneath, unlike those two), and it stays put across
+    // every state below it: loading, error, empty, and populated all sit
+    // under the same fixed header rather than each drawing their own.
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text('Trials', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
+          ),
+          Expanded(child: _body(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     if (widget.store.isLoading) {
-      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+      return const Center(child: AppLoadingIndicator());
     }
 
     final trials = widget.store.upcoming;
@@ -69,19 +90,16 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
     // would look exactly like "you have nothing to track" with no way to
     // tell the difference or retry.
     if (widget.store.error != null && trials.isEmpty) {
-      return SafeArea(
-        bottom: false,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Couldn't load your trial reminders", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                AppButton(label: 'Try again', onPressed: widget.store.load),
-              ],
-            ),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Couldn't load your trial reminders", style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.md),
+              AppButton(label: 'Try again', onPressed: widget.store.load),
+            ],
           ),
         ),
       );
@@ -91,61 +109,53 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
     // this tab is for and getting them to add the first one — centered,
     // not pinned under a header the way a populated list needs one.
     if (trials.isEmpty) {
-      return SafeArea(
-        bottom: false,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: AppEmptyState(
-              icon: Icons.hourglass_empty_rounded,
-              title: 'No trials being tracked',
-              message: 'Log a trial the moment you sign up, so nothing '
-                  'converts to a real charge without you noticing.',
-              actionLabel: 'Add a trial reminder',
-              onAction: _addReminder,
-            ),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: AppEmptyState(
+            icon: Icons.hourglass_empty_rounded,
+            title: 'No trials being tracked',
+            message: 'Log a trial the moment you sign up, so nothing '
+                'converts to a real charge without you noticing.',
+            actionLabel: 'Add a trial reminder',
+            onAction: _addReminder,
           ),
         ),
       );
     }
 
-    // Once there's real content, the screen is just that content — the
-    // bottom nav already says "Trials", so a repeated headline plus an
-    // explainer paragraph above the list would be re-introducing itself to
-    // someone who's already here. Adding another one moves to a floating
-    // button instead of competing with the list for the top of the screen.
+    // Once there's real content, the header above already says "Trials" —
+    // no repeated headline or explainer paragraph competing with the list
+    // itself. Adding another one is a floating button instead.
     final endingSoon = trials.where((t) => t.isDueSoon || t.isOverdue).toList();
     final tracking = trials.where((t) => !t.isDueSoon && !t.isOverdue).toList();
 
-    return SafeArea(
-      bottom: false,
-      child: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xl,
-              AppSpacing.lg,
-              AppSpacing.xl,
-              AppSpacing.huge,
-            ),
-            children: [
-              if (endingSoon.isNotEmpty) ...[
-                _sectionHeader(context, 'Ending soon', '${endingSoon.length}'),
-                _list(endingSoon),
-              ],
-              if (tracking.isNotEmpty) ...[
-                _sectionHeader(context, 'Tracking', '${tracking.length}'),
-                _list(tracking),
-              ],
+    return Stack(
+      children: [
+        ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            0,
+            AppSpacing.xl,
+            AppSpacing.huge,
+          ),
+          children: [
+            if (endingSoon.isNotEmpty) ...[
+              _sectionHeader(context, 'Ending soon', '${endingSoon.length}'),
+              _list(endingSoon),
             ],
-          ),
-          Positioned(
-            right: AppSpacing.xl,
-            bottom: AppSpacing.xl,
-            child: _AddTrialFab(onPressed: _addReminder),
-          ),
-        ],
-      ),
+            if (tracking.isNotEmpty) ...[
+              _sectionHeader(context, 'Tracking', '${tracking.length}'),
+              _list(tracking),
+            ],
+          ],
+        ),
+        Positioned(
+          right: AppSpacing.xl,
+          bottom: AppSpacing.xl,
+          child: _AddTrialFab(onPressed: _addReminder),
+        ),
+      ],
     );
   }
 
