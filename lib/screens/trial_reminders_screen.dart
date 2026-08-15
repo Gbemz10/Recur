@@ -5,9 +5,13 @@ import '../data/trial_store.dart';
 import '../models/trial.dart';
 import '../ui/ui.dart';
 
-/// Full list of manually-entered trial reminders, plus the entry point for
-/// adding a new one. Reached from Settings, and from the dashboard's
-/// attention strip when something is genuinely close to converting.
+/// The Trials tab: every free trial the user has manually logged, grouped
+/// by urgency, plus the entry point for adding a new one.
+///
+/// A trial gets its own destination rather than living inside Settings or a
+/// dashboard drawer because it's time-sensitive in a way account settings
+/// never are — the whole point is catching it before a specific date, and
+/// a screen you have to remember to dig for defeats that.
 class TrialRemindersScreen extends StatefulWidget {
   const TrialRemindersScreen({super.key, required this.store});
 
@@ -56,47 +60,107 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final trials = widget.store.upcoming;
+    final endingSoon = trials.where((t) => t.isDueSoon || t.isOverdue).toList();
+    final tracking = trials.where((t) => !t.isDueSoon && !t.isOverdue).toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.background(context),
-      appBar: AppBar(title: const Text('Trial reminders')),
-      body: SafeArea(
-        child: widget.store.isLoading
-            ? const Center(child: AppLoadingIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                children: [
-                  Text(
-                    'Log a free trial the moment you sign up. We will surface '
-                    'it here as the end date gets close, so you can cancel '
-                    'before it converts to a real charge.',
-                    style: text.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppButton(
-                    label: 'Add a trial reminder',
-                    icon: Icons.add_rounded,
-                    expand: true,
-                    onPressed: _addReminder,
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-                  if (trials.isEmpty)
-                    const AppEmptyState(
-                      icon: Icons.hourglass_empty_rounded,
-                      title: 'No trial reminders yet',
-                      message: 'Add one right after you sign up somewhere new.',
-                    )
-                  else
-                    for (var i = 0; i < trials.length; i++) ...[
-                      if (i > 0) const SizedBox(height: AppSpacing.md),
-                      _TrialReminderCard(
-                        trial: trials[i],
-                        onDismiss: () => _dismiss(trials[i]),
-                      ),
-                    ],
-                ],
+    return SafeArea(
+      bottom: false,
+      child: widget.store.isLoading
+          ? const Center(child: AppLoadingIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.huge,
               ),
+              children: [
+                Text('Trials', style: text.headlineSmall?.copyWith(letterSpacing: -0.4)),
+                const SizedBox(height: 4),
+                Text(
+                  'Log a trial the moment you sign up, so nothing converts to a '
+                  'real charge without you noticing.',
+                  style: text.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppButton(
+                  label: 'Add a trial reminder',
+                  icon: Icons.add_rounded,
+                  expand: true,
+                  onPressed: _addReminder,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (trials.isEmpty)
+                  const AppEmptyState(
+                    icon: Icons.hourglass_empty_rounded,
+                    title: 'Nothing being tracked',
+                    message: 'Add a trial right after you sign up somewhere new — '
+                        'we will surface it here as the end date gets close.',
+                  )
+                else ...[
+                  if (endingSoon.isNotEmpty) ...[
+                    _sectionHeader(context, 'Ending soon', '${endingSoon.length}'),
+                    _list(endingSoon),
+                  ],
+                  if (tracking.isNotEmpty) ...[
+                    _sectionHeader(context, 'Tracking', '${tracking.length}'),
+                    _list(tracking),
+                  ],
+                ],
+              ],
+            ),
+    );
+  }
+
+  /// Mirrors `dashboard_screen.dart`'s `_sectionHeader` exactly — same
+  /// small-caps label, count pill, and trailing divider — so a list group
+  /// reads the same whether it's subscriptions on Home or trials here.
+  Widget _sectionHeader(BuildContext context, String label, String count) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, AppSpacing.md, 0, AppSpacing.md),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: AppColors.neutral500,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: AppColors.neutral100,
+              borderRadius: AppRadius.fullBR,
+            ),
+            child: Text(
+              count,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.neutral500,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(child: Divider(color: AppColors.neutral200)),
+        ],
       ),
+    );
+  }
+
+  Widget _list(List<TrialReminder> items) {
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.sm),
+          _TrialReminderCard(trial: items[i], onDismiss: () => _dismiss(items[i])),
+        ],
+        const SizedBox(height: AppSpacing.lg),
+      ],
     );
   }
 }
@@ -109,6 +173,7 @@ class _TrialReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final urgent = trial.isDueSoon || trial.isOverdue;
     return AppCard(
       child: Row(
         children: [
@@ -116,13 +181,13 @@ class _TrialReminderCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: trial.isDueSoon ? AppColors.warningBg : AppColors.infoBg,
+              color: urgent ? AppColors.warningBg : AppColors.infoBg,
               borderRadius: AppRadius.mdBR,
             ),
             child: Icon(
               Icons.hourglass_bottom_rounded,
               size: 18,
-              color: trial.isDueSoon ? AppColors.warning : AppColors.info,
+              color: urgent ? AppColors.warning : AppColors.info,
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -140,7 +205,7 @@ class _TrialReminderCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: trial.isDueSoon ? AppColors.warning : AppColors.neutral500,
+                    color: urgent ? AppColors.warning : AppColors.neutral500,
                   ),
                 ),
               ],

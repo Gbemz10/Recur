@@ -6,7 +6,10 @@ import * as trialsService from './service.js';
 
 const createTrialReminderSchema = z.object({
   label: z.string().trim().min(1).max(80),
-  trialEndsAt: z.string().datetime({ offset: true }).or(z.string().datetime()),
+  // Flutter sends `DateTime.toUtc().toIso8601String()`, always a "Z"
+  // suffix — `offset: true` additionally tolerates a `+HH:MM` offset from
+  // any other client that doesn't normalize to UTC first.
+  trialEndsAt: z.string().datetime({ offset: true }),
   merchantSlug: z.string().trim().min(1).max(80).nullable().optional(),
 });
 

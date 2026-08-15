@@ -12,7 +12,6 @@ import '../ui/ui.dart';
 import '../widgets/subscription_tile.dart';
 import 'profile_screen.dart';
 import 'subscription_detail_screen.dart';
-import 'trial_reminders_screen.dart';
 
 /// The home screen.
 ///
@@ -31,7 +30,12 @@ import 'trial_reminders_screen.dart';
 /// alphabetical list of equal-weight rows hides exactly the information
 /// someone opened the app to find.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.store, required this.trialStore});
+  const DashboardScreen({
+    super.key,
+    required this.store,
+    required this.trialStore,
+    required this.onOpenTrials,
+  });
 
   /// Shared across every tab in [AppShell], so a status change here is
   /// immediately visible on Calendar and Settings too.
@@ -39,6 +43,11 @@ class DashboardScreen extends StatefulWidget {
 
   /// Manually-entered trial reminders — see [TrialStore].
   final TrialStore trialStore;
+
+  /// Switches [AppShell] to the Trials tab — the strip below surfaces a
+  /// due-soon trial inline, but managing it happens on its own tab, not a
+  /// screen pushed on top of Home.
+  final VoidCallback onOpenTrials;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -126,13 +135,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return list;
   }
 
-  Future<void> _openTrialReminders() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TrialRemindersScreen(store: widget.trialStore),
-      ),
-    );
-  }
 
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
     try {
@@ -212,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   child: _TrialStrip(
                     trials: _trialsDueSoon,
-                    onTap: _openTrialReminders,
+                    onTap: widget.onOpenTrials,
                   ),
                 ),
               ),
