@@ -239,14 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _SectionLabel(widget.bankStore.active.length > 1 ? 'Linked accounts' : 'Linked account'),
           if (widget.bankStore.isLoading && widget.bankStore.all.isEmpty)
-            const AppCard(
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  child: AppLoadingIndicator(),
-                ),
-              ),
-            )
+            const AppSkeletonListTile()
           else if (widget.bankStore.error != null && widget.bankStore.all.isEmpty) ...[
             AppCard(
               child: Row(

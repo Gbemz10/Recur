@@ -176,7 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // there's data on hand, a failed background refresh shouldn't rip the
     // dashboard out from under someone who was already looking at it.
     if (widget.store.isLoading && widget.store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+      return const SafeArea(bottom: false, child: _DashboardSkeleton());
     }
 
     if (widget.store.error != null && widget.store.all.isEmpty) {
@@ -558,6 +558,33 @@ class _Greeting extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// First-load placeholder mirroring the real layout — hero card, then a
+/// few list rows — so the dashboard reads as "loading this" rather than
+/// a blank screen with a spinner.
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+      children: const [
+        AppSkeleton(width: 160, height: 20),
+        SizedBox(height: 4),
+        AppSkeleton(width: 220, height: 13),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeletonHeroCard(),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeletonListTile(),
+        SizedBox(height: AppSpacing.md),
+        AppSkeletonListTile(),
+        SizedBox(height: AppSpacing.md),
+        AppSkeletonListTile(),
+      ],
     );
   }
 }

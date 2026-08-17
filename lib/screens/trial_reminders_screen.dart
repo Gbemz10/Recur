@@ -80,7 +80,16 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
 
   Widget _body(BuildContext context) {
     if (widget.store.isLoading) {
-      return const Center(child: AppLoadingIndicator());
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.huge),
+        children: const [
+          AppSkeletonListTile(),
+          SizedBox(height: AppSpacing.md),
+          AppSkeletonListTile(),
+          SizedBox(height: AppSpacing.md),
+          AppSkeletonListTile(),
+        ],
+      );
     }
 
     final trials = widget.store.upcoming;

@@ -150,7 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // dashboard_screen.dart — a background refresh failing shouldn't blank
     // out a calendar someone's already looking at.
     if (widget.store.isLoading && widget.store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: Center(child: AppLoadingIndicator()));
+      return const SafeArea(bottom: false, child: _CalendarSkeleton());
     }
 
     if (widget.store.error != null && widget.store.all.isEmpty) {
@@ -297,6 +297,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (sameDay) return 'Today';
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return '${weekdays[_selected.weekday - 1]} ${_selected.day} ${_months[_selected.month - 1].substring(0, 3)}';
+  }
+}
+
+/// First-load placeholder — title, a block standing in for the month grid
+/// (not worth mirroring every day cell), then a couple of occurrence rows.
+class _CalendarSkeleton extends StatelessWidget {
+  const _CalendarSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+      children: const [
+        AppSkeleton(width: 140, height: 20),
+        SizedBox(height: 4),
+        AppSkeleton(width: 240, height: 13),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeletonBlock(height: 320),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeletonListTile(),
+        SizedBox(height: AppSpacing.md),
+        AppSkeletonListTile(),
+      ],
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
+import 'app_card.dart';
 import 'app_dots_loader.dart';
 
 /// Empty state for lists/tables with no data, or zero search results.
@@ -80,6 +81,16 @@ class _AppSkeletonState extends State<AppSkeleton> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    // Was hardcoded AppColors.neutral100/200 — both near-white, so in dark
+    // mode this rendered as a barely-visible pale smear on a near-black
+    // background instead of a shimmer. surfaceContainerHighest/border
+    // already resolve to the right tone for whichever theme is active,
+    // the same pair used for track backgrounds elsewhere (AppTabs, the
+    // date picker's round icon buttons).
+    final scheme = Theme.of(context).colorScheme;
+    final base = scheme.surfaceContainerHighest;
+    final highlight = AppColors.border(context);
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -92,12 +103,96 @@ class _AppSkeletonState extends State<AppSkeleton> with SingleTickerProviderStat
             gradient: LinearGradient(
               begin: Alignment(-1 + t * 3, 0),
               end: Alignment(0 + t * 3, 0),
-              colors: const [AppColors.neutral100, AppColors.neutral200, AppColors.neutral100],
+              colors: [base, highlight, base],
             ),
           ),
         );
       },
     );
+  }
+}
+
+/// A skeleton row mirroring [SubscriptionTile]'s shape — circular mark,
+/// two lines of text, a right-aligned amount block — generic enough to
+/// stand in for any list of that shape (subscriptions, linked banks,
+/// trial reminders) while real data loads.
+class AppSkeletonListTile extends StatelessWidget {
+  const AppSkeletonListTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const ClipOval(child: AppSkeleton(width: 42, height: 42, radius: 21)),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                AppSkeleton(width: 120, height: 14),
+                SizedBox(height: 8),
+                AppSkeleton(width: 80, height: 11),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AppSkeleton(width: 56, height: 14),
+              SizedBox(height: 6),
+              AppSkeleton(width: 40, height: 10),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A skeleton mirroring the dashboard's hero total card — a label bar, a
+/// large number, and a subtitle line, inside the same bordered surface.
+class AppSkeletonHeroCard extends StatelessWidget {
+  const AppSkeletonHeroCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.surface(context),
+        borderRadius: AppRadius.xlBR,
+        border: Border.all(color: AppColors.border(context)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 140, height: 11),
+          SizedBox(height: AppSpacing.md),
+          AppSkeleton(width: 180, height: 34, radius: 6),
+          SizedBox(height: AppSpacing.sm),
+          AppSkeleton(width: 100, height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+/// A large skeleton block for an irregularly-shaped area (a calendar grid,
+/// a chart) where mirroring the exact structure isn't worth the effort —
+/// just communicates "content is coming, roughly here."
+class AppSkeletonBlock extends StatelessWidget {
+  const AppSkeletonBlock({super.key, this.height = 280, this.radius = 16});
+
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSkeleton(height: height, radius: radius);
   }
 }
 
