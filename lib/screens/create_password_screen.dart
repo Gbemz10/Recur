@@ -101,13 +101,19 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final confirmError =
-        _submitted && !_matches && _confirm.text.isNotEmpty
-            ? 'Passwords do not match'
-            : null;
+    // See auth_screen.dart's build() for why this is forced light — same
+    // pre-auth-flow-is-always-light reasoning, same fix.
+    return Theme(
+      data: AppTheme.light,
+      child: Builder(
+        builder: (context) {
+          final text = Theme.of(context).textTheme;
+          final confirmError =
+              _submitted && !_matches && _confirm.text.isNotEmpty
+                  ? 'Passwords do not match'
+                  : null;
 
-    return Scaffold(
+          return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
         backgroundColor: AppColors.white,
@@ -213,6 +219,9 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
             ],
           ),
         ),
+      ),
+          );
+        },
       ),
     );
   }

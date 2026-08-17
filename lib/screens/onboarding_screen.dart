@@ -176,10 +176,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final isLast = _page == _slides.length - 1;
+    // See auth_screen.dart's build() for why this is forced light — same
+    // pre-auth-flow-is-always-light reasoning, same fix.
+    return Theme(
+      data: AppTheme.light,
+      child: Builder(
+        builder: (context) {
+          final text = Theme.of(context).textTheme;
+          final isLast = _page == _slides.length - 1;
 
-    return Scaffold(
+          return Scaffold(
       backgroundColor: AppColors.white,
       body: Stack(
         children: [
@@ -327,6 +333,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
         ],
+      ),
+          );
+        },
       ),
     );
   }

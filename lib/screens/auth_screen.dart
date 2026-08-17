@@ -168,10 +168,25 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final signUp = _mode == _Mode.signUp;
+    // Forces the light theme regardless of the user's actual dark/light
+    // preference — this screen, like the rest of the pre-auth flow, is
+    // deliberately light-only always (see _RootFlow in main.dart). Without
+    // this, the Scaffold's own background stayed hardcoded white while
+    // every Theme.of(context) lookup inside it (this method's own `text`,
+    // plus every AppButton/AppTextField instance below) still followed the
+    // app's real theme — so with dark mode on, near-white text rendered on
+    // that white background, and AppTextField's dark-mode fill color
+    // painted the input boxes black. Wrapping in a fresh Builder means
+    // every Theme.of(context) call below this point resolves against this
+    // forced-light Theme instead.
+    return Theme(
+      data: AppTheme.light,
+      child: Builder(
+        builder: (context) {
+          final text = Theme.of(context).textTheme;
+          final signUp = _mode == _Mode.signUp;
 
-    return Scaffold(
+          return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: GestureDetector(
@@ -318,6 +333,9 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+      ),
+          );
+        },
       ),
     );
   }

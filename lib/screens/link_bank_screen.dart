@@ -113,7 +113,19 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Forces the light theme regardless of the user's actual dark/light
+    // preference — same pre-auth-flow-is-always-light reasoning as
+    // auth_screen.dart. Note: this wrap only fixes Theme.of(context) calls
+    // made by *descendant* widgets (e.g. _ConsentRow's own build method).
+    // The private _build*() helpers below run eagerly inside this build()
+    // call using the State's own `context` (an ancestor of this wrapper),
+    // so they read AppTheme.light directly instead of going through
+    // Theme.of(context) — see each helper.
+    return Theme(
+      data: AppTheme.light,
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
       backgroundColor: AppColors.lightBackground,
       appBar: AppBar(
         title: Text(switch (_step) {
@@ -146,13 +158,20 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
           },
         ),
       ),
+          );
+        },
+      ),
     );
   }
 
   // ---------------------------------------------------------------- consent
 
   Widget _buildConsent() {
-    final text = Theme.of(context).textTheme;
+    // This helper runs eagerly during build() using the State's own
+    // context (an ancestor of the forced-light Theme wrapper above), so
+    // Theme.of(context) would still read the real ambient theme. Since
+    // this screen is always light, go straight to AppTheme.light instead.
+    final text = AppTheme.light.textTheme;
 
     return SingleChildScrollView(
       key: const ValueKey('consent'),
@@ -246,13 +265,13 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             Text(
               'Confirming your connection',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: AppTheme.light.textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               "This can take a few seconds, sometimes longer depending on your bank.",
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
+              style: AppTheme.light.textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
             ),
           ],
         ),
@@ -263,7 +282,9 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
   // ---------------------------------------------------------------- success
 
   Widget _buildSuccess() {
-    final text = Theme.of(context).textTheme;
+    // See _buildConsent() above for why this is AppTheme.light rather
+    // than Theme.of(context).
+    final text = AppTheme.light.textTheme;
 
     return Padding(
       key: const ValueKey('success'),
@@ -318,7 +339,9 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
   // ---------------------------------------------------------------- timeout
 
   Widget _buildTimeout() {
-    final text = Theme.of(context).textTheme;
+    // See _buildConsent() above for why this is AppTheme.light rather
+    // than Theme.of(context).
+    final text = AppTheme.light.textTheme;
 
     return Padding(
       key: const ValueKey('timeout'),
