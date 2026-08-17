@@ -118,18 +118,14 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // See auth_screen.dart's build() for why this is forced light — same
-    // pre-auth-flow-is-always-light reasoning, same fix.
-    return Theme(
-      data: AppTheme.light,
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
+    final text = Theme.of(context).textTheme;
 
-          return Scaffold(
-      backgroundColor: AppColors.white,
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.background(context),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).pop(false),
@@ -154,16 +150,16 @@ class _OtpScreenState extends State<OtpScreen> {
               Text.rich(
                 TextSpan(
                   style: text.bodyMedium?.copyWith(
-                    color: AppColors.neutral600,
+                    color: AppColors.muted(context),
                     height: 1.5,
                   ),
                   children: [
                     const TextSpan(text: 'We emailed 6 digits to '),
                     TextSpan(
                       text: widget.email,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.neutral900,
+                        color: AppColors.ink(context),
                       ),
                     ),
                     const TextSpan(
@@ -252,9 +248,6 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
         ),
       ),
-          );
-        },
-      ),
     );
   }
 }
@@ -285,8 +278,8 @@ class _CodeBoxes extends StatelessWidget {
             : isNext
                 ? AppColors.primary
                 : filled
-                    ? AppColors.neutral300
-                    : AppColors.neutral200;
+                    ? AppColors.muted(context)
+                    : AppColors.border(context);
 
         // Plain Container, not AnimatedContainer: transitions on keystroke
         // are exactly what makes a code field feel like it's lagging.
@@ -294,7 +287,7 @@ class _CodeBoxes extends StatelessWidget {
           width: 48,
           height: 58,
           decoration: BoxDecoration(
-            color: filled ? AppColors.white : AppColors.neutral50,
+            color: filled ? AppColors.surface(context) : AppColors.background(context),
             borderRadius: AppRadius.lgBR,
             border: Border.all(
               color: borderColor,
@@ -304,10 +297,10 @@ class _CodeBoxes extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             filled ? value[i] : '',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: AppColors.neutral900,
+              color: AppColors.ink(context),
             ),
           ),
         );
@@ -369,7 +362,7 @@ class _ResendCountdownState extends State<_ResendCountdown> {
         style: Theme.of(context)
             .textTheme
             .bodySmall
-            ?.copyWith(color: AppColors.neutral400),
+            ?.copyWith(color: AppColors.muted(context)),
       );
     }
     return AppButton(

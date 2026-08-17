@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.background(context),
       body: AnimatedBuilder(
         animation: Listenable.merge([_main, _ambient]),
         builder: (context, _) {
@@ -167,7 +167,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ),
                           const SizedBox(height: AppSpacing.xxxl),
-                          _buildWordmark(),
+                          _buildWordmark(context),
                         ],
                       ),
                     ),
@@ -181,19 +181,20 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildWordmark() {
+  Widget _buildWordmark(BuildContext context) {
     // A violet highlight drifts across the letters, so the wordmark never
     // sits completely still while the splash is up.
     final sweep = (_ambient.value * 2.2) % 2.2 - 0.6;
+    final base = AppColors.ink(context);
 
     return ShaderMask(
       shaderCallback: (bounds) => LinearGradient(
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
-        colors: const [
-          AppColors.neutral900,
+        colors: [
+          base,
           RecurBrand.gradientStart,
-          AppColors.neutral900,
+          base,
         ],
         stops: [
           (sweep - 0.22).clamp(0.0, 1.0),

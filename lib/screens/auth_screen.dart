@@ -168,26 +168,11 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Forces the light theme regardless of the user's actual dark/light
-    // preference — this screen, like the rest of the pre-auth flow, is
-    // deliberately light-only always (see _RootFlow in main.dart). Without
-    // this, the Scaffold's own background stayed hardcoded white while
-    // every Theme.of(context) lookup inside it (this method's own `text`,
-    // plus every AppButton/AppTextField instance below) still followed the
-    // app's real theme — so with dark mode on, near-white text rendered on
-    // that white background, and AppTextField's dark-mode fill color
-    // painted the input boxes black. Wrapping in a fresh Builder means
-    // every Theme.of(context) call below this point resolves against this
-    // forced-light Theme instead.
-    return Theme(
-      data: AppTheme.light,
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
-          final signUp = _mode == _Mode.signUp;
+    final text = Theme.of(context).textTheme;
+    final signUp = _mode == _Mode.signUp;
 
-          return Scaffold(
-      backgroundColor: AppColors.white,
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
@@ -212,7 +197,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           'you, then you pick a password.'
                       : 'Sign in to pick up where you left off.',
                   style: text.bodyMedium?.copyWith(
-                    color: AppColors.neutral600,
+                    color: AppColors.muted(context),
                     height: 1.5,
                   ),
                 ),
@@ -290,7 +275,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             ? 'Already have an account?'
                             : 'New to Recur?',
                         style: text.bodySmall
-                            ?.copyWith(color: AppColors.neutral500),
+                            ?.copyWith(color: AppColors.muted(context)),
                       ),
                       AppButton(
                         label: signUp ? 'Sign in' : 'Create one',
@@ -311,10 +296,10 @@ class _AuthScreenState extends State<AuthScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.lock_outline_rounded,
                       size: 15,
-                      color: AppColors.neutral400,
+                      color: AppColors.muted(context),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -322,7 +307,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         'Recur never stores your bank password and can never '
                         'move money out of your account.',
                         style: text.bodySmall?.copyWith(
-                          color: AppColors.neutral500,
+                          color: AppColors.muted(context),
                           height: 1.5,
                         ),
                       ),
@@ -333,9 +318,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
-      ),
-          );
-        },
       ),
     );
   }

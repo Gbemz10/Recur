@@ -51,6 +51,11 @@ class DotGrid extends StatelessWidget {
           fadeStart: fadeStart,
           fadeEnd: fadeEnd,
           offset: offset,
+          // Resolved once here, since the painter itself has no
+          // BuildContext — near-black dots at low alpha read as subtle
+          // texture on a light background but vanish on a dark one, so
+          // this needs to flip with theme rather than stay neutral900.
+          dotColor: AppColors.ink(context),
         ),
         size: Size.infinite,
       ),
@@ -66,6 +71,7 @@ class _DotGridPainter extends CustomPainter {
     required this.fadeStart,
     required this.fadeEnd,
     required this.offset,
+    required this.dotColor,
   });
 
   final double spacing;
@@ -74,6 +80,7 @@ class _DotGridPainter extends CustomPainter {
   final double fadeStart;
   final double fadeEnd;
   final Offset offset;
+  final Color dotColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -95,7 +102,7 @@ class _DotGridPainter extends CustomPainter {
       final alpha = opacity * (1 - t);
       if (alpha <= 0.002) continue;
 
-      paint.color = AppColors.neutral900.withValues(alpha: alpha);
+      paint.color = dotColor.withValues(alpha: alpha);
 
       for (var x = -spacing + dx; x < size.width + spacing; x += spacing) {
         canvas.drawCircle(Offset(x, y), dotRadius, paint);
@@ -110,5 +117,6 @@ class _DotGridPainter extends CustomPainter {
       old.opacity != opacity ||
       old.fadeStart != fadeStart ||
       old.fadeEnd != fadeEnd ||
-      old.offset != offset;
+      old.offset != offset ||
+      old.dotColor != dotColor;
 }

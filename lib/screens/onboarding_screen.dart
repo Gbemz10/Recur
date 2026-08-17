@@ -176,17 +176,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    // See auth_screen.dart's build() for why this is forced light — same
-    // pre-auth-flow-is-always-light reasoning, same fix.
-    return Theme(
-      data: AppTheme.light,
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
-          final isLast = _page == _slides.length - 1;
+    final text = Theme.of(context).textTheme;
+    final isLast = _page == _slides.length - 1;
 
-          return Scaffold(
-      backgroundColor: AppColors.white,
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
       body: Stack(
         children: [
           // ---- aurora sits behind everything, spanning the whole screen ----
@@ -209,8 +203,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
 
-          // A soft white veil at the bottom so copy always stays legible
-          // over whatever colour the aurora happens to drift into.
+          // A soft veil at the bottom, matching the page background, so
+          // copy always stays legible over whatever colour the aurora
+          // happens to drift into — in either theme.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -219,9 +214,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      AppColors.white.withValues(alpha: 0.0),
-                      AppColors.white.withValues(alpha: 0.55),
-                      AppColors.white.withValues(alpha: 0.94),
+                      AppColors.background(context).withValues(alpha: 0.0),
+                      AppColors.background(context).withValues(alpha: 0.55),
+                      AppColors.background(context).withValues(alpha: 0.94),
                     ],
                     stops: const [0.0, 0.52, 0.78],
                   ),
@@ -251,7 +246,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                             child: IconButton(
                               onPressed: _back,
                               icon: const Icon(Icons.arrow_back_rounded),
-                              color: AppColors.neutral700,
+                              color: AppColors.inkSoft(context),
                               tooltip: 'Back',
                             ),
                           ),
@@ -304,8 +299,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       height: 5,
                       width: selected ? 30 : 5,
                       decoration: BoxDecoration(
-                        color:
-                            selected ? AppColors.primary : AppColors.neutral300,
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.border(context),
                         borderRadius: AppRadius.fullBR,
                       ),
                     );
@@ -333,9 +329,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
         ],
-      ),
-          );
-        },
       ),
     );
   }
@@ -444,7 +437,7 @@ class _SlideView extends StatelessWidget {
                         Text(
                           slide.body,
                           style: textTheme.bodyMedium?.copyWith(
-                            color: AppColors.neutral600,
+                            color: AppColors.muted(context),
                             height: 1.55,
                           ),
                         ),

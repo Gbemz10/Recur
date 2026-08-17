@@ -155,7 +155,7 @@ class RecurWordmark extends StatelessWidget {
             fontWeight: FontWeight.w800,
             letterSpacing: -fontSize * 0.045,
             height: 1.0,
-            color: onDark ? Colors.white : AppColors.neutral900,
+            color: onDark ? Colors.white : AppColors.ink(context),
           ),
         ),
       ],

@@ -101,22 +101,18 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // See auth_screen.dart's build() for why this is forced light — same
-    // pre-auth-flow-is-always-light reasoning, same fix.
-    return Theme(
-      data: AppTheme.light,
-      child: Builder(
-        builder: (context) {
-          final text = Theme.of(context).textTheme;
-          final confirmError =
-              _submitted && !_matches && _confirm.text.isNotEmpty
-                  ? 'Passwords do not match'
-                  : null;
+    final text = Theme.of(context).textTheme;
+    final confirmError =
+        _submitted && !_matches && _confirm.text.isNotEmpty
+            ? 'Passwords do not match'
+            : null;
 
-          return Scaffold(
-      backgroundColor: AppColors.white,
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.background(context),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.of(context).pop(false),
@@ -141,16 +137,16 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
               Text.rich(
                 TextSpan(
                   style: text.bodyMedium?.copyWith(
-                    color: AppColors.neutral600,
+                    color: AppColors.muted(context),
                     height: 1.5,
                   ),
                   children: [
                     const TextSpan(text: 'This is how you will sign in to '),
                     TextSpan(
                       text: widget.email,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.neutral900,
+                        color: AppColors.ink(context),
                       ),
                     ),
                     const TextSpan(text: ' from now on.'),
@@ -220,9 +216,6 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
           ),
         ),
       ),
-          );
-        },
-      ),
     );
   }
 }
@@ -252,7 +245,7 @@ class _StrengthMeter extends StatelessWidget {
               duration: const Duration(milliseconds: 260),
               height: 4,
               decoration: BoxDecoration(
-                color: i < strength ? color : AppColors.neutral200,
+                color: i < strength ? color : AppColors.border(context),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -294,13 +287,15 @@ class _Requirement extends StatelessWidget {
             width: 17,
             height: 17,
             decoration: BoxDecoration(
-              color: met ? AppColors.success : AppColors.neutral100,
+              color: met
+                  ? AppColors.success
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
             child: Icon(
               met ? Icons.check_rounded : Icons.remove_rounded,
               size: 11,
-              color: met ? Colors.white : AppColors.neutral400,
+              color: met ? Colors.white : AppColors.muted(context),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -309,7 +304,7 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.neutral700 : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
             ),
           ),
         ],

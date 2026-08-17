@@ -74,11 +74,10 @@ class _RootFlowState extends State<_RootFlow> {
 
   @override
   Widget build(BuildContext context) {
-    // The pre-auth flow (splash/onboarding/auth/link-bank) is intentionally
-    // light-only regardless of theme preference — status bar icons stay
-    // dark. Once inside the app (post sign-in), match the resolved
-    // brightness so icons stay legible against a dark scaffold too.
-    final overlay = _stage == _Stage.app && Theme.of(context).brightness == Brightness.dark
+    // Every stage — pre-auth and post-auth alike — now follows the
+    // resolved theme brightness, so status bar icons stay legible against
+    // a dark scaffold on any screen, not just once signed in.
+    final overlay = Theme.of(context).brightness == Brightness.dark
         ? SystemUiOverlayStyle.light
         : SystemUiOverlayStyle.dark;
 
