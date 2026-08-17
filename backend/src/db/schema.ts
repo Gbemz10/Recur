@@ -112,6 +112,32 @@ export const refreshTokens = pgTable('refresh_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// One row per (user, device) the client has ever presented an `X-Device-Id`
+// header for — a random id the Flutter app generates once on first launch
+// and persists in the platform keychain (see device_id.dart), not derived
+// from IP or user-agent. IP address alone is useless as a device signal for
+// a mobile app: cellular/wifi handoffs rotate it constantly, which would
+// make a naive IP-based "new device" check fire on almost every sign-in
+// and train users to ignore the email entirely. A stable client-generated
+// id is the only cheap signal that survives that churn.
+//
+// `lastIp`/`lastUserAgent` are overwritten on every sign-in from this
+// device purely for display in the notification email and any future
+// "your devices" settings screen — they're not part of the identity check.
+export const knownDevices = pgTable('known_devices', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  deviceId: text('device_id').notNull(),
+  lastIp: text('last_ip'),
+  lastUserAgent: text('last_user_agent'),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueUserDevice: unique().on(table.userId, table.deviceId),
+}));
+
 // ------------------------------------------------------------------ banking
 
 // One linked account per row. Mono doesn't issue a separate reusable
@@ -298,6 +324,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   rawTransactions: many(rawTransactions),
   refreshTokens: many(refreshTokens),
   trialReminders: many(trialReminders),
+  knownDevices: many(knownDevices),
+}));
+
+export const knownDevicesRelations = relations(knownDevices, ({ one }) => ({
+  user: one(users, { fields: [knownDevices.userId], references: [users.id] }),
 }));
 
 export const trialRemindersRelations = relations(trialReminders, ({ one }) => ({

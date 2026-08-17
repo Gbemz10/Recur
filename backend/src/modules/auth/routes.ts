@@ -1,8 +1,10 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import { AppError } from '../../lib/errors.js';
 import { rateLimit, emailKey } from '../../lib/rateLimit.js';
 import { uploadAvatar } from '../../lib/storage.js';
+import { deviceContextFromHeaders, recordDeviceSighting } from '../../lib/deviceTrust.js';
+import { sendEmail, newDeviceEmail } from '../../lib/email.js';
 import {
   signupSchema,
   otpVerifySchema,
@@ -15,6 +17,27 @@ import {
   deleteAccountSchema,
 } from './schemas.js';
 import * as authService from './service.js';
+
+/**
+ * Records this request's device against the user, and — only when
+ * `notify` is true — emails them if it's one we've never seen before.
+ * Fire-and-forget on purpose: a Resend hiccup or a stray DB error here
+ * should never turn a successful login into a failed one, unlike the OTP
+ * email in authService.issueOtp, which genuinely has to succeed for the
+ * flow to make sense. Not awaited by callers.
+ */
+function trackDevice(request: FastifyRequest, userId: string, email: string, { notify }: { notify: boolean }): void {
+  const ctx = deviceContextFromHeaders(request.headers, request.ip);
+  recordDeviceSighting(userId, ctx)
+    .then(async ({ isNew }) => {
+      if (isNew && notify) {
+        await sendEmail({ to: email, ...newDeviceEmail(ctx.ip) });
+      }
+    })
+    .catch((error) => {
+      console.error('Device tracking/notification failed:', error);
+    });
+}
 
 function parseOrThrow<T>(schema: ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
@@ -91,6 +114,12 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await authService.setPassword(email, password, purpose);
     const accessToken = await reply.jwtSign({ sub: user.id, email: user.email });
     const refreshToken = await authService.issueRefreshToken(user.id);
+    // Not notified: signup completion is this account's first-ever device
+    // by definition, and a reset just finished proving email ownership via
+    // OTP seconds ago — a second "new device" email here would just be
+    // noise. Still recorded, so a later /auth/login from the same device
+    // isn't wrongly flagged as new.
+    trackDevice(request, user.id, user.email, { notify: false });
     return reply.send({ accessToken, refreshToken, user: { id: user.id, email: user.email } });
   });
 
@@ -99,6 +128,7 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await authService.login(email, password);
     const accessToken = await reply.jwtSign({ sub: user.id, email: user.email });
     const refreshToken = await authService.issueRefreshToken(user.id);
+    trackDevice(request, user.id, user.email, { notify: true });
     return reply.send({ accessToken, refreshToken, user: { id: user.id, email: user.email } });
   });
 

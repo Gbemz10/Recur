@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 
 import '../config/env.dart';
+import 'device_id.dart';
 import 'token_storage.dart';
 
 /// `package:http` has no built-in request timeout — a request against a
@@ -39,9 +40,12 @@ class ApiException implements Exception {
 /// retry once — a screen that's been open a while never has to know its
 /// token went stale mid-session.
 class ApiClient {
-  ApiClient({TokenStorage? tokenStorage}) : _tokenStorage = tokenStorage ?? TokenStorage();
+  ApiClient({TokenStorage? tokenStorage, DeviceIdStorage? deviceIdStorage})
+      : _tokenStorage = tokenStorage ?? TokenStorage(),
+        _deviceIdStorage = deviceIdStorage ?? DeviceIdStorage();
 
   final TokenStorage _tokenStorage;
+  final DeviceIdStorage _deviceIdStorage;
   final http.Client _http = http.Client();
 
   // Several requests can 401 around the same moment (e.g. a screen that
@@ -66,6 +70,7 @@ class ApiClient {
   }) async {
     final headers = <String, String>{
       'Accept': 'application/json',
+      'X-Device-Id': await _deviceIdStorage.read(),
     };
     if (hasBody) headers['Content-Type'] = 'application/json';
     if (auth) {

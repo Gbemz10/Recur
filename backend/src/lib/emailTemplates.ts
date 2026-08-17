@@ -270,6 +270,77 @@ Didn&rsquo;t sign up for this? You can safely ignore this email &mdash; no accou
   };
 }
 
+/** Formats a timestamp the way a person reads it, in a fixed UTC-offset-free
+ *  form — the server has no idea what timezone the recipient is in, so this
+ *  spells out the date/time plus "UTC" rather than guessing. */
+function formatWhen(date: Date): string {
+  const formatted = date.toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  });
+  return `${formatted} UTC`;
+}
+
+/** Sent the moment a sign-in is seen from a device Recur has never recorded
+ *  for this account before (see deviceTrust.ts). Deliberately doesn't call
+ *  this a "new location" — there's no geo-IP lookup behind it, just the raw
+ *  IP address, so the copy promises exactly what it can back up. */
+export function renderNewDeviceEmail(input: { ip: string | null; when: Date }): RenderedEmail {
+  const whenText = formatWhen(input.when);
+  const ipText = input.ip ?? 'an unknown address';
+  const preheaderText = `New sign-in to your Recur account on ${whenText}.`;
+
+  const html = emailShell(
+    `
+<p class="ink-500" style="margin:0 0 8px; font-family:${sansFont}; font-size:12px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:${light.ink500};">Security</p>
+<h1 class="ink-900" style="margin:0 0 12px; font-family:${sansFont}; font-size:23px; font-weight:800; letter-spacing:-0.3px; color:${light.ink900};">New sign-in to your account</h1>
+<p class="ink-600" style="margin:0 0 20px; font-family:${sansFont}; font-size:14px; line-height:1.6; color:${light.ink600};">
+We noticed a sign-in to your Recur account from a device we haven&rsquo;t seen before.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="code-cell" style="background-color:${light.codeBg}; border:1px solid ${light.border}; border-radius:10px;">
+<tr><td style="padding:16px 18px;">
+<p class="ink-500" style="margin:0 0 4px; font-family:${sansFont}; font-size:12px; color:${light.ink500};">Time</p>
+<p class="ink-900" style="margin:0 0 12px; font-family:${sansFont}; font-size:14px; font-weight:600; color:${light.ink900};">${escapeHtml(whenText)}</p>
+<p class="ink-500" style="margin:0 0 4px; font-family:${sansFont}; font-size:12px; color:${light.ink500};">IP address</p>
+<p class="ink-900" style="margin:0; font-family:${monoFont}; font-size:14px; font-weight:600; color:${light.ink900};">${escapeHtml(ipText)}</p>
+</td></tr>
+</table>
+
+<div class="divider" style="border-top:1px dashed ${light.borderDashed}; margin:28px 0;"></div>
+
+<p class="ink-600" style="margin:0 0 8px; font-family:${sansFont}; font-size:14px; line-height:1.6; color:${light.ink600};">
+<strong class="ink-900" style="color:${light.ink900};">Was this you?</strong> No action needed — you can ignore this.
+</p>
+<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.6; color:${light.ink500};">
+Wasn&rsquo;t you? Open Recur and change your password from Settings right away, which also signs every other device out.
+</p>
+`,
+    preheaderText,
+  );
+
+  const text = [
+    'Security',
+    '',
+    "We noticed a sign-in to your Recur account from a device we haven't seen before.",
+    '',
+    `Time: ${whenText}`,
+    `IP address: ${ipText}`,
+    '',
+    'Was this you? No action needed.',
+    "Wasn't you? Open Recur and change your password from Settings right away, which also signs every other device out.",
+    '',
+    'Recur · Lagos, Nigeria',
+  ].join('\n');
+
+  return {
+    subject: 'New sign-in to your Recur account',
+    text,
+    html,
+  };
+}
+
 // Exported for anything that wants the raw shell for a future email type
 // (e.g. a renewal reminder) without duplicating the header/footer markup.
 export { emailShell, escapeHtml, light as emailColorsLight, dark as emailColorsDark, sansFont, monoFont };

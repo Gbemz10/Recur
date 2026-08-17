@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { renderOtpEmail, renderWaitlistEmail } from './emailTemplates.js';
+import { renderOtpEmail, renderWaitlistEmail, renderNewDeviceEmail } from './emailTemplates.js';
 
 interface SendEmailInput {
   to: string;
@@ -60,4 +60,9 @@ export function otpEmail(code: string, purpose: 'SIGNUP' | 'RESET_PASSWORD') {
 /** Branded waitlist-confirmation email — see emailTemplates.ts. */
 export function waitlistEmail() {
   return renderWaitlistEmail();
+}
+
+/** Branded new-device sign-in notification — see emailTemplates.ts. */
+export function newDeviceEmail(ip: string | null) {
+  return renderNewDeviceEmail({ ip, when: new Date() });
 }
