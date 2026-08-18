@@ -889,10 +889,15 @@
     margin: 0 auto;
     text-align: center;
   }
+  /* Capped below the h1, not above it. At 76px this outranked the hero
+     headline (54px), so the page's second heading was its biggest type and
+     the hierarchy read backwards however the tags were nested. It is still
+     the largest h2 on the page and still the only centred one, which is
+     enough to make it the statement it is meant to be. */
   .statement h2 {
-    font-size: clamp(38px, 6.4vw, 76px);
-    line-height: 1.02;
-    letter-spacing: -0.035em;
+    font-size: clamp(34px, 4.2vw, 48px);
+    line-height: 1.06;
+    letter-spacing: -0.03em;
   }
   .statement p {
     max-width: 46ch;
@@ -920,14 +925,13 @@
      product's whole claim is that a month is one number made of parts, and
      a stacked bar is that sentence drawn. Pie charts hide the ordering,
      separate bars hide the total, and both lose the point. */
-  /* This element carries .wrap for its gutters but must not inherit its
-     1140px cap: the whole point of the section is that one thing on the page
-     runs wider than the column everything else sits in. */
-  .viz-wrap {
-    max-width: none;
-  }
+  /* Aligned to the same column as every other section, not full-bleed.
+     Running wider was deliberate but wrong: it put this section's left edge
+     146px outside the one every other block on the page shares, so the
+     thing that was meant to read as emphasis read as a broken margin. The
+     section is still distinct through its content and its interaction; it
+     does not also need to break the grid to earn that. */
   .viz {
-    max-width: 1320px;
     margin: 0 auto;
   }
 
@@ -1337,7 +1341,10 @@
 
   /* ------------------------------------------------------------ final cta */
   .final { text-align: center; padding: 104px 0 96px; }
-  .final h2 { font-size: clamp(30px, 4.6vw, 52px); max-width: 16ch; margin: 0 auto 28px; }
+  /* Also brought under the h1. At 52 it sat a single pixel-step below the
+     hero headline, which is close enough that neither reads as ranking the
+     other. */
+  .final h2 { font-size: clamp(30px, 4vw, 46px); max-width: 16ch; margin: 0 auto 28px; }
   .final .signup { margin: 0 auto; }
   .final .field-error { text-align: center; }
   .final .assurance { justify-content: center; }
