@@ -99,6 +99,24 @@
 
     --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
+    /* Fractal noise used to break up the hero light. feComponentTransfer
+       compresses the turbulence's alpha into 0.62-1.0 so it modulates the
+       light rather than punching holes in it. */
+    --light-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.38' intercept='0.62'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+    /* Spending categories, lifted from the Flutter app's own ramp
+       (SpendCategoryMeta in lib/models/spending.dart) rather than invented
+       for the web. The breakdown on this page is the same data the app
+       renders, so it should be the same colours; anyone who sees the site
+       and then opens the app reads one system, not two. */
+    --cat-transfers: #52606E;
+    --cat-food: #B4552F;
+    --cat-bills: #5C7A38;
+    --cat-transport: #276E70;
+    --cat-fun: #7A4670;
+    --cat-shopping: #9A6B15;
+    --cat-other: #83867A;
+
     /* The hero screenshot, as a CSS value, so the blurred echo layer behind
        the device can reuse the same asset without a second <img> in the
        markup. Swapped alongside the <picture> source in the dark block. */
@@ -135,6 +153,17 @@
       --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px -16px rgba(0, 0, 0, 0.70);
       --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 24px 48px -28px rgba(0, 0, 0, 0.85);
 
+      /* The app's dark ramp, same source as the light values above. Every
+         one is lifted rather than merely re-used, for the reason
+         AppColors.muted is: a hue tuned to sit on paper loses its
+         separation against ink. */
+      --cat-transfers: #9AA8B6;
+      --cat-food: #E8916B;
+      --cat-bills: #9CC163;
+      --cat-transport: #5FB8B9;
+      --cat-fun: #C48ABA;
+      --cat-shopping: #D9A441;
+      --cat-other: #A8AB9E;
     }
   }
 
@@ -586,6 +615,40 @@
     perspective: 1400px;
   }
 
+  /* ------------------------------------------------------ emitted light
+     A screen is a light source, so the light starts at the screen and falls
+     off, rather than being a pool the device was placed on top of.
+     Four things separate this from the aura it replaces:
+       - it is inset well inside the device's own footprint, so it reads as
+         spill from the panel rather than a halo around the section;
+       - it falls off fast (68%), so there is a lit region and an unlit one
+         rather than an even wash across the whole hero;
+       - it is masked with fractal noise, because real light through air is
+         never a perfectly smooth gradient and the smoothness is most of
+         what makes a CSS glow look synthetic;
+       - it is emerald only. The warm note is spent in exactly one place,
+         below, where it means something.
+     The noise mask runs alpha between 0.62 and 1.0 rather than 0 and 1: at
+     full range it stops being texture and becomes visible speckle. */
+  .hero-visual::before {
+    content: "";
+    position: absolute;
+    inset: 12% 17% 21% 17%;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 58% 46% at 50% 38%,
+      color-mix(in srgb, var(--forest) 30%, transparent) 0%,
+      color-mix(in srgb, var(--forest) 9%, transparent) 42%,
+      transparent 68%
+    );
+    filter: blur(30px);
+    -webkit-mask-image: var(--light-noise);
+    mask-image: var(--light-noise);
+    -webkit-mask-size: 190px 190px;
+    mask-size: 190px 190px;
+  }
+
   .shot {
     position: relative;
     z-index: 1;
@@ -690,6 +753,7 @@
   .due-chip {
     position: absolute;
     z-index: 2;
+    isolation: isolate;
     left: -14px;
     bottom: 9%;
     background: var(--surface);
@@ -718,6 +782,25 @@
     flex-shrink: 0;
   }
   .due-chip .value { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-top: 5px; color: var(--ink); }
+
+  /* The only warm light on the page, and the whole reason the rest of the
+     hero is emerald. This chip is the "money is about to leave" moment, so
+     it gets its own small heat source: tight, behind the card, and gone
+     within about a chip-width. A second warm wash anywhere else would spend
+     the meaning this one carries. */
+  .due-chip::after {
+    content: "";
+    position: absolute;
+    inset: -34% -22%;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 50% 46% at 50% 55%,
+      color-mix(in srgb, var(--alert) 26%, transparent) 0%,
+      transparent 70%
+    );
+    filter: blur(20px);
+  }
 
   /* The category chip. Tilted the opposite way to the device, so the two
      read as separate objects on the same surface rather than one sticker
@@ -801,6 +884,169 @@
   .section-head { max-width: 620px; margin-bottom: 52px; }
   .section-head h2 { font-size: clamp(28px, 3.6vw, 42px); }
   .section-head p { color: var(--ink-soft); font-size: 17px; margin-top: 16px; max-width: 52ch; }
+
+  /* ------------------------------------------------- oversized statement
+     One section on the page stops presenting and just says the thing. It is
+     the only centred, full-scale type moment here, which is what stops the
+     page reading as heading-paragraph-visual six times in a row. Nothing
+     sits beside it on purpose: the empty space either side is the effect. */
+  .statement {
+    max-width: 17ch;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .statement h2 {
+    font-size: clamp(38px, 6.4vw, 76px);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+  .statement p {
+    max-width: 46ch;
+    margin: 26px auto 0;
+    font-size: 17.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  /* The statement's own max-width is set in ch on the heading, so the
+     paragraph has to escape it to stay readable. */
+  .statement { max-width: none; }
+  .statement h2 { max-width: 17ch; margin-inline: auto; }
+
+  @media (max-width: 640px) {
+    .statement h2 { max-width: 13ch; }
+    .statement p { font-size: 16px; margin-top: 20px; }
+  }
+
+  /* ------------------------------------------------ spending breakdown
+     The page's one full-bleed data moment, and the only section that is
+     interactive rather than read.
+     It exists because the hero answers "what repeats" and nothing answered
+     "and the rest of it". A single stacked bar is the right form: the
+     product's whole claim is that a month is one number made of parts, and
+     a stacked bar is that sentence drawn. Pie charts hide the ordering,
+     separate bars hide the total, and both lose the point. */
+  /* This element carries .wrap for its gutters but must not inherit its
+     1140px cap: the whole point of the section is that one thing on the page
+     runs wider than the column everything else sits in. */
+  .viz-wrap {
+    max-width: none;
+  }
+  .viz {
+    max-width: 1320px;
+    margin: 0 auto;
+  }
+
+  /* Stacked, not baseline-aligned. An 11px label sharing a baseline with a
+     52px number reads as a collision rather than a pair: the label appears
+     to float against the number's midpoint because their cap heights are
+     nowhere near each other. */
+  .viz-total {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 20px;
+  }
+  .viz-total .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .viz-total .value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(30px, 4.6vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .viz-bar {
+    display: flex;
+    width: 100%;
+    height: clamp(64px, 8vw, 92px);
+    border-radius: var(--r-container);
+    overflow: hidden;
+    gap: 2px;
+    background: var(--line);
+  }
+  .viz-seg {
+    flex: 0 0 calc(var(--w) * 1%);
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    background: var(--c);
+    /* Scales from the left edge so the row assembles in reading order
+       rather than growing out of its own middle. */
+    transform-origin: left center;
+    transition: opacity 0.32s var(--ease), filter 0.32s var(--ease);
+  }
+  .viz-seg:first-child { border-radius: var(--r-container) 0 0 var(--r-container); }
+  .viz-seg:last-child { border-radius: 0 var(--r-container) var(--r-container) 0; }
+  .viz-seg:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 3px; }
+
+  /* Highlighting works by dimming the rest, not by brightening one. Raising
+     a segment above its neighbours changes the colour the reader is trying
+     to compare; lowering the others leaves it exactly as it was. */
+  /* CSS cannot compare one element's attribute against another's, so the
+     script marks the matching segment rather than the CSS deriving it. */
+  .viz[data-active] .viz-seg { opacity: 0.26; }
+  .viz[data-active] .viz-seg.is-active { opacity: 1; }
+
+  .viz-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-top: 20px;
+  }
+  .viz-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 14px 9px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background 0.2s var(--ease);
+  }
+  .viz-chip .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--c);
+    flex-shrink: 0;
+  }
+  .viz-chip .amt {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .viz-chip:hover, .viz-chip:focus-visible { border-color: var(--line-strong); color: var(--ink); }
+  .viz-chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, var(--surface)); color: var(--ink); }
+
+  .viz-note {
+    margin-top: 22px;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    max-width: 60ch;
+  }
+  .viz-note strong { color: var(--ink); font-weight: 700; }
+
+  @media (max-width: 640px) {
+    .viz-bar { height: 56px; }
+    .viz-chip { font-size: 12.5px; padding: 8px 12px 8px 10px; }
+  }
 
   /* ------------------------------------------------------------- decode
      The product demo, rendered as the thing it actually is: a two-column
@@ -984,7 +1230,14 @@
   }
 
   /* ------------------------------------------------------------ showcase */
+  /* Mirrored against the hero: visual left, copy right. The hero already
+     spent the text-left/visual-right composition, and running it a second
+     time is most of what made the page read as a template. Source order
+     keeps the copy first, so a screen reader and a narrow viewport both get
+     the heading before the pictures. */
   .showcase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .showcase-grid > :first-child { order: 2; }
+  .showcase-grid > :last-child { order: 1; }
   .showcase-list { display: flex; flex-direction: column; }
   .showcase-item { padding: 26px 0; border-top: 1px solid var(--line); }
   .showcase-item:first-child { border-top: none; padding-top: 0; }
@@ -996,11 +1249,20 @@
      scrapbook tilt, and nothing extends past its own box, so no breakpoint
      has to rescue it from the viewport edge. */
   .shot-cascade { position: relative; display: grid; gap: 8px; }
-  .shot-cascade .shot:first-child { margin-right: 12%; }
-  .shot-cascade .shot:last-child { margin-left: 12%; }
+  /* One device, shown large, rather than two stacked.
+     The second was the dark notification screen, which is a dark card on a
+     dark ground: on a dark page it rendered as roughly 470px of nothing
+     between the first device and the next section. A single oversized
+     device is also the stronger composition here, since this section's job
+     is to be the page's product moment rather than a gallery. */
+  .shot-cascade .shot { margin: 0 auto; max-width: 460px; }
 
   @media (max-width: 900px) {
     .showcase-grid { grid-template-columns: 1fr; gap: 48px; }
+    /* Stacked, the mirror has nothing to mirror, and reading order wins:
+       heading first, then what it is describing. */
+    .showcase-grid > :first-child { order: 1; }
+    .showcase-grid > :last-child { order: 2; }
     .shot-cascade { max-width: 460px; margin: 0 auto; width: 100%; }
   }
   @media (max-width: 520px) {
@@ -1225,10 +1487,13 @@
   <!-- =========================================================== DECODE -->
   <section id="problem">
     <div class="wrap">
-      <div class="section-head reveal">
+      <!-- The page's one oversized centred statement. Nothing sits beside
+           it; the space either side is the composition. -->
+      <div class="statement reveal">
         <h2>None of this shows up as &ldquo;Netflix.&rdquo;</h2>
         <p>Nigerian bank statements narrate every charge in bank-speak, not brand names. Three real lines, and what they are actually hiding.</p>
       </div>
+      <div style="height: 56px;" aria-hidden="true"></div>
 
       <div class="decode reveal">
         <div class="decode-head" aria-hidden="true">
@@ -1269,6 +1534,58 @@
             <p class="decode-meta is-alert"><span class="amount">&#8358;15,000</span> every month. Cancelled at the front desk in March. Still charging in August.</p>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== BREAKDOWN
+       The page's only full-bleed, interactive section, and the only place
+       the reader can act on something rather than read it. It also carries
+       the half of the product the site never mentioned: subscriptions are
+       what repeats, this is where the rest of the month went. -->
+  <section id="breakdown">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Then there is everything else.</h2>
+        <p>Recur sorts every debit into a category you can actually budget against, so one month is one number made of parts rather than four hundred lines.</p>
+      </div>
+    </div>
+
+    <div class="wrap viz-wrap">
+      <div class="viz reveal" id="viz">
+        <div class="viz-total">
+          <span class="label">August, all accounts</span>
+          <span class="value" id="viz-total-value">&#8358;0</span>
+        </div>
+
+        <!-- One bar, seven parts. The role/label pair carries the same
+             information to a screen reader that the bar carries visually,
+             since the segments themselves are unlabelled by design. -->
+        <div class="viz-bar" id="viz-bar" role="img"
+             aria-label="August spending of 260,900 naira: transfers and cash 82,400, food and groceries 54,100, bills and utilities 38,900, transport 31,200, entertainment 26,400, shopping 18,700, other 9,200.">
+          <button class="viz-seg" type="button" data-cat="transfers" style="--w: 31.6; --c: var(--cat-transfers);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="food"      style="--w: 20.7; --c: var(--cat-food);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="bills"     style="--w: 14.9; --c: var(--cat-bills);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="transport" style="--w: 12.0; --c: var(--cat-transport);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="fun"       style="--w: 10.1; --c: var(--cat-fun);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="shopping"  style="--w: 7.2;  --c: var(--cat-shopping);" tabindex="-1" aria-hidden="true"></button>
+          <button class="viz-seg" type="button" data-cat="other"     style="--w: 3.5;  --c: var(--cat-other);" tabindex="-1" aria-hidden="true"></button>
+        </div>
+
+        <!-- The legend is the real control surface: focusable, labelled, and
+             the only thing a keyboard or screen reader has to reach. The
+             segments above are decorative duplicates of it. -->
+        <div class="viz-legend" id="viz-legend">
+          <button class="viz-chip" type="button" data-cat="transfers" aria-pressed="false" style="--c: var(--cat-transfers);"><span class="dot"></span>Transfers &amp; cash <span class="amt">&#8358;82,400</span></button>
+          <button class="viz-chip" type="button" data-cat="food"      aria-pressed="false" style="--c: var(--cat-food);"><span class="dot"></span>Food &amp; groceries <span class="amt">&#8358;54,100</span></button>
+          <button class="viz-chip" type="button" data-cat="bills"     aria-pressed="false" style="--c: var(--cat-bills);"><span class="dot"></span>Bills &amp; utilities <span class="amt">&#8358;38,900</span></button>
+          <button class="viz-chip" type="button" data-cat="transport" aria-pressed="false" style="--c: var(--cat-transport);"><span class="dot"></span>Transport <span class="amt">&#8358;31,200</span></button>
+          <button class="viz-chip" type="button" data-cat="fun"       aria-pressed="false" style="--c: var(--cat-fun);"><span class="dot"></span>Entertainment <span class="amt">&#8358;26,400</span></button>
+          <button class="viz-chip" type="button" data-cat="shopping"  aria-pressed="false" style="--c: var(--cat-shopping);"><span class="dot"></span>Shopping <span class="amt">&#8358;18,700</span></button>
+          <button class="viz-chip" type="button" data-cat="other"     aria-pressed="false" style="--c: var(--cat-other);"><span class="dot"></span>Other <span class="amt">&#8358;9,200</span></button>
+        </div>
+
+        <p class="viz-note">Every one of those was a raw bank narration before Recur read it. Get a category wrong and you fix it once, and <strong>every future charge from that merchant follows.</strong></p>
       </div>
     </div>
   </section>
@@ -1330,12 +1647,6 @@
           <picture>
             <source srcset="assets/onboarding-2-dark.jpg" media="(prefers-color-scheme: dark)">
             <img src="assets/onboarding-2.jpg" width="760" height="1647" alt="The Recur dashboard showing 63,033 naira repeating every month across 9 active subscriptions, with Netflix, DStv Compact, MTN Data and ChatGPT Plus listed beneath, and a note that this comes to 756,396 naira a year." loading="lazy" decoding="async">
-          </picture>
-        </figure>
-        <figure class="shot">
-          <picture>
-            <source srcset="assets/onboarding-3-dark.jpg" media="(prefers-color-scheme: dark)">
-            <img src="assets/onboarding-3.jpg" width="760" height="1647" alt="A phone notification from Recur reading: DStv takes 19,000 naira in 2 days. Still watching? Tap for how to cancel." loading="lazy" decoding="async">
           </picture>
         </figure>
       </div>
@@ -1498,6 +1809,120 @@
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
     els.forEach(function (e) { io.observe(e); });
+  })();
+
+  // ---- spending breakdown: assemble, then let the reader interrogate it ----
+  //
+  // The entrance is the argument, not decoration. The bar builds one segment
+  // at a time, largest first, while the total counts up alongside it, so the
+  // reader watches a month's spending being assembled out of its categories
+  // rather than being shown a finished chart. That is the product's actual
+  // claim, drawn.
+  (function () {
+    var viz = document.getElementById('viz');
+    if (!viz) return;
+
+    var segs = Array.prototype.slice.call(viz.querySelectorAll('.viz-seg'));
+    var chips = Array.prototype.slice.call(viz.querySelectorAll('.viz-chip'));
+    var totalEl = document.getElementById('viz-total-value');
+    var TOTAL = 260900;
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function naira(n) {
+      return '₦' + Math.round(n).toLocaleString('en-NG');
+    }
+
+    // ---- entrance ----
+    function assemble() {
+      if (reduced) {
+        segs.forEach(function (s) { s.style.transform = 'none'; });
+        totalEl.textContent = naira(TOTAL);
+        return;
+      }
+
+      segs.forEach(function (s, i) {
+        s.style.transform = 'scaleX(0)';
+        s.style.transition = 'transform 620ms cubic-bezier(0.16, 1, 0.3, 1) ' + (i * 90) + 'ms';
+      });
+      // Next frame, so the zero state is painted before the transition to 1
+      // begins. Without this the browser coalesces both writes and nothing
+      // animates.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          segs.forEach(function (s) { s.style.transform = 'scaleX(1)'; });
+        });
+      });
+
+      // The count runs for as long as the bar takes to finish assembling, so
+      // the number lands exactly when the last segment does.
+      var duration = 620 + (segs.length - 1) * 90;
+      var start = performance.now();
+      (function tick(now) {
+        var t = Math.min((now - start) / duration, 1);
+        // Same easing curve as the segments, so the number and the bar move
+        // as one object rather than two things that happen to overlap.
+        var eased = 1 - Math.pow(1 - t, 3);
+        totalEl.textContent = naira(TOTAL * eased);
+        if (t < 1) requestAnimationFrame(tick);
+      })(start);
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          assemble();
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.35 });
+      io.observe(viz);
+    } else {
+      assemble();
+    }
+
+    // ---- interrogation ----
+    // Hover previews, click pins. Pinning matters on touch, where there is no
+    // hover at all, and it is why the chips are buttons with aria-pressed
+    // rather than list items with a mouseenter handler.
+    var pinned = null;
+
+    function show(cat) {
+      viz.setAttribute('data-active', cat);
+      segs.forEach(function (s) { s.classList.toggle('is-active', s.dataset.cat === cat); });
+    }
+    function clear() {
+      if (pinned) return show(pinned);
+      viz.removeAttribute('data-active');
+      segs.forEach(function (s) { s.classList.remove('is-active'); });
+    }
+
+    chips.forEach(function (chip) {
+      var cat = chip.dataset.cat;
+      chip.addEventListener('mouseenter', function () { if (!pinned) show(cat); });
+      chip.addEventListener('mouseleave', function () { if (!pinned) clear(); });
+      chip.addEventListener('focus', function () { if (!pinned) show(cat); });
+      chip.addEventListener('blur', function () { if (!pinned) clear(); });
+      chip.addEventListener('click', function () {
+        pinned = pinned === cat ? null : cat;
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.cat === pinned)); });
+        pinned ? show(pinned) : clear();
+      });
+    });
+
+    // Tapping a segment is the same gesture as tapping its chip.
+    segs.forEach(function (seg) {
+      seg.addEventListener('click', function () {
+        var chip = chips.filter(function (c) { return c.dataset.cat === seg.dataset.cat; })[0];
+        if (chip) chip.click();
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !pinned) return;
+      pinned = null;
+      chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      clear();
+    });
   })();
 
   // ---- waitlist forms, real signups against the Recur API ----
