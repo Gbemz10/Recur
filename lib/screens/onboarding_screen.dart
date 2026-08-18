@@ -625,9 +625,12 @@ class _FloatCard extends StatelessWidget {
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        // Followed the theme as of the dark-mode pass. Hardcoded white left
+        // these cards glowing on a dark onboarding page, which is the same
+        // drift that made the whole preview render light inside a dark app.
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.neutral200),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
             color: AppColors.neutral900.withValues(alpha: 0.14),
@@ -671,28 +674,32 @@ class _DetectedChip extends StatelessWidget {
             children: [
               Text(
                 '${merchant.name} · $amount',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.neutral900,
+                  color: AppColors.ink(context),
                 ),
               ),
               const SizedBox(height: 1),
-              const Row(
+              // primaryInk, not primary: the brand green is tuned for paper
+              // and drops to about 2:1 on a dark surface, so drawn as a glyph
+              // it has to step up. Changing the fill above without this is
+              // exactly what made the highlighted rows unreadable earlier.
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.autorenew_rounded,
                     size: 10,
-                    color: AppColors.primary,
+                    color: AppColors.primaryInk(context),
                   ),
-                  SizedBox(width: 3),
+                  const SizedBox(width: 3),
                   Text(
                     'every month',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: AppColors.primaryInk(context),
                     ),
                   ),
                 ],
@@ -787,12 +794,12 @@ class _AlertCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Recur',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.neutral900,
+                          color: AppColors.ink(context),
                         ),
                       ),
                       const SizedBox(width: 5),
@@ -801,29 +808,29 @@ class _AlertCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.neutral400,
+                          color: AppColors.muted(context),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
-                  const Text(
+                  Text(
                     'DStv takes ₦19,000 in 2 days',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                       height: 1.25,
-                      color: AppColors.neutral900,
+                      color: AppColors.ink(context),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Still watching? Tap for how to cancel.',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w500,
                       height: 1.3,
-                      color: AppColors.neutral500,
+                      color: AppColors.muted(context),
                     ),
                   ),
                 ],

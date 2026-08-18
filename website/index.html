@@ -102,7 +102,6 @@
     /* The hero screenshot, as a CSS value, so the blurred echo layer behind
        the device can reuse the same asset without a second <img> in the
        markup. Swapped alongside the <picture> source in the dark block. */
-    --shot-src: url("assets/onboarding-1.jpg");
   }
 
   /* Dark mode. The app has shipped full light + dark since the pre-auth
@@ -136,7 +135,6 @@
       --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px -16px rgba(0, 0, 0, 0.70);
       --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 24px 48px -28px rgba(0, 0, 0, 0.85);
 
-      --shot-src: url("assets/onboarding-1-dark.jpg");
     }
   }
 
@@ -588,43 +586,6 @@
     perspective: 1400px;
   }
 
-  /* One directional light, from upper-right. Two stops rather than a
-     symmetric radial, so it reads as illumination arriving from somewhere
-     rather than as a halo emitted by nothing. */
-  .hero-visual::before {
-    content: "";
-    position: absolute;
-    /* Top bleed kept to -6%, not -18%. Any further and the light reaches the
-       sticky nav, whose backdrop-filter clips to its own box and turns the
-       spill into a visible hairline across the header. A light source that
-       exposes another element's seam is not controlled imperfection. */
-    inset: -6% -14% -6% -4%;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(58% 50% at 84% 8%, color-mix(in srgb, var(--forest) 32%, transparent), transparent 72%),
-      radial-gradient(52% 40% at 96% 32%, color-mix(in srgb, #7FD9AE 15%, transparent), transparent 70%);
-    filter: blur(30px);
-  }
-
-  /* The far layer: the same screenshot, scaled up, pushed back, heavily
-     blurred and nearly invisible. It is what gives the device something to
-     be in front of. Offset down-left, i.e. away from the light. */
-  .hero-visual::after {
-    content: "";
-    position: absolute;
-    left: -9%; right: 5%; top: 7%; bottom: -7%;
-    z-index: 0;
-    pointer-events: none;
-    background-image: var(--shot-src);
-    background-size: cover;
-    background-position: 50% 22%;
-    border-radius: 34px;
-    filter: blur(26px) saturate(0.75);
-    opacity: 0.34;
-    transform: translateZ(-90px) rotate(-3deg);
-  }
-
   .shot {
     position: relative;
     z-index: 1;
@@ -674,20 +635,6 @@
     transform: rotate(-1.5deg) translateZ(0);
   }
 
-  /* Lighting across the device, matching the source above-right: a highlight
-     rolling off the top-right corner, a shade gathering bottom-left. This is
-     what makes it read as lit rather than pasted, and it is why the old flat
-     screenshot needed a glow to look like anything at all. */
-  .hero-visual .shot::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(212deg, color-mix(in srgb, #FFFFFF 13%, transparent) 0%, transparent 40%),
-      linear-gradient(32deg, color-mix(in srgb, #000000 26%, transparent) 0%, transparent 46%);
-  }
-
   .shot img {
     width: 105.56%;
     /* `height: auto` is load-bearing, not boilerplate. The width/height
@@ -702,20 +649,6 @@
   }
 
   @media (prefers-color-scheme: dark) {
-    /* Dark mode gets a completely different crop, not a filtered version of
-       the light one.
-       Light mode can afford to include the slide's backdrop because that
-       backdrop and the paper are the same brightness, so a soft mask
-       dissolves one into the other and the callout cards survive. On ink
-       there is no version of that which works: the backdrop is near-white,
-       the page is near-black, and every gradual blend between them passes
-       through mid-grey. Three attempts proved that the hard way. The problem
-       was never the edge, it was that a large AREA of near-white was sitting
-       on a near-black page, and no edge treatment fixes an area.
-       So dark crops to the device itself and shows no backdrop at all.
-       Bounds measured off the pixels rather than estimated: the device sits
-       at x 146..608, y 330..948 in all three slides, found by scanning the
-       bezel columns for dark runs. This window sits 4px inside that. */
     /* Dark uses a genuinely dark-themed asset, captured from the app itself
        running on a simulator in dark mode, rather than a re-crop of the
        light one.
@@ -749,12 +682,6 @@
       margin-top: -36.36%;
     }
 
-    /* Brand green rather than neutral light, so the haze around the device
-       reads as Recur and not as a grey halo. */
-    .hero-visual::before, .shot-cascade::before {
-      background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--forest) 55%, transparent), transparent 70%);
-      filter: blur(50px);
-    }
   }
 
   /* One of the two places the loud colour is allowed. */
@@ -881,7 +808,10 @@
      auto-rotating three-card stack that showed one row at a time on a five
      second timer, so comparing the three took fifteen seconds of waiting
      and the motion competed with the paragraph beside it for attention. */
-  .decode { border-top: 1px solid var(--line); }
+  /* No rule above the column headers. The line belongs under them, where it
+     separates the headings from the rows they describe, rather than above
+     them where it just fences the section off from the paragraph before it. */
+  .decode { border-top: none; }
   .decode-row {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -894,7 +824,8 @@
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     gap: 32px;
-    padding-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
     font-family: var(--mono);
     font-size: 11px;
     font-weight: 600;
@@ -1065,16 +996,6 @@
      scrapbook tilt, and nothing extends past its own box, so no breakpoint
      has to rescue it from the viewport edge. */
   .shot-cascade { position: relative; display: grid; gap: 8px; }
-  .shot-cascade::before {
-    content: "";
-    position: absolute;
-    inset: 4% -4%;
-    z-index: 0;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--forest) 14%, transparent), transparent 70%);
-    filter: blur(40px);
-    pointer-events: none;
-  }
   .shot-cascade .shot:first-child { margin-right: 12%; }
   .shot-cascade .shot:last-child { margin-left: 12%; }
 
