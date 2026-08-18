@@ -162,13 +162,31 @@
     border-radius: 4px;
   }
 
+  /* Reduced motion means fewer and gentler, not none. The previous version
+     of this block set every duration on the page to 0.01ms, which also
+     killed the fades and hover colour changes that carry no motion at all
+     and only help comprehension. Now: everything that moves stops moving,
+     and everything that only fades keeps fading, faster. */
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+
+    /* No travel, no draw, no staggered arrival. */
+    .hero-copy h1, .hero-copy .lead, .hero-copy .signup,
+    .hero-copy .assurance, .hero-visual, .due-chip {
+      animation: none;
+      opacity: 1;
     }
+    .reveal, .decode-row { opacity: 1; transform: none; transition: none; }
+    .decode-arrow { opacity: 1; transition: none; }
+    .step::before { transform: none; transition: none; }
+    .mobile-menu { transform: none; transition: opacity 120ms var(--ease), display 120ms allow-discrete; }
+    .mobile-menu.open { transform: none; }
+    .btn:active { transform: none; }
+
+    /* The nav still collapses, because that one is a layout state rather
+       than decoration, but it gets there without the travel. */
+    nav.bar { transition-duration: 0.01ms; }
+    header.site.scrolled nav.bar { transform: none; }
   }
 
   .wrap {
@@ -229,9 +247,12 @@
     white-space: nowrap;
     transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.12s var(--ease);
   }
+  /* Press feedback on every button, not just the primary one. The panel CTA
+     had none, which made the one call to action on the darkest, most
+     deliberate section of the page the only one that did not answer a tap. */
+  .btn:active { transform: scale(0.985); }
   .btn-primary { background: var(--forest); color: #FFFFFF; }
   .btn-primary:hover { background: var(--forest-deep); }
-  .btn-primary:active { transform: scale(0.985); }
   .btn-primary[disabled] { opacity: 0.6; cursor: default; }
   .btn-sm { padding: 10px 18px; font-size: 14px; }
 
@@ -332,14 +353,32 @@
   .nav-menu-btn[aria-expanded="true"] .icon-open { display: none; }
   .nav-menu-btn[aria-expanded="true"] .icon-close { display: block; }
 
+  /* The panel used to appear and vanish on a display toggle, with nothing
+     bridging either direction. `allow-discrete` lets display participate in
+     the transition so the fade still runs on the way out, and
+     @starting-style gives the entry a value to come from without needing a
+     second class or a JS tick. Both degrade to the old instant swap where
+     unsupported, which is exactly the current behaviour. */
   .mobile-menu {
     display: none;
     flex-direction: column;
     background: var(--surface);
     border-bottom: 1px solid var(--line);
     box-shadow: var(--shadow-soft);
+    opacity: 0;
+    transform: translateY(-8px);
+    /* Anchored to the bar it drops out of, so it grows from the top edge
+       rather than from its own middle. */
+    transform-origin: top center;
+    transition:
+      opacity 200ms var(--ease),
+      transform 200ms var(--ease),
+      display 200ms allow-discrete;
   }
-  .mobile-menu.open { display: flex; }
+  .mobile-menu.open { display: flex; opacity: 1; transform: none; }
+  @starting-style {
+    .mobile-menu.open { opacity: 0; transform: translateY(-8px); }
+  }
   .mobile-menu a {
     padding: 15px var(--edge);
     font-size: 16px;
@@ -456,6 +495,43 @@
   }
   .assurance svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--forest-ink); }
 
+  /* ------------------------------------------------------- hero entrance
+     A CSS animation rather than JS, deliberately: this fires during page
+     load, which is exactly when the main thread is busiest, and CSS
+     animations run off it. A rAF-driven version would drop frames at the
+     one moment the page gets judged.
+     `backwards` fill matters as much as the keyframes. Without it each
+     element paints at its settled position, then snaps back to the start
+     when its delay elapses, which flashes the whole hero. */
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .hero-copy h1,
+  .hero-copy .lead,
+  .hero-copy .signup,
+  .hero-copy .assurance,
+  .hero-visual,
+  .due-chip {
+    animation: riseIn 620ms var(--ease) backwards;
+  }
+  /* Reading order, roughly: headline, then the device it is talking about,
+     then the sentence, then the thing to do about it. The device is early
+     because it is the largest object on screen and holding it back reads as
+     a loading failure rather than as choreography. */
+  .hero-copy h1        { animation-delay: 40ms; }
+  .hero-visual         { animation-delay: 110ms; }
+  .hero-copy .lead     { animation-delay: 130ms; }
+  .hero-copy .signup   { animation-delay: 200ms; }
+  .hero-copy .assurance{ animation-delay: 270ms; }
+  /* Last, and after a real gap: the chip is an alert about money moving, and
+     it lands once the thing it is annotating has settled. */
+  .due-chip            { animation-delay: 520ms; }
+
+  /* The error span is excluded from the cascade above on purpose: it owns
+     its own opacity transition for validation, and animating it on load
+     would fight that and briefly show an empty error slot. */
+
   /* The three onboarding assets are composed slides, not raw screenshots:
      each already contains a device mockup on a brand-tinted ground, with
      its own onboarding headline and Continue button underneath. Framing
@@ -486,23 +562,26 @@
     z-index: 1;
     margin: 0;
     overflow: hidden;
-    /* Crop window: source x 150..604, y 334..944 of a 760x1647 slide, which
-       lands just inside the device's own bezel. No slide backdrop is left in
-       the frame at all, which is the entire point.
-       These bounds were measured off the pixels rather than estimated: the
-       device sits at x 146..608, y 330..948 in all three slides, found by
-       scanning the bezel columns for dark runs. Two earlier attempts here
-       were eyeballed and both leaked backdrop into a corner.
-       Three passes went into blending that backdrop into the page before the
-       obvious answer: it never needed blending, it needed removing. A mask
-       can only fade an edge, and the problem was an area. */
-    aspect-ratio: 454 / 610;
-    /* Cropping inside a rounded bezel still leaves square corners, and those
-       corners are the last place backdrop could show. This restores roughly
-       the device's own ~38px radius. Two values, because one percentage
-       resolves against each axis separately and would draw an ellipse on a
-       box this far from square. */
-    border-radius: 8.37% / 6.23%;
+    /* LIGHT MODE geometry. Crop window: source x 20..740, y 255..1065 of a
+       760x1647 slide, wider than the device on purpose so there is 50-ish px
+       of the slide's own ground on every side for the mask below to dissolve.
+       On paper this works because the slide's ground and the page are the
+       same brightness, so the dissolve is invisible and the callout cards
+       survive intact. Dark mode cannot use any of this and overrides the
+       whole block further down. */
+    aspect-ratio: 720 / 810;
+    /* Fading all four edges to transparent lets that ground melt into the
+       paper instead of ending on a hard rectangle, and leaves the device
+       crisp in the middle. No shadow: a shadow follows the box rather than
+       the mask, so it would redraw exactly the rectangle this removes. */
+    -webkit-mask-image:
+      linear-gradient(to bottom, transparent 0%, #000 9%, #000 91%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to bottom, transparent 0%, #000 9%, #000 91%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+    mask-composite: intersect;
   }
   /* The dissolve only works when the page and the slide's ground are the
      same brightness, which is true on paper and false on ink: fading a
@@ -510,26 +589,14 @@
      instead of a hard one, which is the same tell wearing a softer edge.
      On dark, the crop becomes a deliberate light panel with a real border
      instead, which is the honest way to show light UI on a dark page. */
-  @media (prefers-color-scheme: dark) {
-    /* The crop does the structural work now, so dark needs no separate
-       masking, no border and no panel treatment. What is left is a lit
-       phone screen on a dark page, which is what a phone actually looks
-       like in the dark. Only two adjustments earn their place: */
 
-    /* A slight dim, because a screen captured under studio light still
-       carries more glare than a real one at night. */
-    .shot img { filter: brightness(0.94); }
-
-    /* And a brand-green pool instead of neutral light, so whatever haze
-       surrounds the device reads as Recur rather than as a grey halo. */
-    .hero-visual::before, .shot-cascade::before {
-      background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--forest) 50%, transparent), transparent 72%);
-      filter: blur(48px);
-    }
-  }
+  /* `display: contents` removes the <picture> box entirely, so the <img>
+     stays a direct layout child of .shot and the negative margins that do
+     the cropping still resolve against .shot's width. */
+  .shot picture { display: contents; }
 
   .shot img {
-    width: 167.40%;
+    width: 105.56%;
     /* `height: auto` is load-bearing, not boilerplate. The width/height
        attributes on the tag (kept, so the browser can reserve the right box
        and avoid layout shift) act as presentational hints; without this the
@@ -537,8 +604,59 @@
        the image and slides the crop window up to the wrong region. */
     height: auto;
     max-width: none;
-    margin-left: -33.04%;
-    margin-top: -73.57%;
+    margin-left: -2.78%;
+    margin-top: -35.42%;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    /* Dark mode gets a completely different crop, not a filtered version of
+       the light one.
+       Light mode can afford to include the slide's backdrop because that
+       backdrop and the paper are the same brightness, so a soft mask
+       dissolves one into the other and the callout cards survive. On ink
+       there is no version of that which works: the backdrop is near-white,
+       the page is near-black, and every gradual blend between them passes
+       through mid-grey. Three attempts proved that the hard way. The problem
+       was never the edge, it was that a large AREA of near-white was sitting
+       on a near-black page, and no edge treatment fixes an area.
+       So dark crops to the device itself and shows no backdrop at all.
+       Bounds measured off the pixels rather than estimated: the device sits
+       at x 146..608, y 330..948 in all three slides, found by scanning the
+       bezel columns for dark runs. This window sits 4px inside that. */
+    .shot {
+      aspect-ratio: 454 / 610;
+      -webkit-mask-image: none;
+      mask-image: none;
+      /* Cropping inside a rounded bezel leaves square corners, and those
+         corners are the last place backdrop could show. Restores roughly the
+         device's own ~38px radius. Two values, because one percentage
+         resolves against each axis separately and would draw an ellipse on a
+         box this far from square. */
+      border-radius: 8.37% / 6.23%;
+      /* A hairline rim, then depth. Without the rim the device's near-black
+         bezel dissolves into the near-black page and the screen looks like it
+         is floating unattached; the rim is what a real device edge catches
+         from ambient light, and it is the difference between "cut out" and
+         "photographed". */
+      box-shadow:
+        inset 0 0 0 1px rgba(242, 242, 234, 0.11),
+        0 32px 70px -28px rgba(0, 0, 0, 0.9);
+    }
+    .shot img {
+      width: 167.40%;
+      margin-left: -33.04%;
+      margin-top: -73.57%;
+      /* A slight dim: a screen captured under studio light carries more
+         glare than a real one at night. */
+      filter: brightness(0.94);
+    }
+
+    /* Brand green rather than neutral light, so the haze around the device
+       reads as Recur and not as a grey halo. */
+    .hero-visual::before, .shot-cascade::before {
+      background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--forest) 55%, transparent), transparent 70%);
+      filter: blur(50px);
+    }
   }
 
   /* One of the two places the loud colour is allowed. */
@@ -634,6 +752,33 @@
   }
   .decode-arrow { color: var(--line-strong); flex-shrink: 0; }
   .decode-arrow svg { width: 22px; height: 22px; display: block; }
+
+  /* --------------------------------------------------- decode stagger
+     This section is the page's actual explanation: what the bank prints on
+     the left, what it means on the right. So the rows arrive one at a time
+     rather than as a block, and the arrow in each row resolves a beat after
+     its own row lands, which puts the raw narration on screen fractionally
+     before the translation of it. That ordering is the whole point; without
+     it the two columns appear simultaneously and read as a table.
+     Transitions, not keyframes, because these are driven by an
+     IntersectionObserver toggling `.in` and a fast scroll back and forth
+     should retarget rather than restart. */
+  .decode-row {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 520ms var(--ease), transform 520ms var(--ease);
+  }
+  .decode.in .decode-row { opacity: 1; transform: none; }
+  .decode.in .decode-row:nth-child(3) { transition-delay: 80ms; }
+  .decode.in .decode-row:nth-child(4) { transition-delay: 160ms; }
+
+  /* Opacity only. The arrow rotates 90deg below 760px, and animating its
+     transform here would overwrite that rotation at the end of the
+     transition and leave it pointing the wrong way on mobile. */
+  .decode-arrow { opacity: 0; transition: opacity 380ms var(--ease) 220ms; }
+  .decode.in .decode-arrow { opacity: 1; }
+  .decode.in .decode-row:nth-child(3) .decode-arrow { transition-delay: 300ms; }
+  .decode.in .decode-row:nth-child(4) .decode-arrow { transition-delay: 380ms; }
   .decode-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
   .decode-meta { font-size: 14.5px; color: var(--ink-soft); margin-top: 4px; }
   .decode-meta .amount { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
@@ -669,7 +814,17 @@
     top: 11px; left: 0; right: -40px;
     height: 1px;
     background: var(--line);
+    /* The rule draws left to right as the section arrives, one segment after
+       another. The content is a sequence, and a sequence drawn in order is
+       the cheapest way to say so; three equal rules that appear at once say
+       "category" instead, which is the thing this layout replaced. */
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 680ms var(--ease);
   }
+  .steps.in .step::before { transform: scaleX(1); }
+  .steps.in .step:nth-child(2)::before { transition-delay: 130ms; }
+  .steps.in .step:nth-child(3)::before { transition-delay: 260ms; }
   .step:last-child::before { right: 0; }
   .step::after {
     content: counter(step, decimal-leading-zero);
@@ -691,8 +846,14 @@
     .steps { grid-template-columns: 1fr; gap: 0; }
     .step { padding-top: 0; padding-left: 34px; padding-bottom: 32px; }
     .step:last-child { padding-bottom: 0; }
-    /* Rule turns vertical, nodes hang off it. */
-    .step::before { top: 6px; bottom: -6px; left: 5px; right: auto; width: 1px; height: auto; }
+    /* Rule turns vertical, nodes hang off it, and the draw follows suit:
+       scaleX on a 1px-wide vertical line would scale it out of existence. */
+    .step::before {
+      top: 6px; bottom: -6px; left: 5px; right: auto; width: 1px; height: auto;
+      transform: scaleY(0);
+      transform-origin: top center;
+    }
+    .steps.in .step::before { transform: scaleY(1); }
     .step:last-child::before { bottom: auto; height: 0; }
     .step::after { top: 0; padding-right: 0; background: none; left: 0; }
     .step h3 { padding-top: 0; }
@@ -893,7 +1054,7 @@
   <!-- ============================================================== HERO -->
   <section class="hero">
     <div class="wrap hero-grid">
-      <div>
+      <div class="hero-copy">
         <h1>Stop finding out in a <span class="accent">debit alert.</span></h1>
         <p class="lead">Recur reads your bank statement and shows you every charge that repeats, before the next one lands.</p>
 
@@ -911,13 +1072,19 @@
       </div>
 
       <div class="hero-visual">
-        <!-- onboarding-2 leads, not onboarding-1. Cropping to the device
-             clips whatever the slide floats outside it, and this is the one
-             slide whose overhanging card is dark, so the cut lands on
-             near-black rather than through the middle of a white callout.
-             It also happens to carry the stronger number. -->
+        <!-- Different slide per theme, because the two crops want different
+             things from the source. Light keeps the wide crop, so it wants
+             onboarding-1 with its callout cards intact. Dark crops to the
+             device, which clips whatever a slide floats outside it, and
+             onboarding-2 is the one whose overhanging card is dark: the cut
+             lands on near-black instead of slicing a white callout in half.
+             The alt text describes what both slides show, since it has to
+             serve whichever one loads. -->
         <figure class="shot">
-          <img src="assets/onboarding-2.jpg" width="760" height="1647" alt="The Recur app showing 63,033 naira repeating every month across 9 active subscriptions, listing Netflix, DStv Compact, MTN Data and ChatGPT Plus, with a note that this comes to 756,396 naira a year." loading="eager" fetchpriority="high" decoding="async">
+          <picture>
+            <source srcset="assets/onboarding-2.jpg" media="(prefers-color-scheme: dark)">
+            <img src="assets/onboarding-1.jpg" width="760" height="1647" alt="The Recur app showing the repeating charges it found in a Nigerian bank statement, with Netflix and DStv flagged as renewing every month." loading="eager" fetchpriority="high" decoding="async">
+          </picture>
         </figure>
         <div class="due-chip">
           <div class="label">Coming up</div>
@@ -1028,10 +1195,10 @@
 
       <div class="shot-cascade reveal">
         <figure class="shot">
-          <img src="assets/onboarding-3.jpg" width="760" height="1647" alt="A phone notification from Recur reading: DStv takes 19,000 naira in 2 days. Still watching? Tap for how to cancel." loading="lazy" decoding="async">
+          <img src="assets/onboarding-2.jpg" width="760" height="1647" alt="The Recur dashboard showing 63,033 naira repeating every month across 9 active subscriptions, with Netflix, DStv Compact, MTN Data and ChatGPT Plus listed beneath, and a note that this comes to 756,396 naira a year." loading="lazy" decoding="async">
         </figure>
         <figure class="shot">
-          <img src="assets/onboarding-1.jpg" width="760" height="1647" alt="The Recur app showing a bank statement for August 2026, with Netflix at 7,000 naira and DStv at 19,000 naira highlighted as repeating charges among ordinary transactions." loading="lazy" decoding="async">
+          <img src="assets/onboarding-3.jpg" width="760" height="1647" alt="A phone notification from Recur reading: DStv takes 19,000 naira in 2 days. Still watching? Tap for how to cancel." loading="lazy" decoding="async">
         </figure>
       </div>
     </div>
