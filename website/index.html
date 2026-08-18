@@ -62,7 +62,13 @@
 
     --ink: #171A14;          /* AppColors.neutral900 */
     --ink-soft: #5E6255;     /* AppColors.neutral600 */
-    --ink-faint: #83867A;    /* AppColors.neutral500 */
+    /* Darker than the app's neutral500 (#83867A), which measures 3.5:1 on
+       this paper. Every use of this token on the page is 11-12.5px text
+       (column headers, the period label, footer headings, the input
+       placeholder), so all of it needs AA's 4.5:1 rather than the 3:1 large
+       text gets. This lands at 4.7:1 and still reads a clear tier below
+       --ink-soft. */
+    --ink-faint: #6E7166;
 
     --forest: #0B6E4F;       /* AppColors.primary */
     --forest-deep: #084F39;  /* AppColors.primaryDark */
@@ -138,7 +144,8 @@
 
       --ink: #F2F2EA;
       --ink-soft: #A8AB9E;
-      --ink-faint: #83867A;
+      /* Same problem inverted: #83867A measures 3.5:1 on #10130F too. */
+      --ink-faint: #9A9D91;
 
       /* #0B6E4F is too dark to read as text on #10130F. Fills keep the
          brand green; text and icons step up to a lighter tint that still
@@ -783,24 +790,11 @@
   }
   .due-chip .value { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-top: 5px; color: var(--ink); }
 
-  /* The only warm light on the page, and the whole reason the rest of the
-     hero is emerald. This chip is the "money is about to leave" moment, so
-     it gets its own small heat source: tight, behind the card, and gone
-     within about a chip-width. A second warm wash anywhere else would spend
-     the meaning this one carries. */
-  .due-chip::after {
-    content: "";
-    position: absolute;
-    inset: -34% -22%;
-    z-index: -1;
-    pointer-events: none;
-    background: radial-gradient(
-      ellipse 50% 46% at 50% 55%,
-      color-mix(in srgb, var(--alert) 26%, transparent) 0%,
-      transparent 70%
-    );
-    filter: blur(20px);
-  }
+  /* No warm halo behind this chip. It was meant as the one purposeful heat
+     source on the page, but vermilion blurred over warm paper does not read
+     as light, it reads as a pink stain sitting behind the card. The chip
+     already carries the alert colour in its own label and dot, which is
+     enough; a glow that has to be explained is not doing the job. */
 
   /* The category chip. Tilted the opposite way to the device, so the two
      read as separate objects on the same surface rather than one sticker
@@ -965,11 +959,17 @@
     color: var(--ink);
   }
 
+  /* The summary bar is now a rule, not a slab.
+     A 92px block of flat colour was the wrong object: it dominated the
+     section, carried no labels of its own, and forced the reader to map
+     seven colours onto a legend before it meant anything. As a 12px rule it
+     does the one job it is good at, showing proportion at a glance, and
+     hands the detail to the ledger below where it belongs. */
   .viz-bar {
     display: flex;
     width: 100%;
-    height: clamp(64px, 8vw, 92px);
-    border-radius: var(--r-container);
+    height: 12px;
+    border-radius: 999px;
     overflow: hidden;
     gap: 2px;
     background: var(--line);
@@ -979,73 +979,102 @@
     border: none;
     padding: 0;
     margin: 0;
-    cursor: pointer;
     background: var(--c);
     /* Scales from the left edge so the row assembles in reading order
        rather than growing out of its own middle. */
     transform-origin: left center;
-    transition: opacity 0.32s var(--ease), filter 0.32s var(--ease);
+    transition: opacity 0.32s var(--ease);
   }
-  .viz-seg:first-child { border-radius: var(--r-container) 0 0 var(--r-container); }
-  .viz-seg:last-child { border-radius: 0 var(--r-container) var(--r-container) 0; }
-  .viz-seg:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 3px; }
 
-  /* Highlighting works by dimming the rest, not by brightening one. Raising
-     a segment above its neighbours changes the colour the reader is trying
-     to compare; lowering the others leaves it exactly as it was. */
-  /* CSS cannot compare one element's attribute against another's, so the
-     script marks the matching segment rather than the CSS deriving it. */
-  .viz[data-active] .viz-seg { opacity: 0.26; }
+  /* Dimming to 0.26 read as broken rather than de-emphasised, and with a
+     pinned category it left the whole bar looking washed out with no clue
+     why. 0.5 still separates the highlighted part without making the rest
+     look like a rendering fault. */
+  .viz[data-active] .viz-seg { opacity: 0.5; }
   .viz[data-active] .viz-seg.is-active { opacity: 1; }
 
-  .viz-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    margin-top: 20px;
+  /* ---- the ledger ----
+     This is the section now. Rows, mono figures, hairline proportions: the
+     same object the rest of the page is about, which is a statement you can
+     actually read. Two columns at desktop because seven rows in one column
+     wastes the full-bleed width this section exists to use. */
+  .viz-ledger {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Column-major, not row-major. These rows are a ranking, and the default
+       flow would put second place to the right of first and third below it,
+       so the eye has to zigzag to read an order. Four rows down the left,
+       three down the right, and the ranking reads the way a ranking should. */
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    column-gap: clamp(32px, 5vw, 72px);
+    margin-top: 30px;
   }
-  .viz-chip {
-    display: inline-flex;
+  .viz-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 9px;
-    padding: 9px 14px 9px 11px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
+    gap: 14px;
+    width: 100%;
+    padding: 15px 10px 15px 12px;
+    margin: 0 -10px 0 -12px;
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: var(--r-control);
+    background: transparent;
     font-family: var(--sans);
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--ink-soft);
+    text-align: left;
     cursor: pointer;
-    transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background 0.2s var(--ease);
+    transition: background 0.2s var(--ease);
   }
-  .viz-chip .dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--c);
-    flex-shrink: 0;
-  }
-  .viz-chip .amt {
+  .viz-row:hover, .viz-row:focus-visible { background: color-mix(in srgb, var(--c) 8%, transparent); }
+  .viz-row[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 12%, transparent); }
+  .viz-row:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: -2px; }
+
+  .viz-row .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+  .viz-row .name { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .viz-row .share {
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    min-width: 4ch;
+    text-align: right;
+  }
+  .viz-row .amt {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 14.5px;
     font-weight: 600;
     color: var(--ink);
+    min-width: 8ch;
+    text-align: right;
   }
-  .viz-chip:hover, .viz-chip:focus-visible { border-color: var(--line-strong); color: var(--ink); }
-  .viz-chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, var(--surface)); color: var(--ink); }
 
   .viz-note {
-    margin-top: 22px;
+    margin-top: 30px;
     font-size: 14.5px;
     color: var(--ink-soft);
     max-width: 60ch;
   }
   .viz-note strong { color: var(--ink); font-weight: 700; }
 
-  @media (max-width: 640px) {
-    .viz-bar { height: 56px; }
-    .viz-chip { font-size: 12.5px; padding: 8px 12px 8px 10px; }
+  /* 900, not 760. Two columns survive a 768px tablet on paper but leave each
+     row about 310px to hold a dot, a name, a percentage and an amount, which
+     is legible and unpleasant. One roomy column beats two cramped ones. */
+  @media (max-width: 900px) {
+    /* Single column, so the column-major flow above has to be unwound or the
+       seven rows try to occupy four grid rows. */
+    .viz-ledger { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; }
+  }
+
+  @media (max-width: 620px) {
+    /* The share drops out only once it is genuinely competing for room. The
+       bar above already carries proportion, so the percentage is the least
+       useful of the four values in the row. */
+    .viz-row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; }
+    .viz-row .share { display: none; }
+    .viz-row .name { font-size: 14.5px; }
   }
 
   /* ------------------------------------------------------------- decode
@@ -1558,31 +1587,30 @@
           <span class="value" id="viz-total-value">&#8358;0</span>
         </div>
 
-        <!-- One bar, seven parts. The role/label pair carries the same
-             information to a screen reader that the bar carries visually,
-             since the segments themselves are unlabelled by design. -->
-        <div class="viz-bar" id="viz-bar" role="img"
-             aria-label="August spending of 260,900 naira: transfers and cash 82,400, food and groceries 54,100, bills and utilities 38,900, transport 31,200, entertainment 26,400, shopping 18,700, other 9,200.">
-          <button class="viz-seg" type="button" data-cat="transfers" style="--w: 31.6; --c: var(--cat-transfers);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="food"      style="--w: 20.7; --c: var(--cat-food);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="bills"     style="--w: 14.9; --c: var(--cat-bills);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="transport" style="--w: 12.0; --c: var(--cat-transport);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="fun"       style="--w: 10.1; --c: var(--cat-fun);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="shopping"  style="--w: 7.2;  --c: var(--cat-shopping);" tabindex="-1" aria-hidden="true"></button>
-          <button class="viz-seg" type="button" data-cat="other"     style="--w: 3.5;  --c: var(--cat-other);" tabindex="-1" aria-hidden="true"></button>
+        <!-- Proportion at a glance, and nothing else. The detail lives in
+             the ledger below, which is labelled, focusable and the thing a
+             screen reader actually reads; this rule is decorative and says
+             so. -->
+        <div class="viz-bar" id="viz-bar" aria-hidden="true">
+          <div class="viz-seg" data-cat="transfers" style="--w: 31.6; --c: var(--cat-transfers);"></div>
+          <div class="viz-seg" data-cat="food"      style="--w: 20.7; --c: var(--cat-food);"></div>
+          <div class="viz-seg" data-cat="bills"     style="--w: 14.9; --c: var(--cat-bills);"></div>
+          <div class="viz-seg" data-cat="transport" style="--w: 12.0; --c: var(--cat-transport);"></div>
+          <div class="viz-seg" data-cat="fun"       style="--w: 10.1; --c: var(--cat-fun);"></div>
+          <div class="viz-seg" data-cat="shopping"  style="--w: 7.2;  --c: var(--cat-shopping);"></div>
+          <div class="viz-seg" data-cat="other"     style="--w: 3.5;  --c: var(--cat-other);"></div>
         </div>
 
-        <!-- The legend is the real control surface: focusable, labelled, and
-             the only thing a keyboard or screen reader has to reach. The
-             segments above are decorative duplicates of it. -->
-        <div class="viz-legend" id="viz-legend">
-          <button class="viz-chip" type="button" data-cat="transfers" aria-pressed="false" style="--c: var(--cat-transfers);"><span class="dot"></span>Transfers &amp; cash <span class="amt">&#8358;82,400</span></button>
-          <button class="viz-chip" type="button" data-cat="food"      aria-pressed="false" style="--c: var(--cat-food);"><span class="dot"></span>Food &amp; groceries <span class="amt">&#8358;54,100</span></button>
-          <button class="viz-chip" type="button" data-cat="bills"     aria-pressed="false" style="--c: var(--cat-bills);"><span class="dot"></span>Bills &amp; utilities <span class="amt">&#8358;38,900</span></button>
-          <button class="viz-chip" type="button" data-cat="transport" aria-pressed="false" style="--c: var(--cat-transport);"><span class="dot"></span>Transport <span class="amt">&#8358;31,200</span></button>
-          <button class="viz-chip" type="button" data-cat="fun"       aria-pressed="false" style="--c: var(--cat-fun);"><span class="dot"></span>Entertainment <span class="amt">&#8358;26,400</span></button>
-          <button class="viz-chip" type="button" data-cat="shopping"  aria-pressed="false" style="--c: var(--cat-shopping);"><span class="dot"></span>Shopping <span class="amt">&#8358;18,700</span></button>
-          <button class="viz-chip" type="button" data-cat="other"     aria-pressed="false" style="--c: var(--cat-other);"><span class="dot"></span>Other <span class="amt">&#8358;9,200</span></button>
+        <!-- The ledger. Every figure that matters is here in plain text, in
+             the ledger face, in the order it matters. -->
+        <div class="viz-ledger" id="viz-ledger">
+          <button class="viz-row" type="button" data-cat="transfers" aria-pressed="false" style="--c: var(--cat-transfers);"><span class="dot"></span><span class="name">Transfers &amp; cash</span><span class="share">32%</span><span class="amt">&#8358;82,400</span></button>
+          <button class="viz-row" type="button" data-cat="food"      aria-pressed="false" style="--c: var(--cat-food);"><span class="dot"></span><span class="name">Food &amp; groceries</span><span class="share">21%</span><span class="amt">&#8358;54,100</span></button>
+          <button class="viz-row" type="button" data-cat="bills"     aria-pressed="false" style="--c: var(--cat-bills);"><span class="dot"></span><span class="name">Bills &amp; utilities</span><span class="share">15%</span><span class="amt">&#8358;38,900</span></button>
+          <button class="viz-row" type="button" data-cat="transport" aria-pressed="false" style="--c: var(--cat-transport);"><span class="dot"></span><span class="name">Transport</span><span class="share">12%</span><span class="amt">&#8358;31,200</span></button>
+          <button class="viz-row" type="button" data-cat="fun"       aria-pressed="false" style="--c: var(--cat-fun);"><span class="dot"></span><span class="name">Entertainment</span><span class="share">10%</span><span class="amt">&#8358;26,400</span></button>
+          <button class="viz-row" type="button" data-cat="shopping"  aria-pressed="false" style="--c: var(--cat-shopping);"><span class="dot"></span><span class="name">Shopping</span><span class="share">7%</span><span class="amt">&#8358;18,700</span></button>
+          <button class="viz-row" type="button" data-cat="other"     aria-pressed="false" style="--c: var(--cat-other);"><span class="dot"></span><span class="name">Other</span><span class="share">4%</span><span class="amt">&#8358;9,200</span></button>
         </div>
 
         <p class="viz-note">Every one of those was a raw bank narration before Recur read it. Get a category wrong and you fix it once, and <strong>every future charge from that merchant follows.</strong></p>
@@ -1823,7 +1851,7 @@
     if (!viz) return;
 
     var segs = Array.prototype.slice.call(viz.querySelectorAll('.viz-seg'));
-    var chips = Array.prototype.slice.call(viz.querySelectorAll('.viz-chip'));
+    var chips = Array.prototype.slice.call(viz.querySelectorAll('.viz-row'));
     var totalEl = document.getElementById('viz-total-value');
     var TOTAL = 260900;
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
