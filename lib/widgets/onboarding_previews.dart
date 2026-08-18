@@ -83,12 +83,12 @@ class StatementScanPreview extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Your statement',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.neutral900,
+                      color: AppColors.ink(context),
                     ),
                   ),
                   const Spacer(),
@@ -182,12 +182,12 @@ class _TxnRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 5),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: highlight ? AppColors.primaryLight : AppColors.white,
+        color: highlight ? AppColors.primaryTint(context) : AppColors.surface(context),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: highlight
-              ? RecurBrand.gradientStart.withValues(alpha: 0.5)
-              : AppColors.neutral200,
+              ? AppColors.primaryInk(context).withValues(alpha: 0.5)
+              : AppColors.border(context),
           width: highlight ? 1.3 : 1,
         ),
       ),
@@ -213,7 +213,7 @@ class _TxnRow extends StatelessWidget {
               width: 17,
               height: 17,
               decoration: BoxDecoration(
-                color: AppColors.neutral100,
+                color: AppColors.track(context),
                 borderRadius: BorderRadius.circular(5),
               ),
               child: const Icon(
@@ -231,7 +231,7 @@ class _TxnRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
-                color: highlight ? AppColors.neutral900 : AppColors.neutral600,
+                color: highlight ? AppColors.ink(context) : AppColors.muted(context),
               ),
             ),
           ),
@@ -264,7 +264,7 @@ class _TxnRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 9.5,
               fontWeight: FontWeight.w800,
-              color: highlight ? RecurBrand.gradientStart : AppColors.neutral500,
+              color: highlight ? AppColors.primaryInk(context) : AppColors.muted(context),
             ),
           ),
         ],
@@ -448,9 +448,9 @@ class _StackedSubRow extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: AppColors.surface(context),
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: AppColors.neutral200),
+            border: Border.all(color: AppColors.border(context)),
           ),
           child: Row(
             children: [
@@ -470,19 +470,19 @@ class _StackedSubRow extends StatelessWidget {
                   sub.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.neutral900,
+                    color: AppColors.ink(context),
                   ),
                 ),
               ),
               Text(
                 sub.amount,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.neutral900,
+                  color: AppColors.ink(context),
                 ),
               ),
             ],
@@ -553,9 +553,9 @@ class QuietAppPreview extends StatelessWidget {
                 height: 37,
                 padding: const EdgeInsets.symmetric(horizontal: 9),
                 decoration: BoxDecoration(
-                  color: AppColors.white,
+                  color: AppColors.surface(context),
                   borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: AppColors.neutral200),
+                  border: Border.all(color: AppColors.border(context)),
                 ),
                 child: Row(
                   children: [
@@ -563,7 +563,7 @@ class QuietAppPreview extends StatelessWidget {
                       width: 21,
                       height: 21,
                       decoration: BoxDecoration(
-                        color: AppColors.neutral200,
+                        color: AppColors.border(context),
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
@@ -572,7 +572,7 @@ class QuietAppPreview extends StatelessWidget {
                       width: 56 + (i % 3) * 14,
                       height: 7,
                       decoration: BoxDecoration(
-                        color: AppColors.neutral200,
+                        color: AppColors.border(context),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -581,7 +581,7 @@ class QuietAppPreview extends StatelessWidget {
                       width: 34,
                       height: 7,
                       decoration: BoxDecoration(
-                        color: AppColors.neutral200,
+                        color: AppColors.border(context),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),

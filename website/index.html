@@ -623,32 +623,37 @@
        Bounds measured off the pixels rather than estimated: the device sits
        at x 146..608, y 330..948 in all three slides, found by scanning the
        bezel columns for dark runs. This window sits 4px inside that. */
+    /* Dark uses a genuinely dark-themed asset, captured from the app itself
+       running on a simulator in dark mode, rather than a re-crop of the
+       light one.
+       This is what every earlier attempt was working around. The three light
+       slides bake in a near-white backdrop AND a near-white app UI, and no
+       crop, mask, scrim or filter makes near-white sit well on a near-black
+       page: the problem was the pixels, not their framing. Capturing the app
+       in dark mode removes the problem at source, and the asset's own
+       background measures rgb(16,18,15) against this page's #10130F, so the
+       edges genuinely dissolve instead of merely fading toward grey.
+       Crop window: source x 40..1140, y 400..1620 of a 1179x2556 capture,
+       sized to hold the device and both callout cards with margin to spare.
+       Bright content measured at x 112..1068, y 528..1412. */
     .shot {
-      aspect-ratio: 454 / 610;
-      -webkit-mask-image: none;
-      mask-image: none;
-      /* Cropping inside a rounded bezel leaves square corners, and those
-         corners are the last place backdrop could show. Restores roughly the
-         device's own ~38px radius. Two values, because one percentage
-         resolves against each axis separately and would draw an ellipse on a
-         box this far from square. */
-      border-radius: 8.37% / 6.23%;
-      /* A hairline rim, then depth. Without the rim the device's near-black
-         bezel dissolves into the near-black page and the screen looks like it
-         is floating unattached; the rim is what a real device edge catches
-         from ambient light, and it is the difference between "cut out" and
-         "photographed". */
-      box-shadow:
-        inset 0 0 0 1px rgba(242, 242, 234, 0.11),
-        0 32px 70px -28px rgba(0, 0, 0, 0.9);
+      aspect-ratio: 1100 / 1220;
+      /* The same soft dissolve light mode uses, which finally works here for
+         the reason above: both sides of the fade are near-black. No border
+         radius and no rim, because there is no hard edge left to hide. */
+      -webkit-mask-image:
+        linear-gradient(to bottom, transparent 0%, #000 8%, #000 92%, transparent 100%),
+        linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      -webkit-mask-composite: source-in;
+      mask-image:
+        linear-gradient(to bottom, transparent 0%, #000 8%, #000 92%, transparent 100%),
+        linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      mask-composite: intersect;
     }
     .shot img {
-      width: 167.40%;
-      margin-left: -33.04%;
-      margin-top: -73.57%;
-      /* A slight dim: a screen captured under studio light carries more
-         glare than a real one at night. */
-      filter: brightness(0.94);
+      width: 107.18%;
+      margin-left: -3.64%;
+      margin-top: -36.36%;
     }
 
     /* Brand green rather than neutral light, so the haze around the device
@@ -1082,7 +1087,7 @@
              serve whichever one loads. -->
         <figure class="shot">
           <picture>
-            <source srcset="assets/onboarding-2.jpg" media="(prefers-color-scheme: dark)">
+            <source srcset="assets/onboarding-1-dark.jpg" media="(prefers-color-scheme: dark)">
             <img src="assets/onboarding-1.jpg" width="760" height="1647" alt="The Recur app showing the repeating charges it found in a Nigerian bank statement, with Netflix and DStv flagged as renewing every month." loading="eager" fetchpriority="high" decoding="async">
           </picture>
         </figure>
@@ -1194,11 +1199,21 @@
       </div>
 
       <div class="shot-cascade reveal">
+        <!-- Same per-theme swap as the hero. These two have to be paired the
+             same way, because the dark crop geometry is written for the
+             1179x2556 simulator captures and would frame the 760x1647 light
+             composites on completely the wrong region. -->
         <figure class="shot">
-          <img src="assets/onboarding-2.jpg" width="760" height="1647" alt="The Recur dashboard showing 63,033 naira repeating every month across 9 active subscriptions, with Netflix, DStv Compact, MTN Data and ChatGPT Plus listed beneath, and a note that this comes to 756,396 naira a year." loading="lazy" decoding="async">
+          <picture>
+            <source srcset="assets/onboarding-2-dark.jpg" media="(prefers-color-scheme: dark)">
+            <img src="assets/onboarding-2.jpg" width="760" height="1647" alt="The Recur dashboard showing 63,033 naira repeating every month across 9 active subscriptions, with Netflix, DStv Compact, MTN Data and ChatGPT Plus listed beneath, and a note that this comes to 756,396 naira a year." loading="lazy" decoding="async">
+          </picture>
         </figure>
         <figure class="shot">
-          <img src="assets/onboarding-3.jpg" width="760" height="1647" alt="A phone notification from Recur reading: DStv takes 19,000 naira in 2 days. Still watching? Tap for how to cancel." loading="lazy" decoding="async">
+          <picture>
+            <source srcset="assets/onboarding-3-dark.jpg" media="(prefers-color-scheme: dark)">
+            <img src="assets/onboarding-3.jpg" width="760" height="1647" alt="A phone notification from Recur reading: DStv takes 19,000 naira in 2 days. Still watching? Tap for how to cancel." loading="lazy" decoding="async">
+          </picture>
         </figure>
       </div>
     </div>

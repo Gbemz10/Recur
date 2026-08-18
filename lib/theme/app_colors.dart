@@ -143,4 +143,23 @@ class AppColors {
   /// with a coloured bar on top of it, reading as two fills rather than one
   /// fill and its remainder.
   static Color track(BuildContext context) => _isDark(context) ? darkBorder : neutral200;
+
+  /// Fill for a row or chip selected in the brand's own hue.
+  ///
+  /// [primaryLight] is a pale mint that only ever worked on light surfaces.
+  /// Used unconditionally it left near-white text sitting on a near-white
+  /// fill in dark mode, which is what made the highlighted rows in the
+  /// onboarding preview unreadable. The dark value is deep enough for
+  /// [ink] to clear 12:1 on it.
+  static Color primaryTint(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF14372A) : primaryLight;
+
+  /// Brand green as *text or iconography*, rather than as a fill.
+  ///
+  /// [primary] is tuned to be read on paper and drops to roughly 2:1 against
+  /// dark surfaces, so anything that renders the brand colour as a glyph has
+  /// to step up to this on dark. Fills keep using [primary]: a filled badge
+  /// carries its own contrast with white on top.
+  static Color primaryInk(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF3DBE8B) : primary;
 }

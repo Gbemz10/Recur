@@ -48,7 +48,7 @@ class PhoneFrame extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
         child: ColoredBox(
-          color: AppColors.lightBackground,
+          color: AppColors.background(context),
           child: Column(
             children: [
               _StatusBar(label: statusBarLabel),
@@ -78,10 +78,10 @@ class _StatusBar extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w700,
-              color: AppColors.neutral800,
+              color: AppColors.ink(context),
             ),
           ),
           const Spacer(),
@@ -92,7 +92,7 @@ class _StatusBar extends StatelessWidget {
               height: 4.0 + i * 2,
               margin: const EdgeInsets.only(left: 1.5),
               decoration: BoxDecoration(
-                color: AppColors.neutral800,
+                color: AppColors.ink(context),
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
@@ -104,7 +104,7 @@ class _StatusBar extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(2),
               border: Border.all(
-                color: AppColors.neutral800.withValues(alpha: 0.55),
+                color: AppColors.ink(context).withValues(alpha: 0.55),
                 width: 1,
               ),
             ),
@@ -115,7 +115,7 @@ class _StatusBar extends StatelessWidget {
                 widthFactor: 0.72,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppColors.neutral800,
+                    color: AppColors.ink(context),
                     borderRadius: BorderRadius.circular(1),
                   ),
                 ),

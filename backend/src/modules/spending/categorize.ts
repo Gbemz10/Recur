@@ -197,7 +197,14 @@ export function extractPayee(narration: string, merchant: Merchant | null): stri
   const cleaned = normalized
     .replace(/^(POS|ATM|NIP|TRF|WEB|USSD|MOB|TRANSFER TO|TRANSFER FROM|PAYMENT TO)\s+/g, '')
     .trim();
-  const words = (cleaned || normalized).split(' ').filter((w) => w.length > 1).slice(0, 3);
+  const words = (cleaned || normalized)
+    .split(' ')
+    // Drop the masked card fragments banks embed in POS narrations
+    // ("POS/1234XXXX/CHICKEN REPUBLIC"), which otherwise surface as a payee
+    // called "Xxxx Chicken Republic". Any token that is only digits and X is
+    // a mask, never a merchant name.
+    .filter((w) => w.length > 1 && !/^[0-9X]+$/.test(w))
+    .slice(0, 3);
   return titleCase(words.join(' ')) || 'Unknown';
 }
 
