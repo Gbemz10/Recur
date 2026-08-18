@@ -14,6 +14,7 @@ import { webhookRoutes } from './modules/webhooks/routes.js';
 import { detectionRoutes } from './modules/detection/routes.js';
 import { waitlistRoutes } from './modules/waitlist/routes.js';
 import { trialRoutes } from './modules/trials/routes.js';
+import { spendingRoutes } from './modules/spending/routes.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -117,6 +118,7 @@ export function buildApp() {
   app.register(detectionRoutes);
   app.register(waitlistRoutes);
   app.register(trialRoutes);
+  app.register(spendingRoutes);
 
   return app;
 }
