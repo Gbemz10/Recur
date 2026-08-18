@@ -33,8 +33,8 @@ class AppEmptyState extends StatelessWidget {
           Container(
             width: 64,
             height: 64,
-            decoration: const BoxDecoration(color: AppColors.neutral100, shape: BoxShape.circle),
-            child: Icon(icon, size: 28, color: AppColors.neutral400),
+            decoration: BoxDecoration(color: AppColors.track(context), shape: BoxShape.circle),
+            child: Icon(icon, size: 28, color: AppColors.muted(context)),
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
@@ -42,7 +42,7 @@ class AppEmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(message!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.neutral500, height: 1.5)),
+                style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.5)),
           ],
           if (actionLabel != null) ...[
             const SizedBox(height: AppSpacing.xl),

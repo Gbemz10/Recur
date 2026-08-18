@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
-import '../data/mock_data.dart' show formatNaira;
+import '../data/mock_data.dart' show formatNaira, formatNairaCompact;
 import '../data/profile_store.dart';
+import '../data/spending_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
+import '../models/spending.dart';
 import '../models/subscription.dart';
 import '../models/trial.dart';
 import '../ui/ui.dart';
 import '../widgets/subscription_tile.dart';
 import 'profile_screen.dart';
+import 'spending_screen.dart';
 import 'subscription_detail_screen.dart';
 
 /// The home screen.
@@ -34,6 +37,7 @@ class DashboardScreen extends StatefulWidget {
     required this.store,
     required this.trialStore,
     required this.profileStore,
+    required this.spendingStore,
     required this.onOpenTrials,
   });
 
@@ -46,6 +50,11 @@ class DashboardScreen extends StatefulWidget {
 
   /// Shared with every other tab — see [ProfileStore].
   final ProfileStore profileStore;
+
+  /// Category spend and budgets — see [SpendingStore]. Subscriptions answer
+  /// "what repeats"; this answers "where the rest of it went", which is the
+  /// question the hero total always prompted and could never answer.
+  final SpendingStore spendingStore;
 
   /// Switches [AppShell] to the Trials tab — the strip below surfaces a
   /// due-soon trial inline, but managing it happens on its own tab, not a
@@ -79,6 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     widget.store.addListener(_handleStoreChange);
     widget.trialStore.addListener(_handleStoreChange);
     widget.profileStore.addListener(_handleStoreChange);
+    widget.spendingStore.addListener(_handleStoreChange);
   }
 
   @override
@@ -86,6 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     widget.store.removeListener(_handleStoreChange);
     widget.trialStore.removeListener(_handleStoreChange);
     widget.profileStore.removeListener(_handleStoreChange);
+    widget.spendingStore.removeListener(_handleStoreChange);
     super.dispose();
   }
 
@@ -161,6 +172,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _openSpending() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SpendingScreen(store: widget.spendingStore)),
+    );
+  }
+
   Future<void> _openDetail(Subscription sub) async {
     final result = await Navigator.of(context).push<SubscriptionStatus>(
       MaterialPageRoute(
@@ -206,6 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           widget.store.load(),
           widget.trialStore.load(),
           widget.profileStore.load(),
+          widget.spendingStore.load(),
         ]),
         child: CustomScrollView(
           slivers: [
@@ -262,6 +280,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: _TrialStrip(
                     trials: _trialsDueSoon,
                     onTap: widget.onOpenTrials,
+                  ),
+                ),
+              ),
+
+            // Sits between the subscription hero and the subscription list on
+            // purpose. Subscriptions are the thing this app is for, so they
+            // keep the top and the bottom of the screen; spending is the
+            // context that makes the hero total mean something ("₦63k
+            // repeating, out of ₦240k total"), so it goes between them rather
+            // than competing for the top slot.
+            if (_tab == 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.xxl,
+                    AppSpacing.xl,
+                    0,
+                  ),
+                  child: _SpendingCard(
+                    store: widget.spendingStore,
+                    onTap: _openSpending,
                   ),
                 ),
               ),
@@ -711,6 +751,150 @@ class _HeroTotal extends StatelessWidget {
 /// Small "here's what's coming" pill in the card's top-right corner. The
 /// hero card is the one place a user glances at daily — surfacing the
 /// soonest charge here means they don't have to switch tabs to find it.
+/// The dashboard's window into spending, and the entry point to the full
+/// breakdown.
+///
+/// Kept deliberately small. The hero total above it is this app's headline
+/// number and nothing on Home should compete with it, so this shows one
+/// figure and the three categories carrying most of it, then gets out of the
+/// way. Everything else lives one tap deeper on [SpendingScreen].
+///
+/// Renders nothing at all until there is something to say: a user with no
+/// linked bank, or whose first sync has not landed, gets no empty card and no
+/// spinner on their home screen.
+class _SpendingCard extends StatelessWidget {
+  const _SpendingCard({required this.store, required this.onTap});
+
+  final SpendingStore store;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (store.isLoading && !store.hasData) {
+      return const AppSkeletonHeroCard();
+    }
+    // A spending failure is not worth breaking Home over: subscriptions are
+    // the point of this screen and they loaded fine.
+    if (store.error != null || !store.hasData) return const SizedBox.shrink();
+
+    final summary = store.summary;
+    final top = summary.topCategories();
+    final over = summary.overBudget;
+
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'EVERYTHING ELSE THIS MONTH',
+                      style: AppTypography.mono(
+                        size: 10.5,
+                        color: AppColors.muted(context),
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      formatNaira(summary.total),
+                      style: AppTypography.mono(
+                        size: 26,
+                        weight: FontWeight.w700,
+                        color: AppColors.ink(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.muted(context)),
+            ],
+          ),
+
+          if (top.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            for (final spend in top) ...[
+              _MiniCategoryRow(spend: spend, total: summary.total),
+              if (spend != top.last) const SizedBox(height: AppSpacing.md),
+            ],
+          ],
+
+          if (over.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.warning),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    over.length == 1
+                        ? '${over.first.category.label} is over budget'
+                        : '${over.length} categories are over budget',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One compact category line: name, share meter, amount.
+class _MiniCategoryRow extends StatelessWidget {
+  const _MiniCategoryRow({required this.spend, required this.total});
+
+  final CategorySpend spend;
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = spend.category.color(context);
+    return Row(
+      children: [
+        Icon(spend.category.icon, size: 15, color: color),
+        const SizedBox(width: AppSpacing.sm),
+        SizedBox(
+          width: 78,
+          child: Text(
+            spend.category.shortLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft(context)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Expanded(
+          child: AppMeter(
+            // Share of the month, not of a budget: this row is about
+            // proportion, and the budget story is told on the screen behind
+            // the tap rather than crammed in here.
+            progress: total > 0 ? spend.spent / total : 0,
+            color: color,
+            height: 4,
+            showOverflowNotch: false,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Text(
+          formatNairaCompact(spend.spent),
+          style: AppTypography.mono(size: 12.5, weight: FontWeight.w600, color: AppColors.ink(context)),
+        ),
+      ],
+    );
+  }
+}
+
 class _NextUpPill extends StatelessWidget {
   const _NextUpPill({required this.subscription});
 

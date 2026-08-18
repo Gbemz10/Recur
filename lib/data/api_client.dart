@@ -194,6 +194,17 @@ class ApiClient {
     );
   }
 
+  /// Used where the call is a true upsert rather than a partial edit — a
+  /// budget is set to a value, not patched toward one, and the backend's
+  /// `PUT /budgets` is idempotent on (user, category) to match.
+  Future<Map<String, dynamic>> put(String path, {Object? body, bool auth = true}) {
+    return _authedRequest(
+      (headers) => _http.put(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
+      auth: auth,
+      hasBody: body != null,
+    );
+  }
+
   Future<Map<String, dynamic>> patch(String path, {Object? body, bool auth = true}) {
     return _authedRequest(
       (headers) => _http.patch(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),

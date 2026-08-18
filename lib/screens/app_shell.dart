@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/bank_store.dart';
 import '../data/profile_store.dart';
+import '../data/spending_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
 import '../ui/ui.dart';
@@ -36,6 +37,11 @@ class _AppShellState extends State<AppShell> {
   final ProfileStore _profileStore = ProfileStore();
   final BankStore _bankStore = BankStore();
 
+  /// Owned here for the same reason as the others: the dashboard leads with a
+  /// spending summary and the breakdown screen pushes on top of it, so both
+  /// have to read one list that a budget edit updates once.
+  final SpendingStore _spendingStore = SpendingStore();
+
   static const _items = [
     AppNavItem(label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home_rounded),
     AppNavItem(label: 'Calendar', icon: Icons.calendar_today_outlined, selectedIcon: Icons.calendar_today_rounded),
@@ -54,6 +60,7 @@ class _AppShellState extends State<AppShell> {
     _trialStore.dispose();
     _profileStore.dispose();
     _bankStore.dispose();
+    _spendingStore.dispose();
     super.dispose();
   }
 
@@ -68,6 +75,7 @@ class _AppShellState extends State<AppShell> {
             store: _store,
             trialStore: _trialStore,
             profileStore: _profileStore,
+            spendingStore: _spendingStore,
             onOpenTrials: () => setState(() => _index = 2),
           ),
           CalendarScreen(store: _store),

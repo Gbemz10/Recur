@@ -133,4 +133,14 @@ class AppColors {
   /// both dark surfaces while still reading as visibly softer than
   /// `ink()`/`inkSoft()`.
   static Color muted(BuildContext context) => _isDark(context) ? neutral400 : neutral600;
+
+  /// The "empty" half of anything that fills up: meter and progress tracks,
+  /// skeleton blocks, the disc behind an empty-state icon.
+  ///
+  /// This existed as a hardcoded `neutral200`/`neutral100` in half a dozen
+  /// places, which is the same bug the skeleton shimmer had: both are
+  /// near-white, so on a near-black surface a track rendered as a bright bar
+  /// with a coloured bar on top of it, reading as two fills rather than one
+  /// fill and its remainder.
+  static Color track(BuildContext context) => _isDark(context) ? darkBorder : neutral200;
 }

@@ -86,7 +86,7 @@ class SubscriptionTile extends StatelessWidget {
                         Text(
                           subscription.cycle.label,
                           style: text.bodySmall
-                              ?.copyWith(color: AppColors.neutral500),
+                              ?.copyWith(color: AppColors.muted(context)),
                         ),
                         const _Dot(),
                         Flexible(
@@ -194,7 +194,7 @@ class _ShareBar extends StatelessWidget {
         children: [
           DecoratedBox(
             decoration: BoxDecoration(
-              color: AppColors.neutral200,
+              color: AppColors.track(context),
               borderRadius: BorderRadius.circular(2),
             ),
             child: const SizedBox(width: _width, height: 3),
@@ -240,7 +240,7 @@ class _ConfidenceRow extends StatelessWidget {
           style: Theme.of(context)
               .textTheme
               .bodySmall
-              ?.copyWith(color: AppColors.neutral500),
+              ?.copyWith(color: AppColors.muted(context)),
         ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
@@ -253,7 +253,7 @@ class _ConfidenceRow extends StatelessWidget {
               builder: (context, v, _) => LinearProgressIndicator(
                 value: v,
                 minHeight: 6,
-                backgroundColor: AppColors.neutral200,
+                backgroundColor: AppColors.track(context),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
@@ -275,8 +275,8 @@ class _Dot extends StatelessWidget {
       width: 3,
       height: 3,
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      decoration: const BoxDecoration(
-        color: AppColors.neutral300,
+      decoration: BoxDecoration(
+        color: AppColors.muted(context),
         shape: BoxShape.circle,
       ),
     );
