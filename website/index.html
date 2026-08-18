@@ -98,6 +98,11 @@
     --shadow-lift: 0 2px 4px rgba(23, 26, 20, 0.05), 0 24px 48px -28px rgba(23, 26, 20, 0.30);
 
     --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* The hero screenshot, as a CSS value, so the blurred echo layer behind
+       the device can reuse the same asset without a second <img> in the
+       markup. Swapped alongside the <picture> source in the dark block. */
+    --shot-src: url("assets/onboarding-1.jpg");
   }
 
   /* Dark mode. The app has shipped full light + dark since the pre-auth
@@ -130,6 +135,8 @@
 
       --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.40), 0 8px 24px -16px rgba(0, 0, 0, 0.70);
       --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.45), 0 24px 48px -28px rgba(0, 0, 0, 0.85);
+
+      --shot-src: url("assets/onboarding-1-dark.jpg");
     }
   }
 
@@ -172,12 +179,12 @@
 
     /* No travel, no draw, no staggered arrival. */
     .hero-copy h1, .hero-copy .lead, .hero-copy .signup,
-    .hero-copy .assurance, .hero-visual, .due-chip {
+    .hero-copy .assurance, .hero-visual, .due-chip, .cat-chip {
       animation: none;
       opacity: 1;
     }
     .reveal, .decode-row { opacity: 1; transform: none; transition: none; }
-    .decode-arrow { opacity: 1; transition: none; }
+    .decode-arrow, .decode-cat { opacity: 1; transform: none; transition: none; }
     .step::before { transform: none; transition: none; }
     .mobile-menu { transform: none; transition: opacity 120ms var(--ease), display 120ms allow-discrete; }
     .mobile-menu.open { transform: none; }
@@ -515,6 +522,16 @@
   .due-chip {
     animation: riseIn 620ms var(--ease) backwards;
   }
+
+  /* The tilted chip needs its own keyframes. `riseIn` settles on
+     `transform: none`, which would drop the rotation for the length of the
+     animation and then snap it back on the final frame. Any element with a
+     resting transform has to carry that transform through its keyframes. */
+  @keyframes riseInTilt {
+    from { opacity: 0; transform: translateY(12px) rotate(1.6deg); }
+    to   { opacity: 1; transform: rotate(1.6deg); }
+  }
+  .cat-chip { animation: riseInTilt 620ms var(--ease) backwards; }
   /* Reading order, roughly: headline, then the device it is talking about,
      then the sentence, then the thing to do about it. The device is early
      because it is the largest object on screen and holding it back reads as
@@ -524,9 +541,11 @@
   .hero-copy .lead     { animation-delay: 130ms; }
   .hero-copy .signup   { animation-delay: 200ms; }
   .hero-copy .assurance{ animation-delay: 270ms; }
-  /* Last, and after a real gap: the chip is an alert about money moving, and
-     it lands once the thing it is annotating has settled. */
+  /* The chips land last and in sequence, because that sequence is the
+     product: a charge is spotted, then it gets a category. The alert arrives
+     once the statement it annotates has settled; the category follows it. */
   .due-chip            { animation-delay: 520ms; }
+  .cat-chip            { animation-delay: 660ms; }
 
   /* The error span is excluded from the cascade above on purpose: it owns
      its own opacity transition for validation, and animating it on load
@@ -542,19 +561,68 @@
      Geometry: source is 760x1647; the visible window is x 48..712,
      y 275..1035. Percentages resolve against the container's width, which
      is why the vertical offset is also expressed against width. */
-  .hero-visual { position: relative; justify-self: center; width: 100%; max-width: 470px; }
+  /* ==================================================== the hero stage
+     Rebuilt from a flat screenshot-plus-aura into a composition with real
+     depth. Three things were wrong with the old version:
 
-  /* A soft brand-tinted pool behind the device, so it sits in the page
-     rather than on it. Blurred and inset, never a hard edge. */
+     1. The device was a cut-out floating on a centred radial "glow", which
+        is the single most recognisable AI-landing-page tell. A pool of
+        colour behind an object is not lighting, it is a coloured rectangle
+        with rounded corners.
+     2. That pool was emerald, while the screenshot carries its own warm
+        amber wash (the app's aurora backdrop, baked into the capture). Two
+        light sources from two directions, neither intentional.
+     3. Nothing had a spatial relationship to anything else. The chips were
+        placed near the phone rather than lit by the same light as the phone.
+
+     Now there is one light source, up and to the right, and every layer
+     responds to it: the echo behind falls away from it, the device catches
+     it on its top-right edge, and the chips cast in the same direction. */
+  .hero-visual {
+    position: relative;
+    justify-self: center;
+    width: 100%;
+    max-width: 480px;
+    /* Establishes the 3D context the layers below sit in, so the depth is
+       real perspective rather than faked with scale alone. */
+    perspective: 1400px;
+  }
+
+  /* One directional light, from upper-right. Two stops rather than a
+     symmetric radial, so it reads as illumination arriving from somewhere
+     rather than as a halo emitted by nothing. */
   .hero-visual::before {
     content: "";
     position: absolute;
-    inset: 2% -6% 6%;
+    /* Top bleed kept to -6%, not -18%. Any further and the light reaches the
+       sticky nav, whose backdrop-filter clips to its own box and turns the
+       spill into a visible hairline across the header. A light source that
+       exposes another element's seam is not controlled imperfection. */
+    inset: -6% -14% -6% -4%;
     z-index: 0;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--forest) 16%, transparent), transparent 68%);
-    filter: blur(34px);
     pointer-events: none;
+    background:
+      radial-gradient(58% 50% at 84% 8%, color-mix(in srgb, var(--forest) 32%, transparent), transparent 72%),
+      radial-gradient(52% 40% at 96% 32%, color-mix(in srgb, #7FD9AE 15%, transparent), transparent 70%);
+    filter: blur(30px);
+  }
+
+  /* The far layer: the same screenshot, scaled up, pushed back, heavily
+     blurred and nearly invisible. It is what gives the device something to
+     be in front of. Offset down-left, i.e. away from the light. */
+  .hero-visual::after {
+    content: "";
+    position: absolute;
+    left: -9%; right: 5%; top: 7%; bottom: -7%;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--shot-src);
+    background-size: cover;
+    background-position: 50% 22%;
+    border-radius: 34px;
+    filter: blur(26px) saturate(0.75);
+    opacity: 0.34;
+    transform: translateZ(-90px) rotate(-3deg);
   }
 
   .shot {
@@ -594,6 +662,31 @@
      stays a direct layout child of .shot and the negative margins that do
      the cropping still resolve against .shot's width. */
   .shot picture { display: contents; }
+
+  /* The device sits forward of the echo, and off-axis by a degree and a half.
+     The tilt is the point: everything on this page was previously square to
+     the grid, which is a large part of why it read as assembled rather than
+     art-directed. One deliberate rotation gives the composition somewhere to
+     be, and 1.5deg is small enough to feel like a photograph rather than a
+     sticker. */
+  .hero-visual .shot {
+    z-index: 1;
+    transform: rotate(-1.5deg) translateZ(0);
+  }
+
+  /* Lighting across the device, matching the source above-right: a highlight
+     rolling off the top-right corner, a shade gathering bottom-left. This is
+     what makes it read as lit rather than pasted, and it is why the old flat
+     screenshot needed a glow to look like anything at all. */
+  .hero-visual .shot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(212deg, color-mix(in srgb, #FFFFFF 13%, transparent) 0%, transparent 40%),
+      linear-gradient(32deg, color-mix(in srgb, #000000 26%, transparent) 0%, transparent 46%);
+  }
 
   .shot img {
     width: 105.56%;
@@ -699,6 +792,68 @@
   }
   .due-chip .value { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; margin-top: 5px; color: var(--ink); }
 
+  /* The category chip. Tilted the opposite way to the device, so the two
+     read as separate objects on the same surface rather than one sticker
+     applied to another. Shadow falls down-left, same as everything else
+     under this light. */
+  .cat-chip {
+    position: absolute;
+    z-index: 2;
+    /* Bottom-right, in the clear. Placing it over the rows read as a fourth
+       floating card competing with the two baked into the screenshot, which
+       is the exact criticism this redesign is answering: more chips do not
+       make a composition, they make clutter. Down here it balances the alert
+       chip on the opposite corner, and the connector below gives it a reason
+       to be pointing at the statement rather than merely near it. */
+    right: -7%;
+    bottom: 3%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 15px 11px 13px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-container);
+    box-shadow: -10px 18px 34px -18px rgba(0, 0, 0, 0.45);
+    transform: rotate(1.6deg);
+  }
+  .cat-chip-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    /* The one place the brand gradient appears at this size, standing in for
+       a category swatch. */
+    background: linear-gradient(140deg, var(--forest), #6E8F45);
+    flex-shrink: 0;
+  }
+  .cat-chip-label { font-size: 13px; font-weight: 800; letter-spacing: -0.015em; color: var(--ink); }
+  .cat-chip-value { font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+
+  /* A hairline running from the chip back up into the statement. Small, but
+     it is the difference between "a card near a phone" and "this figure came
+     from those rows" — the spatial relationship the old composition was
+     missing entirely. Fades out as it travels, so it reads as a derivation
+     rather than a diagram callout. */
+  .cat-chip::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    bottom: 100%;
+    width: 1px;
+    height: 46px;
+    background: linear-gradient(to top, var(--line-strong), transparent);
+    pointer-events: none;
+  }
+
+  @media (max-width: 900px) {
+    .cat-chip { right: -4%; bottom: 3%; }
+  }
+  @media (max-width: 520px) {
+    .cat-chip { right: -6%; bottom: 2%; padding: 9px 12px 9px 10px; }
+    .cat-chip::before { height: 30px; }
+    .cat-chip-label { font-size: 12px; }
+    .cat-chip-value { font-size: 10.5px; }
+  }
+
   @media (max-width: 900px) {
     .hero { padding: 48px 0 64px; }
     .hero-grid { grid-template-columns: 1fr; gap: 56px; }
@@ -784,7 +939,40 @@
   .decode.in .decode-arrow { opacity: 1; }
   .decode.in .decode-row:nth-child(3) .decode-arrow { transition-delay: 300ms; }
   .decode.in .decode-row:nth-child(4) .decode-arrow { transition-delay: 380ms; }
-  .decode-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+  .decode-name {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  /* The category the charge resolves to, which is the half of the product
+     this section never showed. Recur does not only work out that a charge
+     repeats, it works out what kind of spending it is, and this section is
+     where a reader decides whether the app understands their statement.
+     Arrives last in each row's sequence, after the name it belongs to. */
+  .decode-cat {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 3.5px 9px;
+    border-radius: 999px;
+    color: var(--forest-ink);
+    background: color-mix(in srgb, var(--forest-ink) 13%, transparent);
+    border: 1px solid color-mix(in srgb, var(--forest-ink) 24%, transparent);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 400ms var(--ease) 380ms, transform 400ms var(--ease) 380ms;
+  }
+  .decode.in .decode-cat { opacity: 1; transform: none; }
+  .decode.in .decode-row:nth-child(3) .decode-cat { transition-delay: 460ms; }
+  .decode.in .decode-row:nth-child(4) .decode-cat { transition-delay: 540ms; }
   .decode-meta { font-size: 14.5px; color: var(--ink-soft); margin-top: 4px; }
   .decode-meta .amount { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
   /* Second allowed use of the loud colour: the charge that should not
@@ -1091,9 +1279,23 @@
             <img src="assets/onboarding-1.jpg" width="760" height="1647" alt="The Recur app showing the repeating charges it found in a Nigerian bank statement, with Netflix and DStv flagged as renewing every month." loading="eager" fetchpriority="high" decoding="async">
           </picture>
         </figure>
+        <!-- Foreground layer. Two chips rather than one, and each is anchored
+             to something on the screen behind it rather than floating near
+             the device: the alert sits on the row it is warning about, and
+             the category chip sits against the statement it was derived
+             from. The second one deliberately bleeds past the container's
+             right edge, which is the only element on the page allowed to
+             break the grid. -->
         <div class="due-chip">
           <div class="label">Coming up</div>
           <div class="value">DStv in 3 days, <span class="mono">&#8358;19,000</span></div>
+        </div>
+        <div class="cat-chip">
+          <div class="cat-chip-dot" aria-hidden="true"></div>
+          <div>
+            <div class="cat-chip-label">Entertainment</div>
+            <div class="cat-chip-value"><span class="mono">&#8358;26,400</span> this month</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1120,7 +1322,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
           </div>
           <div>
-            <div class="decode-name">Netflix</div>
+            <div class="decode-name">Netflix <span class="decode-cat">Entertainment</span></div>
             <p class="decode-meta"><span class="amount">&#8358;4,400</span> every month. You moved to the annual plan eight months ago and forgot.</p>
           </div>
         </div>
@@ -1131,7 +1333,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
           </div>
           <div>
-            <div class="decode-name">DStv Compact</div>
+            <div class="decode-name">DStv Compact <span class="decode-cat">Bills &amp; utilities</span></div>
             <p class="decode-meta"><span class="amount">&#8358;12,500</span> every month. Renews whether anyone in the house watched it or not.</p>
           </div>
         </div>
@@ -1142,7 +1344,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
           </div>
           <div>
-            <div class="decode-name">A gym membership</div>
+            <div class="decode-name">A gym membership <span class="decode-cat">Health</span></div>
             <p class="decode-meta is-alert"><span class="amount">&#8358;15,000</span> every month. Cancelled at the front desk in March. Still charging in August.</p>
           </div>
         </div>
