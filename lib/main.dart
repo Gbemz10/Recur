@@ -30,6 +30,29 @@ class RecurApp extends StatelessWidget {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeController.flutterThemeMode,
+
+        // Tapping outside a focused field clears its focus, which on the web
+        // is what a browser does for free and in Flutter is not: a TextField
+        // keeps focus, its border, and the keyboard until something else
+        // explicitly takes them. That leaves a lit border on a field the user
+        // has visibly moved on from.
+        //
+        // Done here rather than per screen so it also covers the modal sheets
+        // (the budget editor, the category picker) — `builder` wraps the
+        // Navigator and its overlays, so every route inherits it, and no new
+        // form can forget to opt in.
+        //
+        // `translucent` so the detector is hit-testable across the whole
+        // window rather than only where a child happens to be. Taps on real
+        // controls are unaffected: the inner recognizer wins the gesture
+        // arena, so a button still fires its own callback and a TextField
+        // still takes focus instead of losing it.
+        builder: (context, child) => GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child,
+        ),
+
         home: const _RootFlow(),
       ),
     );
