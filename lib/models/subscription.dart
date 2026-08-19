@@ -190,6 +190,58 @@ class Subscription {
     return amount * cycle.chargesPerYear;
   }
 
+  /// Average days between charges, measured from real history where there is
+  /// enough of it and falling back to the cycle's nominal length otherwise.
+  double get intervalDays {
+    if (charges.length >= 2) {
+      final sorted = [...charges]..sort((a, b) => a.date.compareTo(b.date));
+      final totalDays = sorted.last.date.difference(sorted.first.date).inDays;
+      final gaps = sorted.length - 1;
+      if (totalDays > 0 && gaps > 0) return totalDays / gaps;
+    }
+    return 365 / cycle.chargesPerYear;
+  }
+
+  /// The most recent charge actually observed on the bank statement.
+  ///
+  /// Computed rather than trusting position: the API sorts these newest-first
+  /// today, but a list whose meaning depends on someone else's ORDER BY is a
+  /// silent breakage waiting to happen.
+  DateTime? get lastChargeDate {
+    if (charges.isEmpty) return null;
+    return charges.map((c) => c.date).reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  /// Full cycles that have elapsed since the last observed charge, beyond the
+  /// one that was due. 0 means nothing has been missed.
+  int get missedCycles {
+    final last = lastChargeDate;
+    if (last == null) return 0;
+    final elapsed = DateTime.now().difference(last).inDays;
+    final missed = (elapsed / intervalDays).floor() - 1;
+    return missed < 0 ? 0 : missed;
+  }
+
+  /// True when this has not charged for well over a full cycle.
+  ///
+  /// This is the one thing the projected [nextChargeDate] cannot tell you.
+  /// The backend's `projectNextChargeDate` walks forward from the last charge
+  /// in whole cycles *until it lands in the future*, so a subscription that
+  /// stopped charging a year ago still reports a date next week, and keeps
+  /// counting toward the monthly total, forever. Measuring from the charges
+  /// themselves is the only honest read, and the app already has them.
+  ///
+  /// The 1.5x threshold absorbs ordinary billing jitter — weekend settlement,
+  /// a failed retry that lands a few days late — without flagging a healthy
+  /// subscription. Yearly plans are excluded: one missed cycle takes a year to
+  /// establish, by which time the number is far too stale to assert anything.
+  bool get hasStopped {
+    if (cycle == BillingCycle.yearly) return false;
+    final last = lastChargeDate;
+    if (last == null) return false;
+    return DateTime.now().difference(last).inDays > intervalDays * 1.5;
+  }
+
   /// Normalised monthly figure so totals are comparable across cycles.
   double get monthlyEquivalent => yearlyCost / 12;
 

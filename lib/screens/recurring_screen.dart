@@ -72,6 +72,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
   }
 
   List<Subscription> get _active => widget.store.byStatus(SubscriptionStatus.active);
+
   /// Surest first.
   ///
   /// The detector already computes a confidence for every candidate
@@ -96,6 +97,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
     });
     return list;
   }
+
   List<Subscription> get _cancelled => widget.store.byStatus(SubscriptionStatus.cancelled);
 
   double get _monthlyTotal => _active.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
@@ -328,14 +330,13 @@ class _RecurringScreenState extends State<RecurringScreen> {
       );
     }
 
-    // Three states, because a charge whose predicted date has passed is not
-    // the same thing as one about to land. It used to be filed under "Needs
-    // attention" alongside genuinely imminent charges, which told the user
-    // they had a problem when all that happened is our projection went stale.
-    final soon = _active.where((s) => s.isDueSoon).toList()..sort(_byUrgency);
-    final awaiting = _active.where((s) => s.isAwaitingCharge).toList()..sort(_byUrgency);
-    final accounted = {...soon, ...awaiting}.map((s) => s.id).toSet();
-    final later = _active.where((s) => !accounted.contains(s.id)).toList()
+    // Two groups. Rows whose predicted date has passed sort to the top of the
+    // first one, where _byUrgency already puts them — the row's own
+    // "Expected 18 Aug" says what state it is in, so it does not need a
+    // heading and a paragraph above it repeating that in longer words.
+    final soon = _active.where((s) => s.isDueSoon || s.isAwaitingCharge).toList()..sort(_byUrgency);
+    final soonIds = soon.map((s) => s.id).toSet();
+    final later = _active.where((s) => !soonIds.contains(s.id)).toList()
       ..sort((a, b) => b.monthlyEquivalent.compareTo(a.monthlyEquivalent));
 
     return Column(
@@ -344,21 +345,6 @@ class _RecurringScreenState extends State<RecurringScreen> {
         if (soon.isNotEmpty) ...[
           _sectionHeader('Due soon', soon.length, accent: true),
           _list(soon),
-        ],
-        if (awaiting.isNotEmpty) ...[
-          _sectionHeader('Waiting to appear', awaiting.length),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.md),
-            child: Text(
-              'Recur expected these by now but has not seen them in your '
-              'transactions yet. Pull down to check for new ones.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.muted(context), height: 1.45),
-            ),
-          ),
-          _list(awaiting),
         ],
         if (later.isNotEmpty) ...[
           _sectionHeader('Later', later.length),
