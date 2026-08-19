@@ -71,8 +71,14 @@ class _RecurringScreenState extends State<RecurringScreen> {
     return byDay != 0 ? byDay : b.amount.compareTo(a.amount);
   }
 
+  /// Due within the week, plus anything already past its date.
+  ///
+  /// `isDueSoon` is false once a charge date passes, so filtering on it alone
+  /// dropped overdue rows into the "Later" group underneath, which is the
+  /// opposite of where they belong. `_byUrgency` sorts negatives first, so
+  /// they land at the top of the urgent group.
   List<Subscription> get _thisWeek {
-    final list = _active.where((s) => s.isDueSoon).toList()..sort(_byUrgency);
+    final list = _active.where((s) => s.isDueSoon || s.daysUntilCharge < 0).toList()..sort(_byUrgency);
     return list;
   }
 
@@ -107,43 +113,58 @@ class _RecurringScreenState extends State<RecurringScreen> {
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
+    final firstLoad = store.isLoading && store.all.isEmpty;
+    final failed = store.error != null && store.all.isEmpty;
 
-    if (store.isLoading && store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: _RecurringSkeleton());
-    }
-
-    if (store.error != null && store.all.isEmpty) {
-      return SafeArea(
-        bottom: false,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Couldn't load your subscriptions", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                AppButton(label: 'Try again', onPressed: store.load),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
+    // Fixed header, same as every other tab except Home: the title and the
+    // list/calendar switch stay put rather than scrolling away, so the control
+    // that changes what you are looking at is always reachable. It sits above
+    // the state branch rather than inside each one, so loading, error and
+    // content all render under the same header instead of the title appearing
+    // only once data arrives.
     return SafeArea(
       bottom: false,
-      child: RefreshIndicator(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _header(context, showSwitch: !firstLoad && !failed),
+          Expanded(
+            child: firstLoad
+                ? const _RecurringSkeleton()
+                : failed
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xxl),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Couldn't load your subscriptions",
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              AppButton(label: 'Try again', onPressed: store.load),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _scrollBody(store),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scrollBody(SubscriptionStore store) {
+    return RefreshIndicator(
         color: AppColors.primary,
         onRefresh: store.load,
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _header(context)),
-
             if (_view == _View.list) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.lg),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
                   child: AppTabs(labels: _tabs, selectedIndex: _tab, onSelect: _selectTab),
                 ),
               ),
@@ -179,13 +200,12 @@ class _RecurringScreenState extends State<RecurringScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.huge)),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // ------------------------------------------------------------------ header
 
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, {bool showSwitch = true}) {
     final text = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
@@ -200,20 +220,16 @@ class _RecurringScreenState extends State<RecurringScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Recurring', style: text.headlineSmall?.copyWith(letterSpacing: -0.5)),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${_active.length} active, ${formatNaira(_monthlyTotal)} a month',
-                      style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
-                    ),
                   ],
                 ),
               ),
               // The calendar is a lens on this same list, so it belongs on a
               // switch here rather than behind its own tab in the bottom bar.
-              _ViewSwitch(
-                view: _view,
-                onChanged: (v) => setState(() => _view = v),
-              ),
+              if (showSwitch)
+                _ViewSwitch(
+                  view: _view,
+                  onChanged: (v) => setState(() => _view = v),
+                ),
             ],
           ),
         ],
@@ -250,7 +266,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (week.isNotEmpty) ...[
-          _sectionHeader('Next 7 days', week.length, accent: true),
+          _sectionHeader('Needs attention', week.length, accent: true),
           _list(week),
         ],
         if (later.isNotEmpty) ...[
@@ -476,8 +492,6 @@ class _RecurringSkeleton extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
       children: const [
-        AppSkeletonBlock(height: 30, width: 150),
-        SizedBox(height: AppSpacing.xxl),
         AppSkeletonBlock(height: 42),
         SizedBox(height: AppSpacing.xl),
         AppSkeletonListTile(),

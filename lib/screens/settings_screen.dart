@@ -180,23 +180,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Fixed header, matching every tab except Home. The explainer line under
+    // the title is gone: "Manage your account, alerts, and data" only restates
+    // the word Settings, and the sections below already name themselves.
     return SafeArea(
       bottom: false,
-      child: ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text(
+              'Settings',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
+            ),
+          ),
+          Expanded(
+            child: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.xl,
-          AppSpacing.lg,
+          0,
           AppSpacing.xl,
           AppSpacing.huge,
         ),
         children: [
-          Text('Settings', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
-          const SizedBox(height: 4),
-          Text(
-            'Manage your account, alerts, and data.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
 
           // ---- account ----
           Builder(
@@ -479,7 +486,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Center(
             child: Text(
               'Recur v1.0.0',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral400),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+            ),
+          ),
+        ],
             ),
           ),
         ],

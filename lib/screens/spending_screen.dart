@@ -81,12 +81,31 @@ class _SpendingScreenState extends State<SpendingScreen> {
     // A tab now rather than a screen pushed from Home, so it owns no Scaffold
     // and no AppBar: the shell provides both, and a nested one would stack a
     // second bar under the status bar.
+    //
+    // The title sits outside the scroll view, so it stays put across loading,
+    // error, empty and populated rather than each state drawing its own and
+    // the header sliding away the moment anyone scrolls. Home is the only tab
+    // that scrolls its heading, because there the greeting is content.
     return SafeArea(
       bottom: false,
-      child: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: store.load,
-        child: _buildBody(summary),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text(
+              'Spending',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: store.load,
+              child: _buildBody(summary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -142,24 +161,17 @@ class _SpendingScreenState extends State<SpendingScreen> {
     final top = summary.categories.where((c) => c.spent > 0).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.huge),
       children: [
-        Text('Spending', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5)),
-        const SizedBox(height: 3),
-        Text(
-          'Every debit Recur has read, sorted into what it was for.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-
-        // The donut leads because it answers the question people arrive with,
-        // which is proportion rather than absolute value. The total sits in
-        // its centre so the two are read together instead of the number being
-        // relegated to a caption underneath.
-        if (top.isNotEmpty) _DonutCard(summary: summary, slices: top),
-        if (top.isNotEmpty) const SizedBox(height: AppSpacing.lg),
-
-        _TotalCard(summary: summary),
+        // Total first, then the chart. The figure is what someone opens this
+        // tab for; the donut explains how it splits. Merged into one card
+        // rather than stacked as two, because separating them meant printing
+        // the same number twice, once as a headline and again in the donut's
+        // centre.
+        if (top.isNotEmpty)
+          _DonutCard(summary: summary, slices: top)
+        else
+          _TotalCard(summary: summary),
 
         if (summary.uncategorizedCount > 0) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -217,56 +229,106 @@ class _DonutCardState extends State<_DonutCard> {
     final slices = widget.slices;
     final focused = _highlighted == null ? null : slices[_highlighted!];
 
+    final over = widget.summary.overBudget;
+
     return AppCard(
       elevated: true,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppDonut(
-            size: 196,
-            thickness: 24,
-            highlighted: _highlighted,
-            slices: [
-              for (final s in slices)
-                DonutSlice(value: s.spent, color: s.category.color(context), label: s.category.label),
-            ],
-            center: Column(
-              mainAxisSize: MainAxisSize.min,
+          Text(
+            _TotalCard.periodLabel(widget.summary.period).toUpperCase(),
+            style: AppTypography.mono(size: 10.5, color: AppColors.muted(context), letterSpacing: 1.2),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            formatNaira(widget.summary.total),
+            style: AppTypography.money(size: 34, color: AppColors.ink(context)),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'left your account this month',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+          ),
+
+          if (over.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
               children: [
-                Text(
-                  (focused?.category.shortLabel ?? 'This month').toUpperCase(),
-                  style: AppTypography.mono(
-                    size: 10,
-                    color: AppColors.muted(context),
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  formatNairaCompact(focused?.spent ?? widget.summary.total),
-                  style: AppTypography.money(
-                    size: 25,
-                    weight: FontWeight.w700,
-                    color: focused?.category.color(context) ?? AppColors.ink(context),
-                  ),
-                ),
-                if (focused != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    '${(focused.spent / widget.summary.total * 100).round()}%',
+                const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.warning),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    over.length == 1
+                        ? '${over.first.category.label} is over its budget'
+                        : '${over.length} categories are over budget',
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
-                        ?.copyWith(color: AppColors.muted(context)),
+                        ?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
                   ),
-                ],
+                ),
               ],
+            ),
+          ],
+
+          const SizedBox(height: AppSpacing.xl),
+          Center(
+            child: AppDonut(
+              size: 190,
+              thickness: 23,
+              highlighted: _highlighted,
+              slices: [
+                for (final s in slices)
+                  DonutSlice(value: s.spent, color: s.category.color(context), label: s.category.label),
+              ],
+              // With the total printed above, the centre is free to answer the
+              // question the chart itself raises: which slice is that, and how
+              // big. Untouched it just names the split.
+              center: focused == null
+                  ? Text(
+                      slices.length == 1 ? '1\ncategory' : '${slices.length}\ncategories',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.muted(context), height: 1.35),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          focused.category.shortLabel.toUpperCase(),
+                          style: AppTypography.mono(
+                            size: 9.5,
+                            color: AppColors.muted(context),
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          formatNairaCompact(focused.spent),
+                          style: AppTypography.money(
+                            size: 22,
+                            weight: FontWeight.w700,
+                            color: focused.category.color(context),
+                          ),
+                        ),
+                        Text(
+                          '${(focused.spent / widget.summary.total * 100).round()}%',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.muted(context)),
+                        ),
+                      ],
+                    ),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
-            alignment: WrapAlignment.center,
             children: [
               for (var i = 0; i < slices.length; i++)
                 _LegendChip(
@@ -331,7 +393,7 @@ class _TotalCard extends StatelessWidget {
 
   /// `2026-08` -> `August 2026`. Done here rather than pulling in `intl` for
   /// one string; the rest of the app formats its own dates the same way.
-  static String _periodLabel(String period) {
+  static String periodLabel(String period) {
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
@@ -353,7 +415,7 @@ class _TotalCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _periodLabel(summary.period).toUpperCase(),
+            periodLabel(summary.period).toUpperCase(),
             style: AppTypography.mono(
               size: 11,
               color: AppColors.muted(context),

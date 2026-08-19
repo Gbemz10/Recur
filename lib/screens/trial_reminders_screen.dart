@@ -264,11 +264,10 @@ class _TrialsEmptyState extends StatelessWidget {
               Text('Before it becomes a charge', style: text.titleMedium, textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'A free trial has no transaction behind it, so there is nothing '
-                'for Recur to detect until the first charge lands. Logging it '
-                'takes ten seconds and closes that gap.',
+                'A trial has no transaction behind it, so Recur cannot detect '
+                'it until the first charge lands.',
                 textAlign: TextAlign.center,
-                style: text.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.55),
+                style: text.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
               ),
               const SizedBox(height: AppSpacing.xl),
               AppButton(
@@ -280,72 +279,7 @@ class _TrialsEmptyState extends StatelessWidget {
             ],
           ),
         ),
-
-        const SizedBox(height: AppSpacing.xxl),
-        Text('How it works', style: text.titleSmall),
-        const SizedBox(height: AppSpacing.md),
-        const _HowStep(
-          icon: Icons.edit_calendar_rounded,
-          title: 'Log it when you sign up',
-          body: 'The name and the end date. That is the whole form.',
-        ),
-        const _HowStep(
-          icon: Icons.notifications_active_rounded,
-          title: 'Recur counts down',
-          body: 'It moves to the top of this list as the date gets close.',
-        ),
-        const _HowStep(
-          icon: Icons.check_circle_outline_rounded,
-          title: 'Cancel or keep it',
-          body: 'Keep it and the charge shows up under Recurring by itself.',
-        ),
       ],
-    );
-  }
-}
-
-class _HowStep extends StatelessWidget {
-  const _HowStep({required this.icon, required this.title, required this.body});
-
-  final IconData icon;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.track(context),
-              borderRadius: AppRadius.mdBR,
-            ),
-            child: Icon(icon, size: 17, color: AppColors.inkSoft(context)),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  body,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.muted(context), height: 1.45),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -417,7 +351,6 @@ class _TrialReminderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _color(context);
     final days = trial.daysUntilEnd;
-    final urgent = trial.isDueSoon || trial.isOverdue;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -483,40 +416,6 @@ class _TrialReminderCard extends StatelessWidget {
             ],
           ),
 
-          // The nudge only appears when there is something to act on. On a
-          // trial with two weeks left it would be noise; three days out it is
-          // the whole reason the screen exists.
-          if (urgent) ...[
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.10),
-                borderRadius: AppRadius.mdBR,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    trial.isOverdue ? Icons.error_outline_rounded : Icons.bolt_rounded,
-                    size: 15,
-                    color: color,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      trial.isOverdue
-                          ? 'This may already be charging. Check the merchant.'
-                          : 'Cancel now if you do not want it to convert.',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: color, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
