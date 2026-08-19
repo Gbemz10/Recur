@@ -195,7 +195,16 @@ class AppBarTrend extends StatelessWidget {
     if (bars.isEmpty) return SizedBox(height: height);
 
     final max = bars.fold<double>(0, (m, b) => math.max(m, b.value));
-    final neutral = barColor ?? AppColors.track(context);
+    // Not AppColors.track: in dark that is the border token, which sits about
+    // 1.3:1 against the card it is drawn on. The whole point of this chart is
+    // comparing past months to the current one, and you cannot compare bars
+    // you cannot see. Blend the muted ink into the surface instead, which
+    // lifts in both themes without competing with the highlighted bar.
+    final neutral = barColor ??
+        Color.alphaBlend(
+          AppColors.muted(context).withValues(alpha: 0.32),
+          AppColors.surface(context),
+        );
     final current = currentColor ?? AppColors.primary;
 
     return SizedBox(

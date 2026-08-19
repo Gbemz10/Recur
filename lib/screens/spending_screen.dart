@@ -173,6 +173,14 @@ class _SpendingScreenState extends State<SpendingScreen> {
         else
           _TotalCard(summary: summary),
 
+        // Only once there is more than one month with anything in it. A trend
+        // drawn from a single month is one bar, which says nothing and looks
+        // like a rendering failure.
+        if (summary.hasTrend) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _TrendCard(summary: summary),
+        ],
+
         if (summary.uncategorizedCount > 0) ...[
           const SizedBox(height: AppSpacing.lg),
           AppAlert(
@@ -380,6 +388,79 @@ class _LegendChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Six months of totals, with this one picked out.
+///
+/// The breakdown answers "where did it go"; this answers "is that normal for
+/// me", which is the question a single month cannot. The comparison against
+/// the previous month is stated in words rather than left to the reader to
+/// infer from two bar heights.
+class _TrendCard extends StatelessWidget {
+  const _TrendCard({required this.summary});
+
+  final SpendingSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final trend = summary.trend;
+    final current = trend.isNotEmpty ? trend.last.total : 0.0;
+    final previous = trend.length > 1 ? trend[trend.length - 2].total : 0.0;
+    final delta = current - previous;
+    final up = delta > 0;
+
+    // Only worth commenting on when there is a previous month to compare
+    // against and it was not zero, since "up 100% from nothing" is noise.
+    final comparable = previous > 0;
+    final pct = comparable ? (delta.abs() / previous * 100).round() : 0;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Last six months', style: Theme.of(context).textTheme.titleSmall),
+              ),
+              if (comparable)
+                Row(
+                  children: [
+                    Icon(
+                      up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                      size: 14,
+                      // Up is not automatically bad and down is not automatically
+                      // good, but for spending it usually is, so this follows
+                      // the money rather than a generic red/green.
+                      color: up ? AppColors.warning : AppColors.success,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '$pct% vs last month',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: up ? AppColors.warning : AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          AppBarTrend(
+            bars: [
+              for (var i = 0; i < trend.length; i++)
+                TrendBar(
+                  value: trend[i].total,
+                  label: trend[i].shortMonth,
+                  isCurrent: i == trend.length - 1,
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

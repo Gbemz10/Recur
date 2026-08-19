@@ -151,6 +151,12 @@ class AppColors {
   /// fill in dark mode, which is what made the highlighted rows in the
   /// onboarding preview unreadable. The dark value is deep enough for
   /// [ink] to clear 12:1 on it.
+  /// Dark counterpart to [successBg]. Same reasoning as [primaryTint]: the
+  /// light tint is mixed toward white, which on a dark surface reads as a
+  /// bright disc rather than a tint.
+  static Color successTint(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF14372A) : successBg;
+
   static Color primaryTint(BuildContext context) =>
       _isDark(context) ? const Color(0xFF14372A) : primaryLight;
 

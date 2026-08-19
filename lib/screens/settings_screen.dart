@@ -232,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(height: 2),
                           Text(
                             profile?.email ?? '',
-                            style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
+                            style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
                           ),
                         ],
                       ),
@@ -314,7 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(height: 2),
                           Text(
                             bank.accountNumberMask.isEmpty ? '•••• ••••' : bank.accountNumberMask,
-                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.neutral500),
+                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.muted(context)),
                           ),
                         ],
                       ),
@@ -636,11 +636,11 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, AppSpacing.xxl, 4, AppSpacing.sm),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.8,
-          color: AppColors.neutral500,
+          color: AppColors.muted(context),
         ),
       ),
     );
@@ -668,7 +668,7 @@ class _ToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 19, color: AppColors.neutral500),
+          Icon(icon, size: 19, color: AppColors.muted(context)),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -676,7 +676,7 @@ class _ToggleRow extends StatelessWidget {
               children: [
                 Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
                 const SizedBox(height: 1),
-                Text(subtitle, style: const TextStyle(fontSize: 11.5, color: AppColors.neutral500)),
+                Text(subtitle, style: TextStyle(fontSize: 11.5, color: AppColors.muted(context))),
               ],
             ),
           ),
@@ -710,7 +710,7 @@ class _NavRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
           child: Row(
             children: [
-              Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.neutral500),
+              Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.muted(context)),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
@@ -752,14 +752,14 @@ class _ThemeOptionChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.neutral500),
+            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.muted(context)),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : AppColors.neutral500,
+                color: selected ? Colors.white : AppColors.muted(context),
               ),
             ),
           ],
@@ -785,7 +785,7 @@ class _DayChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.neutral100,
+          color: selected ? AppColors.primary : AppColors.track(context),
           borderRadius: AppRadius.fullBR,
         ),
         child: Text(
@@ -793,7 +793,7 @@ class _DayChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : AppColors.neutral600,
+            color: selected ? Colors.white : AppColors.muted(context),
           ),
         ),
       ),

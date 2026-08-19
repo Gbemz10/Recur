@@ -69,7 +69,7 @@ class AppPricingCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(period,
-                    style: TextStyle(fontSize: 13, color: highlighted ? AppColors.neutral400 : AppColors.neutral500)),
+                    style: TextStyle(fontSize: 13, color: highlighted ? AppColors.neutral400 : AppColors.muted(context))),
               ),
             ],
           ),

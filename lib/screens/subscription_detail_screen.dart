@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../data/mock_data.dart' show formatNaira;
 import '../models/subscription.dart';
 import '../ui/ui.dart';
 import '../widgets/brand_mark.dart';
@@ -63,7 +63,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   Text(
                     '${subscription.cycle.label} · ${subscription.category.label}',
                     style: text.bodyMedium
-                        ?.copyWith(color: AppColors.neutral500),
+                        ?.copyWith(color: AppColors.muted(context)),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   if (cancelled)
@@ -81,12 +81,16 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     )
                   else
                     AppBadge(
-                      label: subscription.isDueSoon
-                          ? 'Charges in ${subscription.daysUntilCharge} days'
-                          : 'Active',
-                      variant: subscription.isDueSoon
-                          ? AppBadgeVariant.warning
-                          : AppBadgeVariant.success,
+                      label: subscription.daysUntilCharge < 0
+                          ? 'Overdue'
+                          : subscription.isDueSoon
+                              ? 'Charges in ${subscription.daysUntilCharge} days'
+                              : 'Active',
+                      variant: subscription.daysUntilCharge < 0
+                          ? AppBadgeVariant.danger
+                          : subscription.isDueSoon
+                              ? AppBadgeVariant.warning
+                              : AppBadgeVariant.success,
                       dot: true,
                     ),
                 ],
@@ -132,7 +136,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           Text(
                             'Was',
                             style: text.bodySmall
-                                ?.copyWith(color: AppColors.neutral500),
+                                ?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
@@ -140,16 +144,16 @@ class SubscriptionDetailScreen extends StatelessWidget {
                             style: AppTypography.mono(
                               size: 18,
                               weight: FontWeight.w600,
-                              color: AppColors.neutral500,
+                              color: AppColors.muted(context),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_rounded,
                       size: 18,
-                      color: AppColors.neutral400,
+                      color: AppColors.muted(context),
                     ),
                     const SizedBox(width: AppSpacing.lg),
                     Expanded(
@@ -159,7 +163,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           Text(
                             'Now',
                             style: text.bodySmall
-                                ?.copyWith(color: AppColors.neutral500),
+                                ?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
@@ -207,21 +211,21 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: AppColors.neutral100,
+                      color: AppColors.track(context),
                       borderRadius: AppRadius.smBR,
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.receipt_long_outlined,
                           size: 16,
-                          color: AppColors.neutral500,
+                          color: AppColors.muted(context),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             subscription.charges.first.narration,
-                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.neutral600),
+                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.muted(context)),
                           ),
                         ),
                       ],
@@ -288,7 +292,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
               Text(
                 'Recur cannot cancel on your behalf yet, so here are the '
                 'exact steps.',
-                style: text.bodySmall?.copyWith(color: AppColors.neutral500),
+                style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
               ),
               const SizedBox(height: AppSpacing.md),
               AppCard(
@@ -310,8 +314,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                             Container(
                               width: 22,
                               height: 22,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primaryLight,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryTint(context),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,

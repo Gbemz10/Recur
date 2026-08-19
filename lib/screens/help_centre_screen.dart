@@ -112,7 +112,7 @@ class HelpCentreScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Can\'t find what you need? Reach us directly from Settings → Contact support.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppAccordion(items: _faqs(context)),

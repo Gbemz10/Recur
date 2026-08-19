@@ -304,7 +304,7 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
             ),
           ),
         ],

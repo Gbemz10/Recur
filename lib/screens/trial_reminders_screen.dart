@@ -166,26 +166,26 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         children: [
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
-              color: AppColors.neutral500,
+              color: AppColors.muted(context),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: AppColors.neutral100,
+              color: AppColors.track(context),
               borderRadius: AppRadius.fullBR,
             ),
             child: Text(
               count,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: AppColors.neutral500,
+                color: AppColors.muted(context),
               ),
             ),
           ),
@@ -247,18 +247,16 @@ class _TrialsEmptyState extends StatelessWidget {
           ),
           child: Column(
             children: [
+              // An emblem, not a reading. This used to show a "3 days"
+              // countdown, which is a number in the shape of data on a screen
+              // that by definition has none. The ring is the shape a real
+              // trial card uses; the icon says it is standing in for one.
               AppProgressRing(
-                progress: 0.78,
-                color: AppColors.warning,
+                progress: 0.72,
+                color: AppColors.primaryInk(context),
                 size: 74,
                 thickness: 5,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('3', style: AppTypography.money(size: 22, color: AppColors.warning)),
-                    Text('days', style: AppTypography.mono(size: 9, color: AppColors.muted(context))),
-                  ],
-                ),
+                child: Icon(Icons.timer_rounded, size: 28, color: AppColors.primaryInk(context)),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Before it becomes a charge', style: text.titleMedium, textAlign: TextAlign.center),
@@ -564,7 +562,7 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.neutral500),
+                      Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.muted(context)),
                       const SizedBox(width: AppSpacing.md),
                       Text(_formatDate(_trialEndsAt), style: Theme.of(context).textTheme.bodyLarge),
                     ],

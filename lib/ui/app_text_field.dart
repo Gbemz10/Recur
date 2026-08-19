@@ -69,10 +69,10 @@ class AppTextField extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyLarge,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: AppColors.neutral500) : null,
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: AppColors.muted(context)) : null,
             suffixIcon: suffixIcon != null
                 ? IconButton(
-                    icon: Icon(suffixIcon, size: 20, color: AppColors.neutral500),
+                    icon: Icon(suffixIcon, size: 20, color: AppColors.muted(context)),
                     onPressed: onSuffixIconTap,
                   )
                 : null,

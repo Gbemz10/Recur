@@ -683,7 +683,10 @@ class _UpNextRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final due = subscription.isDueSoon;
+    // Overdue counts as urgent. isDueSoon goes false the moment a charge date
+    // passes, so keying the colour off it alone rendered the single most
+    // urgent row on the screen in the calmest style on it.
+    final due = subscription.isDueSoon || subscription.daysUntilCharge < 0;
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),

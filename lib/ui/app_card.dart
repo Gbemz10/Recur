@@ -86,7 +86,7 @@ class AppStatCard extends StatelessWidget {
                   // the second half of the word doesn't.
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
+                  style: textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
                 ),
               ),
               if (icon != null) ...[

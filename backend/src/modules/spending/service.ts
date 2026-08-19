@@ -119,7 +119,69 @@ export async function getSpendingSummary(userId: string, period: string) {
     }))
     .sort((a, b) => b.spent - a.spent);
 
-  return { period, total, uncategorizedCount, categories };
+  // Folded into the summary rather than served from its own endpoint: the
+  // screen that wants the breakdown always wants the trend beside it, and two
+  // round trips to draw one card is a worse trade than one slightly wider
+  // response.
+  const trend = await getSpendingTrend(userId);
+
+  return { period, total, uncategorizedCount, categories, trend };
+}
+
+export interface TrendPoint {
+  period: string;
+  total: number;
+}
+
+/**
+ * Monthly debit totals for the last [months] periods, oldest first.
+ *
+ * Bucketed with `AT TIME ZONE 'Africa/Lagos'` rather than the fixed +1 offset
+ * `periodRange` uses. Both are correct for Nigeria, which has no daylight
+ * saving, but letting Postgres name the zone keeps the grouping honest if this
+ * ever serves a second country, and does the bucketing in one pass rather than
+ * one query per month.
+ *
+ * Months with no debits are filled in at zero rather than omitted. A bar chart
+ * that silently skips an empty month draws a misleading series: the gap
+ * disappears and two non-adjacent months end up side by side.
+ */
+export async function getSpendingTrend(userId: string, months = 6): Promise<TrendPoint[]> {
+  const span = Math.min(Math.max(months, 1), 24);
+
+  // Start from the first day of the earliest period we want, in WAT.
+  const now = new Date();
+  const watNow = new Date(now.getTime() + WAT_OFFSET_HOURS * 60 * 60 * 1000);
+  const firstPeriod = new Date(Date.UTC(watNow.getUTCFullYear(), watNow.getUTCMonth() - (span - 1), 1));
+  const { start } = periodRange(
+    `${firstPeriod.getUTCFullYear()}-${String(firstPeriod.getUTCMonth() + 1).padStart(2, '0')}`,
+  );
+
+  const rows = await db
+    .select({
+      period: sql<string>`to_char(date_trunc('month', ${rawTransactions.date} AT TIME ZONE 'Africa/Lagos'), 'YYYY-MM')`,
+      total: sql<string>`sum(${rawTransactions.amount})`,
+    })
+    .from(rawTransactions)
+    .where(
+      and(
+        eq(rawTransactions.userId, userId),
+        eq(rawTransactions.type, 'DEBIT'),
+        gte(rawTransactions.date, start),
+      ),
+    )
+    .groupBy(sql`1`)
+    .orderBy(sql`1`);
+
+  const byPeriod = new Map(rows.map((r) => [r.period, Number(r.total ?? 0)]));
+
+  const out: TrendPoint[] = [];
+  for (let i = span - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(watNow.getUTCFullYear(), watNow.getUTCMonth() - i, 1));
+    const period = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    out.push({ period, total: byPeriod.get(period) ?? 0 });
+  }
+  return out;
 }
 
 export async function listTransactions(

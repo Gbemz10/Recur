@@ -75,26 +75,41 @@ class BrandMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = radius ?? size * 0.24;
 
-    return Container(
+    // The white plate belongs to the *logo*, not to the tile. Brand logos are
+    // drawn for light backgrounds and mostly ship as transparent PNGs, so they
+    // need one. The initials fallback does not, and painting it there put a
+    // card-sized near-white block on every dark screen where a payee had no
+    // bundled asset. So the plate is applied in frameBuilder, which only runs
+    // when an actual image resolved.
+    return SizedBox(
       width: size,
       height: size,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(r),
+        child: Image.asset(
+          _assetPath,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          frameBuilder: (context, child, _, __) => _plate(r, child),
+          errorBuilder: (context, _, __) => _networkOrInitial(context, r),
+        ),
+      ),
+    );
+  }
+
+  Widget _plate(double r, Widget child) {
+    return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(r),
         border: bordered ? Border.all(color: AppColors.neutral200) : null,
       ),
-      clipBehavior: Clip.antiAlias,
       padding: padded ? EdgeInsets.all(size * 0.15) : EdgeInsets.zero,
-      child: Image.asset(
-        _assetPath,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (context, _, __) => _networkOrInitial(r),
-      ),
+      child: child,
     );
   }
 
-  Widget _networkOrInitial(double r) {
+  Widget _networkOrInitial(BuildContext context, double r) {
     final url = networkUrl;
 
     // Release builds never touch the network for a logo.
@@ -109,7 +124,7 @@ class BrandMark extends StatelessWidget {
     // render instantly, offline, every time. In debug we still fetch, so a
     // missing asset is visible while developing rather than silently
     // degrading to a letter.
-    if (url == null || !kDebugMode) return _initial(r);
+    if (url == null || !kDebugMode) return _initial(context, r);
 
     return Image.network(
       url,
@@ -119,21 +134,28 @@ class BrandMark extends StatelessWidget {
         if (progress == null) return child;
         return DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.neutral100,
+            color: AppColors.track(context),
             borderRadius: BorderRadius.circular(r * 0.6),
           ),
         );
       },
-      errorBuilder: (context, _, __) => _initial(r),
+      errorBuilder: (context, _, __) => _initial(context, r),
     );
   }
 
-  Widget _initial(double r) {
+  Widget _initial(BuildContext context, double r) {
     final initials = _initials;
+    final ink = _readableBrand(context);
     return Container(
       decoration: BoxDecoration(
-        color: brandColor.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(r * 0.6),
+        // Opaque, because this now fills the tile: there is no white plate
+        // underneath to lift a translucent tint off the page background.
+        color: Color.alphaBlend(
+          ink.withValues(alpha: 0.16),
+          AppColors.surface(context),
+        ),
+        borderRadius: BorderRadius.circular(r),
+        border: bordered ? Border.all(color: AppColors.border(context)) : null,
       ),
       alignment: Alignment.center,
       child: Text(
@@ -141,11 +163,24 @@ class BrandMark extends StatelessWidget {
         style: TextStyle(
           fontSize: initials.length > 1 ? size * 0.3 : size * 0.38,
           fontWeight: FontWeight.w800,
-          color: brandColor,
+          color: ink,
           letterSpacing: -0.5,
           height: 1.0,
         ),
       ),
     );
+  }
+
+  /// A brand's own colour is picked to read on white. Half of them go muddy or
+  /// invisible on a dark surface, so clamp lightness into a band that stays
+  /// legible against whichever surface we are actually painting on.
+  Color _readableBrand(BuildContext context) {
+    final hsl = HSLColor.fromColor(brandColor);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return hsl
+        .withLightness(
+          isDark ? hsl.lightness.clamp(0.62, 0.92) : hsl.lightness.clamp(0.18, 0.42),
+        )
+        .toColor();
   }
 }

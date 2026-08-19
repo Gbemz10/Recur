@@ -20,16 +20,33 @@ class AppAlert extends StatelessWidget {
   final AppAlertVariant variant;
   final VoidCallback? onDismiss;
 
-  ({Color bg, Color fg, IconData icon}) get _style => switch (variant) {
-        AppAlertVariant.info => (bg: AppColors.infoBg, fg: AppColors.info, icon: Icons.info_rounded),
-        AppAlertVariant.success => (bg: AppColors.successBg, fg: AppColors.success, icon: Icons.check_circle_rounded),
-        AppAlertVariant.warning => (bg: AppColors.warningBg, fg: AppColors.warning, icon: Icons.warning_rounded),
-        AppAlertVariant.danger => (bg: AppColors.dangerBg, fg: AppColors.danger, icon: Icons.error_rounded),
-      };
+  /// Derived per theme for the same reason [AppBadge] is: the four light
+  /// fills are tints mixed toward white, and an alert is a *large* block, so
+  /// painting one unchanged on a dark screen is the single worst case of it.
+  ({Color bg, Color fg, IconData icon}) _style(BuildContext context) {
+    final (Color ink, Color tint, IconData icon) = switch (variant) {
+      AppAlertVariant.info => (AppColors.info, AppColors.infoBg, Icons.info_rounded),
+      AppAlertVariant.success => (AppColors.success, AppColors.successBg, Icons.check_circle_rounded),
+      AppAlertVariant.warning => (AppColors.warning, AppColors.warningBg, Icons.warning_rounded),
+      AppAlertVariant.danger => (AppColors.danger, AppColors.dangerBg, Icons.error_rounded),
+    };
+
+    if (Theme.of(context).brightness != Brightness.dark) {
+      return (bg: tint, fg: ink, icon: icon);
+    }
+
+    final hsl = HSLColor.fromColor(ink);
+    final fg = hsl.withLightness(hsl.lightness.clamp(0.62, 0.90)).toColor();
+    return (
+      bg: Color.alphaBlend(fg.withValues(alpha: 0.16), AppColors.surface(context)),
+      fg: fg,
+      icon: icon,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = _style;
+    final s = _style(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(color: s.bg, borderRadius: BorderRadius.circular(12)),

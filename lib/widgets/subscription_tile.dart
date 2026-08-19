@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../data/mock_data.dart' show formatNaira;
 import '../models/subscription.dart';
 import '../ui/ui.dart';
 import 'brand_mark.dart';
@@ -44,7 +44,9 @@ class SubscriptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final cancelled = subscription.status == SubscriptionStatus.cancelled;
-    final urgent = subscription.isDueSoon && !cancelled;
+    // Overdue counts as urgent too: isDueSoon goes false the moment a charge
+    // date passes, which styled the most urgent row in the list as the calmest.
+    final urgent = (subscription.isDueSoon || subscription.daysUntilCharge < 0) && !cancelled;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -77,7 +79,7 @@ class SubscriptionTile extends StatelessWidget {
                       style: text.titleSmall?.copyWith(
                         decoration:
                             cancelled ? TextDecoration.lineThrough : null,
-                        color: cancelled ? AppColors.neutral400 : null,
+                        color: cancelled ? AppColors.muted(context) : null,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -99,7 +101,7 @@ class SubscriptionTile extends StatelessWidget {
                             style: text.bodySmall?.copyWith(
                               color: urgent
                                   ? AppColors.warning
-                                  : AppColors.neutral500,
+                                  : AppColors.muted(context),
                               fontWeight: urgent ? FontWeight.w700 : null,
                             ),
                           ),
@@ -118,7 +120,7 @@ class SubscriptionTile extends StatelessWidget {
                     style: AppTypography.mono(
                       size: 14,
                       weight: FontWeight.w600,
-                      color: cancelled ? AppColors.neutral400 : AppColors.ink(context),
+                      color: cancelled ? AppColors.muted(context) : AppColors.ink(context),
                     ),
                   ),
                   if (subscription.cycle != BillingCycle.monthly &&
@@ -126,7 +128,7 @@ class SubscriptionTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${formatNaira(subscription.monthlyEquivalent)}/mo',
-                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.neutral400),
+                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.muted(context)),
                     ),
                   ],
                   if (shareOfSpend != null && !cancelled) ...[
@@ -231,7 +233,7 @@ class _ConfidenceRow extends StatelessWidget {
         ? AppColors.success
         : value >= 0.65
             ? AppColors.warning
-            : AppColors.neutral400;
+            : AppColors.muted(context);
 
     return Row(
       children: [

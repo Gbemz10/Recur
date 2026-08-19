@@ -218,7 +218,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     Text(
                       '${formatNaira(_monthTotal)} tracked',
-                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.neutral500),
+                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.muted(context)),
                     ),
                   ],
                 ),
@@ -236,7 +236,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Center(
                     child: Text(
                       label,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.neutral400),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.muted(context)),
                     ),
                   ),
                 ),
@@ -268,10 +268,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(width: AppSpacing.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: AppColors.neutral100, borderRadius: AppRadius.fullBR),
+                  decoration: BoxDecoration(color: AppColors.track(context), borderRadius: AppRadius.fullBR),
                   child: Text(
                     '${selectedOccurrences.length}',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.neutral500),
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.muted(context)),
                   ),
                 ),
               ],
@@ -383,7 +383,7 @@ class _MonthGrid extends StatelessWidget {
                 color: isSelected
                     ? AppColors.primary
                     : isToday
-                        ? AppColors.primaryLight
+                        ? AppColors.primaryTint(context)
                         : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -471,7 +471,7 @@ class _OccurrenceRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   sub.cycle.label,
-                  style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
+                  style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
                 ),
               ],
             ),
@@ -502,7 +502,7 @@ class _RoundIconButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         // See app_date_picker.dart's twin of this widget for why this
-        // isn't a hardcoded AppColors.neutral100 anymore.
+        // isn't a hardcoded AppColors.track(context) anymore.
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: const CircleBorder(),
         child: InkWell(

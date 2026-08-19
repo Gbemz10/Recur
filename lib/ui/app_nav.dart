@@ -97,7 +97,7 @@ class AppSidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
               child: Material(
-                color: i == selectedIndex ? AppColors.primaryLight : Colors.transparent,
+                color: i == selectedIndex ? AppColors.primaryTint(context) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   onTap: () => onSelect(i),
@@ -109,7 +109,7 @@ class AppSidebar extends StatelessWidget {
                         Icon(
                           i == selectedIndex ? (items[i].selectedIcon ?? items[i].icon) : items[i].icon,
                           size: 20,
-                          color: i == selectedIndex ? AppColors.primaryDark : AppColors.neutral500,
+                          color: i == selectedIndex ? AppColors.primaryDark : AppColors.muted(context),
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Text(

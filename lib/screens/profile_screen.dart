@@ -218,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 3),
                             Text(
                               profile.email,
-                              style: const TextStyle(fontSize: 13, color: AppColors.neutral500),
+                              style: TextStyle(fontSize: 13, color: AppColors.muted(context)),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             AppBadge(label: _memberSinceLabel(profile.memberSince), variant: AppBadgeVariant.neutral),
@@ -244,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               label: 'Cancelled',
                               value: '$cancelled',
                               icon: Icons.do_not_disturb_on_outlined,
-                              color: AppColors.neutral500,
+                              color: AppColors.muted(context),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -559,7 +559,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 "Signing in on other devices will need this new password.",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
               ),
               const SizedBox(height: AppSpacing.xl),
               AppTextField(
@@ -642,13 +642,13 @@ class _Requirement extends StatelessWidget {
             width: 17,
             height: 17,
             decoration: BoxDecoration(
-              color: met ? AppColors.success : AppColors.neutral100,
+              color: met ? AppColors.success : AppColors.track(context),
               shape: BoxShape.circle,
             ),
             child: Icon(
               met ? Icons.check_rounded : Icons.remove_rounded,
               size: 11,
-              color: met ? Colors.white : AppColors.neutral400,
+              color: met ? Colors.white : AppColors.muted(context),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -657,7 +657,7 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
             ),
           ),
         ],
@@ -684,7 +684,7 @@ class _StatTile extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(value, style: AppTypography.mono(size: 15, weight: FontWeight.w600, color: AppColors.ink(context))),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.neutral500), textAlign: TextAlign.center),
+          Text(label, style: TextStyle(fontSize: 10.5, color: AppColors.muted(context)), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -706,7 +706,7 @@ class _EditableRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 118,
-            child: Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.neutral500)),
+            child: Text(label, style: TextStyle(fontSize: 12.5, color: AppColors.muted(context))),
           ),
           Expanded(
             child: Text(
@@ -715,7 +715,7 @@ class _EditableRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (onTap != null) const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.neutral400),
+          if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.muted(context)),
         ],
       ),
     );

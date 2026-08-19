@@ -156,6 +156,38 @@ class _RecurringScreenState extends State<RecurringScreen> {
   }
 
   Widget _scrollBody(SubscriptionStore store) {
+    // The two views cross-fade and slide past each other rather than swapping
+    // instantly. They are two readings of the same subscriptions, so the
+    // transition should feel like turning the data around rather than
+    // arriving somewhere new: calendar comes in from the right, the list from
+    // the left, matching the order of the buttons that trigger them.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 340),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        final incoming = child.key == ValueKey(_view);
+        final dir = _view == _View.calendar ? 1.0 : -1.0;
+        return SlideTransition(
+          position: Tween<Offset>(
+            // The outgoing view leaves the way the incoming one arrives from,
+            // so they travel together instead of crossing in opposite
+            // directions and reading as two unrelated animations.
+            begin: Offset(incoming ? 0.10 * dir : -0.10 * dir, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.topCenter,
+        children: [...previousChildren, if (currentChild != null) currentChild],
+      ),
+      child: KeyedSubtree(key: ValueKey(_view), child: _viewBody(store)),
+    );
+  }
+
+  Widget _viewBody(SubscriptionStore store) {
     return RefreshIndicator(
         color: AppColors.primary,
         onRefresh: store.load,

@@ -63,7 +63,7 @@ class _AppAccordionState extends State<AppAccordion> {
                         AnimatedRotation(
                           turns: _openIndices.contains(i) ? 0.5 : 0,
                           duration: const Duration(milliseconds: 150),
-                          child: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.neutral500),
+                          child: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.muted(context)),
                         ),
                       ],
                     ),

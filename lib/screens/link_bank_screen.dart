@@ -283,8 +283,8 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             child: Container(
               width: 92,
               height: 92,
-              decoration: const BoxDecoration(
-                color: AppColors.successBg,
+              decoration: BoxDecoration(
+                color: AppColors.successTint(context),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

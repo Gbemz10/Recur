@@ -229,7 +229,7 @@ class _DatePickerGrid extends StatelessWidget {
                 color: isSelected
                     ? AppColors.primary
                     : isToday
-                        ? AppColors.primaryLight
+                        ? AppColors.primaryTint(context)
                         : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),

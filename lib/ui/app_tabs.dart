@@ -91,7 +91,7 @@ class AppTabs extends StatelessWidget {
                                   : FontWeight.w600,
                               color: i == selectedIndex
                                   ? AppColors.ink(context)
-                                  : AppColors.neutral500,
+                                  : AppColors.muted(context),
                             ),
                             child: Text(
                               labels[i],

@@ -92,7 +92,7 @@ extension SpendCategoryMeta on SpendCategory {
         SpendCategory.savings => AppColors.primary,
         SpendCategory.loans => const Color(0xFF9A3025),
         SpendCategory.education => const Color(0xFF3B558A),
-        SpendCategory.other => AppColors.neutral500,
+        SpendCategory.other => AppColors.neutral600,
       };
 
   Color get _dark => switch (this) {
@@ -156,6 +156,30 @@ class CategorySpend {
       );
 }
 
+/// One month's total, for the trend series.
+class TrendPoint {
+  const TrendPoint({required this.period, required this.total});
+
+  /// `YYYY-MM`.
+  final String period;
+  final double total;
+
+  /// Three-letter month for the axis, derived rather than sent, since the
+  /// server has no idea what locale is reading it.
+  String get shortMonth {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final parts = period.split('-');
+    if (parts.length != 2) return '';
+    final m = int.tryParse(parts[1]);
+    return (m == null || m < 1 || m > 12) ? '' : months[m - 1];
+  }
+
+  factory TrendPoint.fromJson(Map<String, dynamic> json) => TrendPoint(
+        period: json['period'] as String? ?? '',
+        total: (json['total'] as num?)?.toDouble() ?? 0,
+      );
+}
+
 /// A period's spending, as the breakdown screen and the dashboard row read it.
 class SpendingSummary {
   const SpendingSummary({
@@ -163,6 +187,7 @@ class SpendingSummary {
     required this.total,
     required this.uncategorizedCount,
     required this.categories,
+    this.trend = const [],
   });
 
   /// `YYYY-MM`, in WAT — see the backend's `periodRange` for why the month
@@ -178,6 +203,10 @@ class SpendingSummary {
   /// Already sorted by spend, descending, by the backend.
   final List<CategorySpend> categories;
 
+  /// The last six months of totals, oldest first, with empty months filled in
+  /// at zero by the backend so the series is contiguous.
+  final List<TrendPoint> trend;
+
   bool get isEmpty => total == 0 && categories.isEmpty;
 
   /// The handful the dashboard leads with.
@@ -185,6 +214,10 @@ class SpendingSummary {
       categories.where((c) => c.spent > 0).take(count).toList();
 
   List<CategorySpend> get overBudget => categories.where((c) => c.isOverBudget).toList();
+
+  /// True once there is more than one month with anything in it. A trend
+  /// drawn from a single month is a single bar, which says nothing.
+  bool get hasTrend => trend.where((t) => t.total > 0).length > 1;
 
   static const empty = SpendingSummary(
     period: '',
@@ -199,6 +232,9 @@ class SpendingSummary {
         uncategorizedCount: (json['uncategorizedCount'] as num?)?.toInt() ?? 0,
         categories: (json['categories'] as List<dynamic>? ?? const [])
             .map((c) => CategorySpend.fromJson(c as Map<String, dynamic>))
+            .toList(),
+        trend: (json['trend'] as List<dynamic>? ?? const [])
+            .map((t) => TrendPoint.fromJson(t as Map<String, dynamic>))
             .toList(),
       );
 }
