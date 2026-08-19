@@ -32,8 +32,10 @@ class TrialReminder {
         label: json['label'] as String,
         merchantSlug: json['merchantSlug'] as String?,
         trialEndsAt: DateTime.parse(json['trialEndsAt'] as String),
-        remindedAt: json['remindedAt'] != null ? DateTime.parse(json['remindedAt'] as String) : null,
-        dismissedAt: json['dismissedAt'] != null ? DateTime.parse(json['dismissedAt'] as String) : null,
+        remindedAt:
+            json['remindedAt'] != null ? DateTime.parse(json['remindedAt'] as String) : null,
+        dismissedAt:
+            json['dismissedAt'] != null ? DateTime.parse(json['dismissedAt'] as String) : null,
       );
 
   int get daysUntilEnd {

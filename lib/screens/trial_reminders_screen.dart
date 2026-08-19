@@ -39,10 +39,9 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   }
 
   Future<void> _addReminder() async {
-    await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    await showAppSheet<bool>(
+      context,
+      title: 'Add a trial reminder',
       builder: (_) => _AddTrialReminderSheet(store: widget.store),
     );
   }
@@ -69,8 +68,10 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
-            child: Text('Trials', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text('Trials',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
           ),
           Expanded(child: _body(context)),
         ],
@@ -105,7 +106,8 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Couldn't load your trial reminders", style: Theme.of(context).textTheme.titleMedium),
+              Text("Couldn't load your trial reminders",
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.md),
               AppButton(label: 'Try again', onPressed: widget.store.load),
             ],
@@ -227,7 +229,8 @@ class _TrialsEmptyState extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.huge),
+      padding:
+          const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.huge),
       children: [
         // A preview of the thing being asked for, rendered as the real card
         // shape it will become, so "add a trial" has something to mean.
@@ -259,7 +262,8 @@ class _TrialsEmptyState extends StatelessWidget {
                 child: Icon(Icons.timer_rounded, size: 28, color: AppColors.primaryInk(context)),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text('Before it becomes a charge', style: text.titleMedium, textAlign: TextAlign.center),
+              Text('Before it becomes a charge',
+                  style: text.titleMedium, textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'A trial has no transaction behind it, so Recur cannot detect '
@@ -341,7 +345,20 @@ class _TrialReminderCard extends StatelessWidget {
   }
 
   static String _endDate(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${d.day} ${months[d.month - 1]}';
   }
 
@@ -413,7 +430,6 @@ class _TrialReminderCard extends StatelessWidget {
               ),
             ],
           ),
-
         ],
       ),
     );
@@ -511,105 +527,97 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
 
   String _formatDate(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppTextField(
+          controller: _label,
+          label: 'What is it?',
+          hint: 'e.g. Netflix Premium',
+          prefixIcon: Icons.label_outline_rounded,
         ),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.timer_rounded, color: AppColors.warning, size: 28),
-            const SizedBox(height: AppSpacing.md),
-            Text('Add a trial reminder', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'We will show this on your dashboard as the end date gets close.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              controller: _label,
-              label: 'What is it?',
-              hint: 'e.g. Netflix Premium',
-              prefixIcon: Icons.label_outline_rounded,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text('Trial ends', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
+        const SizedBox(height: AppSpacing.lg),
+        Text('Trial ends', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: _pickDate,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                onTap: _pickDate,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border(context)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.muted(context)),
-                      const SizedBox(width: AppSpacing.md),
-                      Text(_formatDate(_trialEndsAt), style: Theme.of(context).textTheme.bodyLarge),
-                    ],
-                  ),
-                ),
+                border: Border.all(color: AppColors.border(context)),
               ),
-            ),
-            if (_serverError != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Row(
+              child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _serverError!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
-                    ),
-                  ),
+                  Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.muted(context)),
+                  const SizedBox(width: AppSpacing.md),
+                  Text(_formatDate(_trialEndsAt), style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
+            ),
+          ),
+        ),
+        if (_serverError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  _serverError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
+                ),
+              ),
             ],
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.ghost,
-                    expand: true,
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AppButton(
-                    label: 'Add reminder',
-                    expand: true,
-                    isLoading: _saving,
-                    onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
-                  ),
-                ),
-              ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Cancel',
+                variant: AppButtonVariant.ghost,
+                expand: true,
+                onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppButton(
+                label: 'Add reminder',
+                expand: true,
+                isLoading: _saving,
+                onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

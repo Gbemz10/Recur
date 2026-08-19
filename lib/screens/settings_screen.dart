@@ -9,7 +9,6 @@ import '../data/linked_bank.dart';
 import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
 import '../data/theme_controller.dart';
-import '../models/subscription.dart';
 import '../ui/ui.dart';
 import '../widgets/bank_logo.dart';
 import '../widgets/brand_mark.dart';
@@ -106,10 +105,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmDeleteAccount() async {
-    final deleted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final deleted = await showAppSheet<bool>(
+      context,
+      title: 'Delete your account?',
       builder: (_) => const _DeleteAccountSheet(),
     );
     if (deleted == true) {
@@ -208,19 +206,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               children: [
                 // ---- account ----
-                //
-                // This was a generic name-and-chevron row: the same thing every
-                // settings screen opens with, and it told the user nothing they did
-                // not already know. It now carries their actual standing with Recur
-                // underneath — how long they have been here, how many banks feed it,
-                // how much it is watching. Account facts rather than money facts,
-                // because the money already has three screens of its own.
                 Builder(
                   builder: (context) {
                     final profile = widget.profileStore.profile;
                     final loading = widget.profileStore.isInitialLoad;
-                    final activeCount = widget.store.byStatus(SubscriptionStatus.active).length;
-                    final bankCount = widget.bankStore.active.length;
 
                     return AppCard(
                       onTap: () => Navigator.of(context).push(
@@ -231,84 +220,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              if (loading)
-                                const ClipOval(child: AppSkeleton(width: 52, height: 52))
-                              else
-                                Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.35),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: AppAvatar(
-                                    name: profile?.displayLabel ?? 'Account',
-                                    imageUrl: profile?.avatarUrl,
-                                    size: 48,
-                                  ),
-                                ),
-                              const SizedBox(width: AppSpacing.lg),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      profile?.displayLabel ?? 'Loading…',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.3,
-                                        color: AppColors.ink(context),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      profile?.email ?? '',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        color: AppColors.muted(context),
-                                      ),
-                                    ),
-                                  ],
+                          if (loading)
+                            const ClipOval(child: AppSkeleton(width: 52, height: 52))
+                          else
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                  width: 1.5,
                                 ),
                               ),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.muted(context),
+                              child: AppAvatar(
+                                name: profile?.displayLabel ?? 'Account',
+                                imageUrl: profile?.avatarUrl,
+                                size: 48,
                               ),
-                            ],
+                            ),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile?.displayLabel ?? 'Loading…',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    color: AppColors.ink(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  profile?.email ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.muted(context),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Divider(height: 1, color: AppColors.border(context)),
-                          const SizedBox(height: AppSpacing.lg),
-                          Row(
-                            children: [
-                              _Stat(
-                                label: 'Member since',
-                                value: profile == null ? '—' : _monthYear(profile.memberSince),
-                              ),
-                              _StatDivider(),
-                              _Stat(
-                                label: bankCount == 1 ? 'Bank linked' : 'Banks linked',
-                                value: '$bankCount',
-                              ),
-                              _StatDivider(),
-                              _Stat(
-                                label: 'Tracking',
-                                value: activeCount == 1 ? '1 sub' : '$activeCount subs',
-                              ),
-                            ],
-                          ),
+                          Icon(Icons.chevron_right_rounded, color: AppColors.muted(context)),
                         ],
                       ),
                     );
@@ -652,152 +613,78 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.danger.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 23),
         ),
-        padding:
-            const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
-            const SizedBox(height: AppSpacing.md),
-            Text('Delete your account?', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'This permanently removes your linked bank connections and everything '
-              'Recur has detected. This cannot be undone.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.muted(context), height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              controller: _password,
-              label: 'Confirm your password',
-              prefixIcon: Icons.lock_outline_rounded,
-              obscureText: _obscure,
-              suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              onSuffixIconTap: () => setState(() => _obscure = !_obscure),
-            ),
-            if (_serverError != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _serverError!,
-                      style:
-                          Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
-                    ),
-                  ),
-                ],
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'This permanently removes your linked bank connections and everything '
+          'Recur has detected. This cannot be undone.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: AppColors.muted(context), height: 1.5),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        AppTextField(
+          controller: _password,
+          label: 'Confirm your password',
+          prefixIcon: Icons.lock_outline_rounded,
+          obscureText: _obscure,
+          suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          onSuffixIconTap: () => setState(() => _obscure = !_obscure),
+        ),
+        if (_serverError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  _serverError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
+                ),
               ),
             ],
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.ghost,
-                    expand: true,
-                    onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AppButton(
-                    label: 'Delete account',
-                    variant: AppButtonVariant.destructive,
-                    expand: true,
-                    isLoading: _deleting,
-                    onPressed: _deleting || _password.text.isEmpty ? null : _delete,
-                  ),
-                ),
-              ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Cancel',
+                variant: AppButtonVariant.ghost,
+                expand: true,
+                onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppButton(
+                label: 'Delete account',
+                variant: AppButtonVariant.destructive,
+                expand: true,
+                isLoading: _deleting,
+                onPressed: _deleting || _password.text.isEmpty ? null : _delete,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
-}
-
-const _monthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-String _monthYear(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
-
-/// One figure in the account strip. Label above value, because the label is
-/// what you scan for and the value is what you stop on.
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: AppTypography.mono(
-              size: 9.5,
-              weight: FontWeight.w700,
-              color: AppColors.muted(context),
-            ).copyWith(letterSpacing: 0.6),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatDivider extends StatelessWidget {
-  const _StatDivider();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 1,
-        height: 26,
-        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        color: AppColors.border(context),
-      );
 }
 
 class _SectionLabel extends StatelessWidget {

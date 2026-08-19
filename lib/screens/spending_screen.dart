@@ -53,10 +53,8 @@ class _SpendingScreenState extends State<SpendingScreen> {
   }
 
   Future<void> _editBudget(CategorySpend spend) async {
-    final result = await showModalBottomSheet<_BudgetResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final result = await showAppSheet<_BudgetResult>(
+      context,
       builder: (_) => _BudgetSheet(spend: spend),
     );
     if (result == null || !mounted) return;
@@ -92,7 +90,8 @@ class _SpendingScreenState extends State<SpendingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
             child: Text(
               'Spending',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
@@ -186,7 +185,8 @@ class _SpendingScreenState extends State<SpendingScreen> {
           AppAlert(
             variant: AppAlertVariant.info,
             title: 'Still sorting ${summary.uncategorizedCount} transactions',
-            message: 'They are not in the totals below yet. This usually finishes within a minute of a sync.',
+            message:
+                'They are not in the totals below yet. This usually finishes within a minute of a sync.',
           ),
         ],
 
@@ -246,7 +246,8 @@ class _DonutCardState extends State<_DonutCard> {
         children: [
           Text(
             _TotalCard.periodLabel(widget.summary.period).toUpperCase(),
-            style: AppTypography.mono(size: 10.5, color: AppColors.muted(context), letterSpacing: 1.2),
+            style:
+                AppTypography.mono(size: 10.5, color: AppColors.muted(context), letterSpacing: 1.2),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -258,7 +259,6 @@ class _DonutCardState extends State<_DonutCard> {
             'left your account this month',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
           ),
-
           if (over.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             Row(
@@ -279,7 +279,6 @@ class _DonutCardState extends State<_DonutCard> {
               ],
             ),
           ],
-
           const SizedBox(height: AppSpacing.xl),
           Center(
             child: AppDonut(
@@ -288,7 +287,8 @@ class _DonutCardState extends State<_DonutCard> {
               highlighted: _highlighted,
               slices: [
                 for (final s in slices)
-                  DonutSlice(value: s.spent, color: s.category.color(context), label: s.category.label),
+                  DonutSlice(
+                      value: s.spent, color: s.category.color(context), label: s.category.label),
               ],
               // With the total printed above, the centre is free to answer the
               // question the chart itself raises: which slice is that, and how
@@ -377,7 +377,10 @@ class _LegendChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 7),
             Text(
               spend.category.shortLabel,
@@ -476,8 +479,18 @@ class _TotalCard extends StatelessWidget {
   /// one string; the rest of the app formats its own dates the same way.
   static String periodLabel(String period) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final parts = period.split('-');
     if (parts.length != 2) return 'This month';
@@ -511,7 +524,8 @@ class _TotalCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             'left your account this month',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
+            style:
+                Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
           ),
           if (overBudget.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -562,9 +576,8 @@ class _CategoryRow extends StatelessWidget {
     // With a budget the meter means "how much of your cap"; without one it
     // falls back to "how much of this month", so the bar is never empty and
     // never means two things at once without saying which.
-    final progress = spend.hasBudget
-        ? spend.budgetProgress
-        : (total > 0 ? spend.spent / total : 0.0);
+    final progress =
+        spend.hasBudget ? spend.budgetProgress : (total > 0 ? spend.spent / total : 0.0);
 
     return AppCard(
       onTap: onTap,
@@ -599,7 +612,10 @@ class _CategoryRow extends StatelessWidget {
                       spend.transactionCount == 1
                           ? '1 transaction'
                           : '${spend.transactionCount} transactions',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.muted(context)),
                     ),
                   ],
                 ),
@@ -607,7 +623,8 @@ class _CategoryRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 formatNaira(spend.spent),
-                style: AppTypography.money(size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
+                style: AppTypography.money(
+                    size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
               ),
             ],
           ),
@@ -623,7 +640,8 @@ class _CategoryRow extends StatelessWidget {
                 child: Padding(
                   // Padding rather than a bare Text, so this reaches the 44px
                   // touch target the rest of the app's inline actions use.
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
                   child: Text(
                     spend.hasBudget ? 'Edit cap' : 'Set a cap',
                     style: Theme.of(context)
@@ -706,70 +724,60 @@ class _BudgetSheetState extends State<_BudgetSheet> {
   Widget build(BuildContext context) {
     final category = widget.spend.category;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Icon(category.icon, size: 20, color: category.color(context)),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    'Monthly cap for ${category.label.toLowerCase()}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Recur emails you at 80% and again if you go over. It never blocks a payment.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              controller: _controller,
-              label: 'Amount (₦)',
-              hint: 'e.g. 50000',
-              keyboardType: TextInputType.number,
-              errorText: _error,
-              onChanged: (_) {
-                if (_error != null) setState(() => _error = null);
-              },
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                if (widget.spend.hasBudget) ...[
-                  Expanded(
-                    child: AppButton(
-                      label: 'Remove',
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () => Navigator.of(context).pop(const _BudgetResult(remove: true)),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                ],
-                Expanded(
-                  child: AppButton(
-                    label: widget.spend.hasBudget ? 'Save cap' : 'Set cap',
-                    onPressed: _submit,
-                  ),
-                ),
-              ],
+            Icon(category.icon, size: 20, color: category.color(context)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Monthly cap for ${category.label.toLowerCase()}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Recur emails you at 80% and again if you go over. It never blocks a payment.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        AppTextField(
+          controller: _controller,
+          label: 'Amount (₦)',
+          hint: 'e.g. 50000',
+          keyboardType: TextInputType.number,
+          errorText: _error,
+          onChanged: (_) {
+            if (_error != null) setState(() => _error = null);
+          },
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            if (widget.spend.hasBudget) ...[
+              Expanded(
+                child: AppButton(
+                  label: 'Remove',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () => Navigator.of(context).pop(const _BudgetResult(remove: true)),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+            ],
+            Expanded(
+              child: AppButton(
+                label: widget.spend.hasBudget ? 'Save cap' : 'Set cap',
+                onPressed: _submit,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

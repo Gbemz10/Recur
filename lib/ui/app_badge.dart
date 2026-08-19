@@ -5,7 +5,8 @@ enum AppBadgeVariant { neutral, primary, success, warning, danger, info }
 
 /// Small status pill for tags, statuses, and counts.
 class AppBadge extends StatelessWidget {
-  const AppBadge({super.key, required this.label, this.variant = AppBadgeVariant.neutral, this.dot = false});
+  const AppBadge(
+      {super.key, required this.label, this.variant = AppBadgeVariant.neutral, this.dot = false});
 
   final String label;
   final AppBadgeVariant variant;
@@ -59,10 +60,15 @@ class AppBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (dot) ...[
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: c.fg, shape: BoxShape.circle)),
+            Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: c.fg, shape: BoxShape.circle)),
             const SizedBox(width: 6),
           ],
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.fg, height: 1.4)),
+          Text(label,
+              style:
+                  TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.fg, height: 1.4)),
         ],
       ),
     );

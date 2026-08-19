@@ -157,7 +157,8 @@ class Subscription {
 
     return Subscription(
       id: json['id'] as String,
-      brand: merchantJson != null ? Merchant.fromJson(merchantJson) : Merchants.unknown(displayName),
+      brand:
+          merchantJson != null ? Merchant.fromJson(merchantJson) : Merchants.unknown(displayName),
       displayName: displayName,
       amount: (json['amount'] as num).toDouble(),
       previousAmount: (json['previousAmount'] as num?)?.toDouble(),
@@ -205,6 +206,19 @@ class Subscription {
 
   bool get isDueSoon => daysUntilCharge >= 0 && daysUntilCharge <= 7;
 
+  /// True when the projected charge date has passed and nothing has replaced
+  /// it. This is **not** a missed payment, and nothing here is owed.
+  ///
+  /// `nextChargeDate` is a projection the detector writes during a sync, and
+  /// `projectNextChargeDate` advances by whole cycles until it lands in the
+  /// future — so the date is always ahead of now at the moment it is stored.
+  /// A date in the past therefore has exactly one cause: no sync has run since
+  /// we predicted it. Two opposite things produce that. Either the charge went
+  /// through normally and we have not pulled transactions yet, or it never
+  /// happened at all (card declined, subscription quietly ended). The app
+  /// cannot tell which, so it must not imply either.
+  bool get isAwaitingCharge => daysUntilCharge < 0;
+
   /// True when Recur has actually observed this subscription's price
   /// change — as opposed to `previousAmount` just being null because no
   /// change has ever happened.
@@ -218,13 +232,34 @@ class Subscription {
   double get priceDelta => hasPriceChange ? amount - previousAmount! : 0;
 
   /// Human-readable countdown, e.g. "Charges tomorrow".
+  ///
+  /// A passed date reads as "Expected 4 Aug" rather than "Overdue". See
+  /// [isAwaitingCharge]: the word Overdue asserted a missed bill that the data
+  /// cannot support, and did it in alert red on a screen about someone's money.
   String get nextChargeLabel {
     final d = daysUntilCharge;
-    if (d < 0) return 'Overdue';
+    if (d < 0) return 'Expected ${_shortDate(nextChargeDate)}';
     if (d == 0) return 'Charges today';
     if (d == 1) return 'Charges tomorrow';
     return 'In $d days';
   }
+
+  static const _shortMonths = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static String _shortDate(DateTime d) => '${d.day} ${_shortMonths[d.month - 1]}';
 
   Subscription copyWith({SubscriptionStatus? status}) => Subscription(
         id: id,

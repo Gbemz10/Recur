@@ -35,9 +35,13 @@ class AppHeroSection extends StatelessWidget {
           if (eyebrow != null) ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(color: AppColors.primaryTint(context), borderRadius: BorderRadius.circular(999)),
+              decoration: BoxDecoration(
+                  color: AppColors.primaryTint(context), borderRadius: BorderRadius.circular(999)),
               child: Text(eyebrow!,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primaryInk(context))),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryInk(context))),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],

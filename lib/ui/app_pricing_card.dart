@@ -38,7 +38,12 @@ class AppPricingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: highlighted ? AppColors.neutral900 : AppColors.neutral200),
         boxShadow: highlighted
-            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 12))]
+            ? [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12))
+              ]
             : null,
       ),
       child: Column(
@@ -49,12 +54,17 @@ class AppPricingCard extends StatelessWidget {
             children: [
               Text(planName,
                   style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700, color: highlighted ? Colors.white : AppColors.neutral900)),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: highlighted ? Colors.white : AppColors.neutral900)),
               if (badge != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(999)),
-                  child: Text(badge!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                  decoration: BoxDecoration(
+                      color: AppColors.primary, borderRadius: BorderRadius.circular(999)),
+                  child: Text(badge!,
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
             ],
           ),
@@ -64,12 +74,16 @@ class AppPricingCard extends StatelessWidget {
             children: [
               Text(price,
                   style: TextStyle(
-                      fontSize: 40, fontWeight: FontWeight.w800, color: highlighted ? Colors.white : AppColors.neutral900)),
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      color: highlighted ? Colors.white : AppColors.neutral900)),
               const SizedBox(width: 4),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(period,
-                    style: TextStyle(fontSize: 13, color: highlighted ? AppColors.neutral400 : AppColors.muted(context))),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: highlighted ? AppColors.neutral400 : AppColors.muted(context))),
               ),
             ],
           ),
@@ -79,11 +93,14 @@ class AppPricingCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, size: 18, color: highlighted ? Colors.white : AppColors.success),
+                  Icon(Icons.check_circle_rounded,
+                      size: 18, color: highlighted ? Colors.white : AppColors.success),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(feature,
-                        style: TextStyle(fontSize: 13, color: highlighted ? AppColors.neutral300 : AppColors.neutral600)),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: highlighted ? AppColors.neutral300 : AppColors.neutral600)),
                   ),
                 ],
               ),

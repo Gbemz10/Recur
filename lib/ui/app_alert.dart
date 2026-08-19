@@ -26,7 +26,11 @@ class AppAlert extends StatelessWidget {
   ({Color bg, Color fg, IconData icon}) _style(BuildContext context) {
     final (Color ink, Color tint, IconData icon) = switch (variant) {
       AppAlertVariant.info => (AppColors.info, AppColors.infoBg, Icons.info_rounded),
-      AppAlertVariant.success => (AppColors.success, AppColors.successBg, Icons.check_circle_rounded),
+      AppAlertVariant.success => (
+          AppColors.success,
+          AppColors.successBg,
+          Icons.check_circle_rounded
+        ),
       AppAlertVariant.warning => (AppColors.warning, AppColors.warningBg, Icons.warning_rounded),
       AppAlertVariant.danger => (AppColors.danger, AppColors.dangerBg, Icons.error_rounded),
     };
@@ -60,9 +64,12 @@ class AppAlert extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (title != null)
-                  Text(title!, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: s.fg)),
+                  Text(title!,
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: s.fg)),
                 if (title != null) const SizedBox(height: 2),
-                Text(message, style: TextStyle(fontSize: 13, color: s.fg.withValues(alpha: 0.9), height: 1.4)),
+                Text(message,
+                    style:
+                        TextStyle(fontSize: 13, color: s.fg.withValues(alpha: 0.9), height: 1.4)),
               ],
             ),
           ),
@@ -91,7 +98,8 @@ void showAppSnackbar(
   };
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+      content:
+          Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
       backgroundColor: s,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -16,8 +16,18 @@ class SubscriptionDetailScreen extends StatelessWidget {
   final Subscription subscription;
 
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
@@ -62,8 +72,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${subscription.cycle.label} · ${subscription.category.label}',
-                    style: text.bodyMedium
-                        ?.copyWith(color: AppColors.muted(context)),
+                    style: text.bodyMedium?.copyWith(color: AppColors.muted(context)),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   if (cancelled)
@@ -72,8 +81,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                       variant: AppBadgeVariant.neutral,
                       dot: true,
                     )
-                  else if (subscription.status ==
-                      SubscriptionStatus.unreviewed)
+                  else if (subscription.status == SubscriptionStatus.unreviewed)
                     const AppBadge(
                       label: 'Needs review',
                       variant: AppBadgeVariant.warning,
@@ -81,13 +89,13 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     )
                   else
                     AppBadge(
-                      label: subscription.daysUntilCharge < 0
-                          ? 'Overdue'
+                      label: subscription.isAwaitingCharge
+                          ? subscription.nextChargeLabel
                           : subscription.isDueSoon
                               ? 'Charges in ${subscription.daysUntilCharge} days'
                               : 'Active',
-                      variant: subscription.daysUntilCharge < 0
-                          ? AppBadgeVariant.danger
+                      variant: subscription.isAwaitingCharge
+                          ? AppBadgeVariant.neutral
                           : subscription.isDueSoon
                               ? AppBadgeVariant.warning
                               : AppBadgeVariant.success,
@@ -135,8 +143,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Was',
-                            style: text.bodySmall
-                                ?.copyWith(color: AppColors.muted(context)),
+                            style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
@@ -162,8 +169,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Now',
-                            style: text.bodySmall
-                                ?.copyWith(color: AppColors.muted(context)),
+                            style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
@@ -225,7 +231,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         Expanded(
                           child: Text(
                             subscription.charges.first.narration,
-                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.muted(context)),
+                            style: AppTypography.mono(
+                                size: 12, weight: FontWeight.w500, color: AppColors.muted(context)),
                           ),
                         ),
                       ],
@@ -245,8 +252,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < subscription.charges.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, color: AppColors.border(context)),
+                    if (i > 0) Divider(height: 1, color: AppColors.border(context)),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.lg,
@@ -258,9 +264,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: i == 0
-                                  ? subscription.accentColor
-                                  : AppColors.neutral300,
+                              color: i == 0 ? subscription.accentColor : AppColors.neutral300,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -273,7 +277,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           ),
                           Text(
                             formatNaira(subscription.charges[i].amount),
-                            style: AppTypography.mono(size: 13, weight: FontWeight.w600, color: AppColors.ink(context)),
+                            style: AppTypography.mono(
+                                size: 13, weight: FontWeight.w600, color: AppColors.ink(context)),
                           ),
                         ],
                       ),
@@ -299,14 +304,11 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0;
-                        i < subscription.cancellationSteps.length;
-                        i++)
+                    for (var i = 0; i < subscription.cancellationSteps.length; i++)
                       Padding(
                         padding: EdgeInsets.only(
-                          bottom: i == subscription.cancellationSteps.length - 1
-                              ? 0
-                              : AppSpacing.lg,
+                          bottom:
+                              i == subscription.cancellationSteps.length - 1 ? 0 : AppSpacing.lg,
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,8 +356,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 variant: AppButtonVariant.outline,
                 size: AppButtonSize.lg,
                 expand: true,
-                onPressed: () =>
-                    Navigator.of(context).pop(SubscriptionStatus.active),
+                onPressed: () => Navigator.of(context).pop(SubscriptionStatus.active),
               )
             else
               AppButton(
@@ -368,8 +369,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   final confirmed = await showAppConfirmDialog(
                     context,
                     title: 'Mark as cancelled?',
-                    message:
-                        'We will stop counting ${subscription.displayName} in '
+                    message: 'We will stop counting ${subscription.displayName} in '
                         'your monthly total and let you know if it charges '
                         'you again.',
                     confirmLabel: 'Mark cancelled',

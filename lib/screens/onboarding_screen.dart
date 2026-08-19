@@ -32,8 +32,7 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
-    with SingleTickerProviderStateMixin {
+class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerProviderStateMixin {
   final PageController _controller = PageController();
 
   /// Drives every preview and the aurora.
@@ -63,8 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'THE PROBLEM',
       title: 'It hides in your statement',
-      body:
-          'Netflix. DStv. A data plan renewing itself. '
+      body: 'Netflix. DStv. A data plan renewing itself. '
           'None of it announces itself. It just leaves.',
       kind: _PreviewKind.statement,
       // Three warm, slightly clashing alarm tones — the chaos before
@@ -75,8 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'WHAT RECUR DOES',
       title: 'One number, finally',
-      body:
-          'We group every charge that repeats and show you the total nobody '
+      body: 'We group every charge that repeats and show you the total nobody '
           'ever sits down and adds up.',
       kind: _PreviewKind.total,
       aurora: [RecurBrand.gradientStart, RecurBrand.gradientEnd, Color(0xFFF2D9A0)],
@@ -84,8 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'BEFORE IT HAPPENS',
       title: 'Warned, not surprised',
-      body:
-          'A heads-up days before each renewal lands, with the exact steps '
+      body: 'A heads-up days before each renewal lands, with the exact steps '
           'to cancel if you are done with it.',
       kind: _PreviewKind.notification,
       aurora: [RecurBrand.mint, RecurBrand.gradientEnd, Color(0xFF7BE8C2)],
@@ -160,7 +156,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-
   /// Aurora colours cross-fade between adjacent slides as you swipe.
   List<Color> get _blendedAurora {
     final lower = _offset.floor().clamp(0, _slides.length - 1);
@@ -232,8 +227,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 SizedBox(
                   height: 52,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     child: Row(
                       children: [
                         // Back fades in from the second slide, but keeps its
@@ -299,9 +293,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       height: 5,
                       width: selected ? 30 : 5,
                       decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border(context),
+                        color: selected ? AppColors.primary : AppColors.border(context),
                         borderRadius: AppRadius.fullBR,
                       ),
                     );
@@ -519,8 +511,7 @@ class _Stage extends StatelessWidget {
   /// which meant the slide's whole point — the alert — was absent half the
   /// time the user was looking at it.
   static double _notifPresence(double t) =>
-      Curves.easeOutBack.transform(((t - 0.14) / 0.26).clamp(0.0, 1.0))
-          .clamp(0.0, 1.0);
+      Curves.easeOutBack.transform(((t - 0.14) / 0.26).clamp(0.0, 1.0)).clamp(0.0, 1.0);
 
   /// Switch *expression* rather than a statement, so the compiler enforces
   /// that every preview kind has floating UI defined for it.

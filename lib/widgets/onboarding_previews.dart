@@ -11,8 +11,18 @@ import 'person_avatar.dart';
 /// stale date. Hardcoding this was a small lie that would age badly.
 String currentMonthLabel() {
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   final now = DateTime.now();
   return '${months[now.month - 1]} ${now.year}';
@@ -63,8 +73,7 @@ class StatementScanPreview extends StatelessWidget {
   static const List<_Txn> _rows = [
     _Txn('Bolt ride', '₦3,400', false, merchant: Merchants.bolt),
     _Txn('NETFLIX.COM NGN', '₦7,000', true, merchant: Merchants.netflix),
-    _Txn('Chicken Republic', '₦6,200', false,
-        merchant: Merchants.chickenRepublic),
+    _Txn('Chicken Republic', '₦6,200', false, merchant: Merchants.chickenRepublic),
     _Txn('MULTICHOICE DSTV', '₦19,000', true, merchant: Merchants.dstv),
     _Txn('Transfer to Tunde', '₦25,000', false, person: 'Tunde'),
     _Txn('MTNNG DATA AUTOREN', '₦10,000', true, merchant: Merchants.mtn),

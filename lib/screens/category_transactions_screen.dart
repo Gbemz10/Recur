@@ -60,10 +60,8 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
   Future<void> _recategorize(SpendTransaction txn) async {
     if (_pending.contains(txn.id)) return;
 
-    final choice = await showModalBottomSheet<_RecategorizeChoice>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final choice = await showAppSheet<_RecategorizeChoice>(
+      context,
       builder: (_) => _CategoryPickerSheet(transaction: txn),
     );
     if (choice == null || !mounted) return;
@@ -155,7 +153,8 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
       color: AppColors.primary,
       onRefresh: _load,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+        padding:
+            const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
         itemCount: transactions.length + 1,
         separatorBuilder: (_, index) => index == 0
             ? const SizedBox(height: AppSpacing.lg)
@@ -166,12 +165,18 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  transactions.length == 1 ? '1 transaction' : '${transactions.length} transactions',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                  transactions.length == 1
+                      ? '1 transaction'
+                      : '${transactions.length} transactions',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.muted(context)),
                 ),
                 Text(
                   formatNaira(total),
-                  style: AppTypography.money(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
+                  style: AppTypography.money(
+                      size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
                 ),
               ],
             );
@@ -201,7 +206,20 @@ class _TransactionRow extends StatelessWidget {
   final VoidCallback onTap;
 
   static String _shortDate(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${date.day} ${months[date.month - 1]}';
   }
 
@@ -245,7 +263,8 @@ class _TransactionRow extends StatelessWidget {
                   // charge they would otherwise dispute.
                   Text(
                     transaction.narration,
-                    style: AppTypography.mono(size: 11, weight: FontWeight.w400, color: AppColors.muted(context)),
+                    style: AppTypography.mono(
+                        size: 11, weight: FontWeight.w400, color: AppColors.muted(context)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -258,12 +277,16 @@ class _TransactionRow extends StatelessWidget {
               children: [
                 Text(
                   formatNaira(transaction.amount),
-                  style: AppTypography.money(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
+                  style: AppTypography.money(
+                      size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   _shortDate(transaction.date),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.muted(context)),
                 ),
               ],
             ),
@@ -305,92 +328,92 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
   Widget build(BuildContext context) {
     final current = widget.transaction.category;
 
-    return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Move to', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  widget.transaction.displayName,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Move to', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                widget.transaction.displayName,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: AppColors.muted(context)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              children: [
-                for (final category in SpendCategory.values)
-                  ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: AppRadius.mdBR),
-                    leading: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: category.tint(context),
-                        borderRadius: AppRadius.smBR,
-                      ),
-                      child: Icon(category.icon, size: 18, color: category.color(context)),
+        ),
+        Flexible(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            children: [
+              for (final category in SpendCategory.values)
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdBR),
+                  leading: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: category.tint(context),
+                      borderRadius: AppRadius.smBR,
                     ),
-                    title: Text(category.label, style: Theme.of(context).textTheme.bodyLarge),
-                    trailing: category == current
-                        ? const Icon(Icons.check_rounded, size: 20, color: AppColors.primary)
-                        : null,
-                    onTap: () => Navigator.of(context).pop(
-                      _RecategorizeChoice(category: category, applyToFuture: _applyToFuture),
-                    ),
+                    child: Icon(category.icon, size: 18, color: category.color(context)),
                   ),
-              ],
-            ),
-          ),
-          const LedgerDivider(),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.xxl,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.xxl + MediaQuery.of(context).padding.bottom,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Apply to future charges', style: Theme.of(context).textTheme.titleSmall),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Everything from this merchant lands here from now on.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-                      ),
-                    ],
+                  title: Text(category.label, style: Theme.of(context).textTheme.bodyLarge),
+                  trailing: category == current
+                      ? const Icon(Icons.check_rounded, size: 20, color: AppColors.primary)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(
+                    _RecategorizeChoice(category: category, applyToFuture: _applyToFuture),
                   ),
                 ),
-                Switch.adaptive(
-                  value: _applyToFuture,
-                  activeTrackColor: AppColors.primary,
-                  onChanged: (v) => setState(() => _applyToFuture = v),
-                ),
-              ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const LedgerDivider(),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xxl + MediaQuery.of(context).padding.bottom,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Apply to future charges', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Everything from this merchant lands here from now on.',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.muted(context)),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: _applyToFuture,
+                activeTrackColor: AppColors.primary,
+                onChanged: (v) => setState(() => _applyToFuture = v),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

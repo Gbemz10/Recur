@@ -18,9 +18,13 @@ import 'subscription_detail_screen.dart';
 /// the calendar as a *view* of this data rather than a separate place, which
 /// is what it always was.
 class RecurringScreen extends StatefulWidget {
-  const RecurringScreen({super.key, required this.store});
+  const RecurringScreen({super.key, required this.store, this.section});
 
   final SubscriptionStore store;
+
+  /// Set by the shell when another screen wants a specific list — 0 Active,
+  /// 1 Review, 2 Cancelled.
+  final ValueNotifier<int>? section;
 
   @override
   State<RecurringScreen> createState() => _RecurringScreenState();
@@ -44,10 +48,21 @@ class _RecurringScreenState extends State<RecurringScreen> {
   void initState() {
     super.initState();
     widget.store.addListener(_onChange);
+    widget.section?.addListener(_onSectionRequest);
+  }
+
+  void _onSectionRequest() {
+    final requested = widget.section?.value ?? 0;
+    if (!mounted || requested == _tab) return;
+    setState(() {
+      _tabDirection = requested > _tab ? 1 : -1;
+      _tab = requested;
+    });
   }
 
   @override
   void dispose() {
+    widget.section?.removeListener(_onSectionRequest);
     widget.store.removeListener(_onChange);
     super.dispose();
   }
@@ -71,24 +86,19 @@ class _RecurringScreenState extends State<RecurringScreen> {
     return byDay != 0 ? byDay : b.amount.compareTo(a.amount);
   }
 
-  /// Due within the week, plus anything already past its date.
-  ///
-  /// `isDueSoon` is false once a charge date passes, so filtering on it alone
-  /// dropped overdue rows into the "Later" group underneath, which is the
-  /// opposite of where they belong. `_byUrgency` sorts negatives first, so
-  /// they land at the top of the urgent group.
-  List<Subscription> get _thisWeek {
-    final list = _active.where((s) => s.isDueSoon || s.daysUntilCharge < 0).toList()
-      ..sort(_byUrgency);
-    return list;
-  }
-
   void _selectTab(int i) {
     if (i == _tab) return;
     setState(() {
       _tabDirection = i > _tab ? 1 : -1;
       _tab = i;
     });
+    // After the state change, not before. The notifier calls back
+    // synchronously, so assigning first would move _tab out from under the
+    // direction calculation on the line below it and every slide would run
+    // backwards. Assigning the value we just adopted makes that callback a
+    // no-op, while keeping the shell in sync so a later deep link into a
+    // different section still registers as a change.
+    widget.section?.value = i;
   }
 
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
@@ -295,17 +305,37 @@ class _RecurringScreenState extends State<RecurringScreen> {
       );
     }
 
-    final week = _thisWeek;
-    final weekIds = week.map((s) => s.id).toSet();
-    final later = _active.where((s) => !weekIds.contains(s.id)).toList()
+    // Three states, because a charge whose predicted date has passed is not
+    // the same thing as one about to land. It used to be filed under "Needs
+    // attention" alongside genuinely imminent charges, which told the user
+    // they had a problem when all that happened is our projection went stale.
+    final soon = _active.where((s) => s.isDueSoon).toList()..sort(_byUrgency);
+    final awaiting = _active.where((s) => s.isAwaitingCharge).toList()..sort(_byUrgency);
+    final accounted = {...soon, ...awaiting}.map((s) => s.id).toSet();
+    final later = _active.where((s) => !accounted.contains(s.id)).toList()
       ..sort((a, b) => b.monthlyEquivalent.compareTo(a.monthlyEquivalent));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (week.isNotEmpty) ...[
-          _sectionHeader('Needs attention', week.length, accent: true),
-          _list(week),
+        if (soon.isNotEmpty) ...[
+          _sectionHeader('Due soon', soon.length, accent: true),
+          _list(soon),
+        ],
+        if (awaiting.isNotEmpty) ...[
+          _sectionHeader('Waiting to appear', awaiting.length),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.md),
+            child: Text(
+              'Recur expected these by now but has not seen them in your '
+              'transactions yet. Pull down to check for new ones.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.muted(context), height: 1.45),
+            ),
+          ),
+          _list(awaiting),
         ],
         if (later.isNotEmpty) ...[
           _sectionHeader('Later', later.length),
@@ -329,14 +359,9 @@ class _RecurringScreenState extends State<RecurringScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.lg),
-          child: const AppAlert(
-            variant: AppAlertVariant.info,
-            message: 'These repeat, but not regularly enough to be certain. '
-                'Confirming teaches the detection what to look for.',
-          ),
-        ),
+        // No explainer banner. Each row already asks a question the user can
+        // answer from their own memory of the charge, and how the detector
+        // reached the shortlist is the backend's business.
         _list(_review, review: true),
       ],
     );
@@ -408,7 +433,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
             child: SubscriptionTile(
               subscription: items[i],
               shareOfSpend: total > 0 && !review ? items[i].monthlyEquivalent / total : null,
-              showConfidence: review,
+              showActions: review,
               busy: _pendingIds.contains(items[i].id),
               onTap: () => _openDetail(items[i]),
               onConfirm: review ? () => _updateStatus(items[i], SubscriptionStatus.active) : null,

@@ -13,7 +13,8 @@ enum AppThemeMode { system, light, dark }
 /// mean yet another "fully stop and re-run, hot reload won't pick it up"
 /// gotcha for a preference this small doesn't warrant.
 class ThemeController extends ChangeNotifier {
-  ThemeController({FlutterSecureStorage? storage}) : _storage = storage ?? const FlutterSecureStorage() {
+  ThemeController({FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage() {
     _load();
   }
 

@@ -112,7 +112,8 @@ class AppColors {
   // to full Theme-driven styling everywhere at once.
   static bool _isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
-  static Color background(BuildContext context) => _isDark(context) ? darkBackground : lightBackground;
+  static Color background(BuildContext context) =>
+      _isDark(context) ? darkBackground : lightBackground;
   static Color surface(BuildContext context) => _isDark(context) ? darkSurface : lightSurface;
   static Color border(BuildContext context) => _isDark(context) ? darkBorder : lightBorder;
 

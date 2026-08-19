@@ -26,10 +26,8 @@ class Bank {
   final List<String> aliases;
 
   /// Asset stem, derived from the name: `assets/logos/bank_<slug>.png`.
-  String get slug => name
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-      .replaceAll(RegExp(r'^_+|_+$'), '');
+  String get slug =>
+      name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
 
   bool matches(String query) {
     final q = query.trim().toLowerCase();
@@ -218,8 +216,7 @@ class Banks {
     ),
   ];
 
-  static List<Bank> search(String query) =>
-      all.where((b) => b.matches(query)).toList();
+  static List<Bank> search(String query) => all.where((b) => b.matches(query)).toList();
 
   /// Looks up a bank by its CBN code, e.g. to render a real logo for a
   /// [LinkedBank] returned from the backend. Returns null for anything not

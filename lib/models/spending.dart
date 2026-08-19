@@ -167,7 +167,20 @@ class TrendPoint {
   /// Three-letter month for the axis, derived rather than sent, since the
   /// server has no idea what locale is reading it.
   String get shortMonth {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final parts = period.split('-');
     if (parts.length != 2) return '';
     final m = int.tryParse(parts[1]);

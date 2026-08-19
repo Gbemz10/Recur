@@ -57,22 +57,44 @@ class _AppShellState extends State<AppShell> {
   /// a screen pushed from Home and is now top level, because "where did it
   /// all go" is a question people arrive with, not one they drill into.
   static const _items = [
-    AppNavItem(label: 'Home', icon: Icons.grid_view_outlined, selectedIcon: Icons.grid_view_rounded),
-    AppNavItem(label: 'Recurring', icon: Icons.autorenew_outlined, selectedIcon: Icons.autorenew_rounded),
-    AppNavItem(label: 'Spending', icon: Icons.pie_chart_outline_rounded, selectedIcon: Icons.pie_chart_rounded),
+    AppNavItem(
+        label: 'Home', icon: Icons.grid_view_outlined, selectedIcon: Icons.grid_view_rounded),
+    AppNavItem(
+        label: 'Recurring', icon: Icons.autorenew_outlined, selectedIcon: Icons.autorenew_rounded),
+    AppNavItem(
+        label: 'Spending',
+        icon: Icons.pie_chart_outline_rounded,
+        selectedIcon: Icons.pie_chart_rounded),
     // A trial is not a subscription yet: no charge date, no amount, no cycle.
     // It gets its own destination rather than being squeezed into Settings,
     // where something this time-sensitive would go unnoticed.
     AppNavItem(label: 'Trials', icon: Icons.timer_outlined, selectedIcon: Icons.timer_rounded),
-    AppNavItem(label: 'Settings', icon: Icons.settings_outlined, selectedIcon: Icons.settings_rounded),
+    AppNavItem(
+        label: 'Settings', icon: Icons.settings_outlined, selectedIcon: Icons.settings_rounded),
   ];
+
+  /// Which of Recurring's three lists to show. Recurring lives in an
+  /// IndexedStack and keeps its own state, so a constructor argument would
+  /// only apply on first build; a notifier reaches it whenever Home asks.
+  final _recurringSection = ValueNotifier<int>(0);
 
   /// Lets Home hand off to another destination by name. Home is a digest, so
   /// nearly every card on it is a doorway into the tab that owns that data.
-  void _goToTab(AppTab tab) => setState(() => _index = tab.index);
+  ///
+  /// [section] deep-links past the destination's default list. Without it the
+  /// three doorways into Recurring — the total, "Up next", and the review
+  /// nudge — all landed on Active, so the one that says "1 charge to review"
+  /// dropped you somewhere with no charges to review.
+  void _goToTab(AppTab tab, {int? section}) {
+    if (section != null && tab == AppTab.recurring) {
+      _recurringSection.value = section;
+    }
+    setState(() => _index = tab.index);
+  }
 
   @override
   void dispose() {
+    _recurringSection.dispose();
     _store.dispose();
     _trialStore.dispose();
     _profileStore.dispose();
@@ -95,7 +117,7 @@ class _AppShellState extends State<AppShell> {
             spendingStore: _spendingStore,
             onOpenTab: _goToTab,
           ),
-          RecurringScreen(store: _store),
+          RecurringScreen(store: _store, section: _recurringSection),
           SpendingScreen(store: _spendingStore),
           TrialRemindersScreen(store: _trialStore),
           SettingsScreen(

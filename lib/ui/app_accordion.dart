@@ -53,17 +53,22 @@ class _AppAccordionState extends State<AppAccordion> {
                 InkWell(
                   onTap: () => _toggle(i),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(widget.items[i].title,
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink(context))),
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink(context))),
                         ),
                         AnimatedRotation(
                           turns: _openIndices.contains(i) ? 0.5 : 0,
                           duration: const Duration(milliseconds: 150),
-                          child: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.muted(context)),
+                          child: Icon(Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.muted(context)),
                         ),
                       ],
                     ),
@@ -72,10 +77,13 @@ class _AppAccordionState extends State<AppAccordion> {
                 AnimatedCrossFade(
                   firstChild: const SizedBox(width: double.infinity, height: 0),
                   secondChild: Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                    padding:
+                        const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
                     child: widget.items[i].content,
                   ),
-                  crossFadeState: _openIndices.contains(i) ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                  crossFadeState: _openIndices.contains(i)
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
                   duration: const Duration(milliseconds: 150),
                   sizeCurve: Curves.easeInOut,
                 ),

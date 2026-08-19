@@ -103,7 +103,8 @@ class HelpCentreScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
           children: [
             Text(
               'Common questions',
@@ -112,7 +113,10 @@ class HelpCentreScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Can\'t find what you need? Reach us directly from Settings → Contact support.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.muted(context), height: 1.5),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppAccordion(items: _faqs(context)),

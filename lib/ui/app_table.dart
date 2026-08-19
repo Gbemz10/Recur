@@ -35,7 +35,11 @@ class AppTable extends StatelessWidget {
                   Expanded(
                     child: Text(
                       col,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.muted(context), letterSpacing: 0.3),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.muted(context),
+                          letterSpacing: 0.3),
                     ),
                   ),
               ],
@@ -48,7 +52,8 @@ class AppTable extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: scheme.outline)),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                 child: Row(
                   children: [
                     for (final cell in rows[i]) Expanded(child: cell),

@@ -42,8 +42,7 @@ class RecurBrand {
   );
 
   /// Glow colour for the splash halo / focus rings.
-  static Color glow(double opacity) =>
-      gradientMid.withValues(alpha: opacity.clamp(0.0, 1.0));
+  static Color glow(double opacity) => gradientMid.withValues(alpha: opacity.clamp(0.0, 1.0));
 
   /// Neutral text colours that read correctly on [ink].
   static const Color onInk = Color(0xFFF7F6EF);

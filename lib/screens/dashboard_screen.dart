@@ -43,7 +43,7 @@ class DashboardScreen extends StatefulWidget {
 
   /// Switches the shell to another destination. Home is a set of doorways, so
   /// almost every card takes one.
-  final void Function(AppTab) onOpenTab;
+  final void Function(AppTab tab, {int? section}) onOpenTab;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -130,7 +130,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("Couldn't load your subscriptions", style: Theme.of(context).textTheme.titleMedium),
+                Text("Couldn't load your subscriptions",
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.md),
                 AppButton(label: 'Try again', onPressed: widget.store.load),
               ],
@@ -201,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               gap,
               _ReviewNudge(
                 count: _review.length,
-                onTap: () => widget.onOpenTab(AppTab.recurring),
+                onTap: () => widget.onOpenTab(AppTab.recurring, section: 1),
               ),
             ],
 
@@ -266,7 +267,10 @@ class _Greeting extends StatelessWidget {
                 // placeholder to sit under it.
                 Text(
                   name == null ? _partOfDay : '$_partOfDay,',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.muted(context)),
                 ),
                 if (name != null) ...[
                   const SizedBox(height: 2),
@@ -381,7 +385,8 @@ class _HeroTotal extends StatelessWidget {
                   'View all',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
                 ),
-                Icon(Icons.chevron_right_rounded, size: 17, color: Colors.white.withValues(alpha: 0.9)),
+                Icon(Icons.chevron_right_rounded,
+                    size: 17, color: Colors.white.withValues(alpha: 0.9)),
               ],
             ),
           ],
@@ -410,7 +415,8 @@ class _SectionHeader extends StatelessWidget {
             onTap: onAction,
             behavior: HitTestBehavior.opaque,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
+              padding:
+                  const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
               child: Row(
                 children: [
                   Text(
@@ -438,14 +444,17 @@ class _AlertStrip extends StatelessWidget {
     required this.color,
     required this.icon,
     required this.title,
-    required this.detail,
+    this.detail,
     required this.onTap,
   });
 
   final Color color;
   final IconData icon;
   final String title;
-  final String detail;
+
+  /// Optional. A strip whose title already says the whole thing does not need
+  /// a second line explaining it.
+  final String? detail;
   final VoidCallback onTap;
 
   @override
@@ -464,7 +473,8 @@ class _AlertStrip extends StatelessWidget {
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: AppRadius.mdBR),
+              decoration:
+                  BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: AppRadius.mdBR),
               child: Icon(icon, size: 19, color: color),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -479,13 +489,18 @@ class _AlertStrip extends StatelessWidget {
                         .titleSmall
                         ?.copyWith(color: AppColors.ink(context)),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    detail,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  if (detail != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      detail!,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.muted(context)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -550,7 +565,9 @@ class _TrialStrip extends StatelessWidget {
     return _AlertStrip(
       color: AppColors.info,
       icon: Icons.timer_rounded,
-      title: trials.length == 1 ? '${first.label} converts soon' : '${trials.length} trials convert soon',
+      title: trials.length == 1
+          ? '${first.label} converts soon'
+          : '${trials.length} trials convert soon',
       detail: first.isOverdue
           ? 'This one has already passed its end date'
           : 'Cancel before it turns into a real charge',
@@ -571,7 +588,6 @@ class _ReviewNudge extends StatelessWidget {
       color: AppColors.primary,
       icon: Icons.fact_check_outlined,
       title: count == 1 ? '1 charge to review' : '$count charges to review',
-      detail: 'Confirming teaches the detection what to look for',
       onTap: onTap,
     );
   }
@@ -647,12 +663,16 @@ class _SpendingCard extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(color: c.category.color(context), shape: BoxShape.circle),
+                      decoration:
+                          BoxDecoration(color: c.category.color(context), shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       c.category.shortLabel,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft(context)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: AppColors.inkSoft(context)),
                     ),
                     const SizedBox(width: 5),
                     Text(
@@ -683,10 +703,7 @@ class _UpNextRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Overdue counts as urgent. isDueSoon goes false the moment a charge date
-    // passes, so keying the colour off it alone rendered the single most
-    // urgent row on the screen in the calmest style on it.
-    final due = subscription.isDueSoon || subscription.daysUntilCharge < 0;
+    final due = subscription.isDueSoon;
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -734,7 +751,8 @@ class _UpNextRow extends StatelessWidget {
           ),
           Text(
             formatNaira(subscription.amount),
-            style: AppTypography.money(size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
+            style: AppTypography.money(
+                size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
           ),
         ],
       ),
