@@ -78,7 +78,8 @@ class _RecurringScreenState extends State<RecurringScreen> {
   /// opposite of where they belong. `_byUrgency` sorts negatives first, so
   /// they land at the top of the urgent group.
   List<Subscription> get _thisWeek {
-    final list = _active.where((s) => s.isDueSoon || s.daysUntilCharge < 0).toList()..sort(_byUrgency);
+    final list = _active.where((s) => s.isDueSoon || s.daysUntilCharge < 0).toList()
+      ..sort(_byUrgency);
     return list;
   }
 
@@ -189,50 +190,50 @@ class _RecurringScreenState extends State<RecurringScreen> {
 
   Widget _viewBody(SubscriptionStore store) {
     return RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: store.load,
-        child: CustomScrollView(
-          slivers: [
-            if (_view == _View.list) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
-                  child: AppTabs(labels: _tabs, selectedIndex: _tab, onSelect: _selectTab),
-                ),
+      color: AppColors.primary,
+      onRefresh: store.load,
+      child: CustomScrollView(
+        slivers: [
+          if (_view == _View.list) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
+                child: AppTabs(labels: _tabs, selectedIndex: _tab, onSelect: _selectTab),
               ),
-              SliverToBoxAdapter(
-                child: ClipRect(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) => SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(0.06 * _tabDirection, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: FadeTransition(opacity: animation, child: child),
-                    ),
-                    layoutBuilder: (currentChild, previousChildren) => Stack(
-                      alignment: Alignment.topCenter,
-                      children: [...previousChildren, if (currentChild != null) currentChild],
-                    ),
-                    child: KeyedSubtree(key: ValueKey(_tab), child: _listBody()),
+            ),
+            SliverToBoxAdapter(
+              child: ClipRect(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(0.06 * _tabDirection, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: FadeTransition(opacity: animation, child: child),
                   ),
+                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.topCenter,
+                    children: [...previousChildren, if (currentChild != null) currentChild],
+                  ),
+                  child: KeyedSubtree(key: ValueKey(_tab), child: _listBody()),
                 ),
               ),
-            ] else
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                  child: CalendarScreen(store: store, embedded: true),
-                ),
+            ),
+          ] else
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: CalendarScreen(store: store, embedded: true),
               ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.huge)),
-          ],
-        ),
-      );
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.huge)),
+        ],
+      ),
+    );
   }
 
   // ------------------------------------------------------------------ header
@@ -258,9 +259,14 @@ class _RecurringScreenState extends State<RecurringScreen> {
               // The calendar is a lens on this same list, so it belongs on a
               // switch here rather than behind its own tab in the bottom bar.
               if (showSwitch)
-                _ViewSwitch(
-                  view: _view,
-                  onChanged: (v) => setState(() => _view = v),
+                AppTabs(
+                  labels: const ['List view', 'Calendar view'],
+                  icons: const [Icons.view_agenda_outlined, Icons.calendar_today_rounded],
+                  itemWidth: 44,
+                  selectedIndex: _view == _View.list ? 0 : 1,
+                  onSelect: (i) => setState(
+                    () => _view = i == 0 ? _View.list : _View.calendar,
+                  ),
                 ),
             ],
           ),
@@ -363,20 +369,20 @@ class _RecurringScreenState extends State<RecurringScreen> {
   Widget _sectionHeader(String label, int count, {bool accent = false}) {
     final color = accent ? AppColors.warning : AppColors.muted(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.md),
+      padding:
+          const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, AppSpacing.xl, AppSpacing.md),
       child: Row(
         children: [
           Text(
             label.toUpperCase(),
-            style: AppTypography.mono(size: 10.5, weight: FontWeight.w700, color: color, letterSpacing: 1.2),
+            style: AppTypography.mono(
+                size: 10.5, weight: FontWeight.w700, color: color, letterSpacing: 1.2),
           ),
           const SizedBox(width: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
             decoration: BoxDecoration(
-              color: accent
-                  ? AppColors.warning.withValues(alpha: 0.12)
-                  : AppColors.track(context),
+              color: accent ? AppColors.warning.withValues(alpha: 0.12) : AppColors.track(context),
               borderRadius: AppRadius.fullBR,
             ),
             child: Text(
@@ -406,7 +412,8 @@ class _RecurringScreenState extends State<RecurringScreen> {
               busy: _pendingIds.contains(items[i].id),
               onTap: () => _openDetail(items[i]),
               onConfirm: review ? () => _updateStatus(items[i], SubscriptionStatus.active) : null,
-              onDismiss: review ? () => _updateStatus(items[i], SubscriptionStatus.cancelled) : null,
+              onDismiss:
+                  review ? () => _updateStatus(items[i], SubscriptionStatus.cancelled) : null,
             ),
           ),
         ],
@@ -416,61 +423,6 @@ class _RecurringScreenState extends State<RecurringScreen> {
 }
 
 /// Segmented list/calendar toggle.
-class _ViewSwitch extends StatelessWidget {
-  const _ViewSwitch({required this.view, required this.onChanged});
-
-  final _View view;
-  final ValueChanged<_View> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.track(context),
-        borderRadius: AppRadius.fullBR,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _button(context, _View.list, Icons.view_agenda_outlined, 'List view'),
-          _button(context, _View.calendar, Icons.calendar_today_rounded, 'Calendar view'),
-        ],
-      ),
-    );
-  }
-
-  Widget _button(BuildContext context, _View value, IconData icon, String tooltip) {
-    final selected = view == value;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: tooltip,
-      child: GestureDetector(
-        onTap: () => onChanged(value),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          width: 40,
-          height: 32,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.surface(context) : Colors.transparent,
-            borderRadius: AppRadius.fullBR,
-            boxShadow: selected ? AppShadows.sm : null,
-          ),
-          child: Icon(
-            icon,
-            size: 17,
-            color: selected ? AppColors.ink(context) : AppColors.muted(context),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// What cancelling has already saved, shown above the cancelled list.
 class _SavedCard extends StatelessWidget {
   const _SavedCard({required this.monthly});
 
@@ -501,7 +453,10 @@ class _SavedCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${formatNaira(monthly * 12)} a year',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.muted(context)),
                 ),
               ],
             ),
