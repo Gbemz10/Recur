@@ -1243,8 +1243,11 @@
       gap: 12px;
       padding: 22px 0;
     }
-    .decode-arrow { transform: rotate(90deg); margin-left: 2px; }
-    .decode-arrow svg { width: 18px; height: 18px; }
+    /* Gone below 760px. The arrow means "this becomes that" across two
+       columns; stacked into one, it points at the row it is already inside
+       and reads as a stray glyph floating beside the merchant name. The
+       stacking itself carries the same order, so nothing is lost. */
+    .decode-arrow { display: none; }
   }
 
   /* ================================================================ scan
@@ -1541,21 +1544,28 @@
   /* The month fills in rather than arriving whole. Each cell is indexed in
      reading order and carries a 13ms step, so 31 days land in about 400ms —
      fast enough to read as one gesture, slow enough to see the month being
-     populated, which is the thing the section claims Recur does for you. */
+     populated, which is the thing the section claims Recur does for you.
+     The entrance is an animation and the interaction is a transition, and
+     that separation is load-bearing rather than stylistic. Running both
+     through `transition` meant the stagger's delay applied to background
+     and colour as well, so tapping the 31st sat for 468ms before the cell
+     acknowledged it. A press must never inherit an entrance's
+     choreography. */
+  @keyframes calCellIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to   { opacity: 1; transform: none; }
+  }
   .cal-day {
     opacity: 0;
-    transform: scale(0.9);
+    transition: background 130ms var(--ease), color 130ms var(--ease),
+                border-color 130ms var(--ease), transform 110ms var(--ease);
   }
   .cal.is-in .cal-day {
     opacity: 1;
-    transform: none;
-    transition: opacity 300ms var(--ease), transform 300ms var(--ease),
-                background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
-    transition-delay: calc(var(--i, 0) * 13ms);
+    animation: calCellIn 300ms var(--ease) backwards;
+    animation-delay: calc(var(--i, 0) * 13ms);
   }
-  /* Has to out-specify the entrance rule above, which resolves to
-     `transform: none` and would otherwise swallow the press. */
-  .cal.is-in .cal-day:active { transform: scale(0.9); transition-delay: 0ms; }
+  .cal-day:active { transform: scale(0.9); }
   .cal-day:hover { background: var(--surface-sunk); }
   .cal-day:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: -2px; }
 
@@ -1925,12 +1935,12 @@
     .scan-flag, .scan-hit, .trial-ring-fill, .trend-fill, .push { transition: none; animation: none; }
     .split-fill { transition: none; transform: scaleX(1); }
     .cal-readout.is-changing { animation: none; }
-    .cal.is-in .cal-day:active { transform: none; }
+    .cal-day:active { transform: none; }
     /* The drift is the only thing on the page that moves without being
        asked to, so it is the first thing to stop. */
     .aurora { animation: none; }
-    .cal-day { opacity: 1; transform: none; }
-    .cal.is-in .cal-day { transition: none; transition-delay: 0ms; }
+    .cal-day { opacity: 1; transform: none; transition: none; }
+    .cal.is-in .cal-day { animation: none; }
     .upnext { opacity: 1; transform: none; transition: none; }
     .upnext.is-alert::before { transform: scaleY(1); transition: none; }
     .push { opacity: 1; transform: none; transition: none; }
@@ -2074,8 +2084,8 @@
     </a>
 
     <div class="nav-links">
-      <a href="#upcoming">What it watches</a>
       <a href="#reveal">What it finds</a>
+      <a href="#upcoming">What it watches</a>
       <a href="#security">Security</a>
     </div>
 
@@ -2089,8 +2099,8 @@
   </nav>
 
   <div class="mobile-menu" id="mobile-menu">
-    <a href="#upcoming">What it watches</a>
     <a href="#reveal">What it finds</a>
+    <a href="#upcoming">What it watches</a>
     <a href="#security">Security</a>
   </div>
 </header>
@@ -2180,7 +2190,7 @@
           </div>
           <div>
             <div class="decode-name">Netflix <span class="decode-cat">Entertainment</span></div>
-            <p class="decode-meta"><span class="amount">&#8358;4,400</span> every month. You moved to the annual plan eight months ago and forgot.</p>
+            <p class="decode-meta"><span class="amount">&#8358;7,000</span> every month. You moved to the annual plan eight months ago and forgot.</p>
           </div>
         </div>
 
@@ -2191,7 +2201,7 @@
           </div>
           <div>
             <div class="decode-name">DStv Compact <span class="decode-cat">Bills &amp; utilities</span></div>
-            <p class="decode-meta"><span class="amount">&#8358;12,500</span> every month. Renews whether anyone in the house watched it or not.</p>
+            <p class="decode-meta"><span class="amount">&#8358;19,000</span> every month. Renews whether anyone in the house watched it or not.</p>
           </div>
         </div>
 
@@ -2580,8 +2590,8 @@
       <div class="footer-links">
         <div class="footer-col">
           <h4>Product</h4>
-          <a href="#upcoming">What it watches</a>
           <a href="#reveal">What it finds</a>
+          <a href="#upcoming">What it watches</a>
           <a href="#security">Security</a>
         </div>
         <div class="footer-col">
