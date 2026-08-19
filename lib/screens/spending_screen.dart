@@ -71,6 +71,12 @@ class _SpendingScreenState extends State<SpendingScreen> {
     }
   }
 
+  /// Index of the focused category, shared by the donut and its legend.
+  ///
+  /// Owned here rather than inside the donut card because "tap outside to
+  /// unfocus" makes the whole tab the outside.
+  int? _highlighted;
+
   @override
   Widget build(BuildContext context) {
     final store = widget.store;
@@ -98,10 +104,20 @@ class _SpendingScreenState extends State<SpendingScreen> {
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: store.load,
-              child: _buildBody(summary),
+            // Tapping anywhere that is not a legend chip clears the focused
+            // slice. Translucent so the scroll view and every card below still
+            // get their own hits; a tap that turns into a drag is cancelled by
+            // the scrollable, so this never fires mid-scroll.
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                if (_highlighted != null) setState(() => _highlighted = null);
+              },
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: store.load,
+                child: _buildBody(summary),
+              ),
             ),
           ),
         ],
@@ -168,7 +184,12 @@ class _SpendingScreenState extends State<SpendingScreen> {
         // the same number twice, once as a headline and again in the donut's
         // centre.
         if (top.isNotEmpty)
-          _DonutCard(summary: summary, slices: top)
+          _DonutCard(
+            summary: summary,
+            slices: top,
+            highlighted: _highlighted,
+            onHighlight: (i) => setState(() => _highlighted = i),
+          )
         else
           _TotalCard(summary: summary),
 
@@ -220,22 +241,33 @@ class _SpendingScreenState extends State<SpendingScreen> {
 /// leaving the chart, and a donut with seven similar-weight colours is
 /// unreadable without some way to point at one.
 class _DonutCard extends StatefulWidget {
-  const _DonutCard({required this.summary, required this.slices});
+  const _DonutCard({
+    required this.summary,
+    required this.slices,
+    required this.highlighted,
+    required this.onHighlight,
+  });
 
   final SpendingSummary summary;
   final List<CategorySpend> slices;
+
+  /// Focused slice index, or null. Controlled by the screen so a tap anywhere
+  /// outside the legend can clear it.
+  final int? highlighted;
+  final ValueChanged<int?> onHighlight;
 
   @override
   State<_DonutCard> createState() => _DonutCardState();
 }
 
 class _DonutCardState extends State<_DonutCard> {
-  int? _highlighted;
-
   @override
   Widget build(BuildContext context) {
     final slices = widget.slices;
-    final focused = _highlighted == null ? null : slices[_highlighted!];
+    final highlighted = widget.highlighted != null && widget.highlighted! < slices.length
+        ? widget.highlighted
+        : null;
+    final focused = highlighted == null ? null : slices[highlighted];
 
     final over = widget.summary.overBudget;
 
@@ -284,7 +316,7 @@ class _DonutCardState extends State<_DonutCard> {
             child: AppDonut(
               size: 190,
               thickness: 23,
-              highlighted: _highlighted,
+              highlighted: highlighted,
               slices: [
                 for (final s in slices)
                   DonutSlice(
@@ -341,8 +373,8 @@ class _DonutCardState extends State<_DonutCard> {
               for (var i = 0; i < slices.length; i++)
                 _LegendChip(
                   spend: slices[i],
-                  selected: _highlighted == i,
-                  onTap: () => setState(() => _highlighted = _highlighted == i ? null : i),
+                  selected: highlighted == i,
+                  onTap: () => widget.onHighlight(highlighted == i ? null : i),
                 ),
             ],
           ),

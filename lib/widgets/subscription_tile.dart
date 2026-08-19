@@ -112,9 +112,9 @@ class SubscriptionTile extends StatelessWidget {
                 children: [
                   Text(
                     formatNaira(subscription.amount),
-                    style: AppTypography.mono(
+                    style: AppTypography.money(
                       size: 14,
-                      weight: FontWeight.w600,
+                      weight: FontWeight.w700,
                       color: cancelled ? AppColors.muted(context) : AppColors.ink(context),
                     ),
                   ),
@@ -122,8 +122,8 @@ class SubscriptionTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${formatNaira(subscription.monthlyEquivalent)}/mo',
-                      style: AppTypography.mono(
-                          size: 11, weight: FontWeight.w500, color: AppColors.muted(context)),
+                      style: AppTypography.money(
+                          size: 11, weight: FontWeight.w600, color: AppColors.muted(context)),
                     ),
                   ],
                   if (shareOfSpend != null && !cancelled) ...[

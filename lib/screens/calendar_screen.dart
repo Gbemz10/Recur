@@ -224,8 +224,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 Text(
                   '${formatNaira(_monthTotal)} tracked',
-                  style: AppTypography.mono(
-                      size: 11, weight: FontWeight.w500, color: AppColors.muted(context)),
+                  style: AppTypography.money(
+                      size: 11, weight: FontWeight.w600, color: AppColors.muted(context)),
                 ),
               ],
             ),
@@ -538,8 +538,8 @@ class _OccurrenceRow extends StatelessWidget {
           else
             Text(
               formatNaira(sub.amount),
-              style: AppTypography.mono(
-                  size: 14, weight: FontWeight.w600, color: AppColors.ink(context)),
+              style: AppTypography.money(
+                  size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
             ),
         ],
       ),

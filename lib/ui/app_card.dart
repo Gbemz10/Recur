@@ -109,8 +109,7 @@ class AppStatCard extends StatelessWidget {
             child: Text(
               value,
               maxLines: 1,
-              style: AppTypography.mono(
-                  size: 26, weight: FontWeight.w600, color: AppColors.ink(context)),
+              style: AppTypography.money(size: 26, color: AppColors.ink(context)),
             ),
           ),
           if (trend != null) ...[

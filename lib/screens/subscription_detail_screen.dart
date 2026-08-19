@@ -62,11 +62,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     child: Text(
                       formatNaira(subscription.amount),
                       maxLines: 1,
-                      style: AppTypography.mono(
-                        size: 32,
-                        weight: FontWeight.w600,
-                        color: AppColors.ink(context),
-                      ),
+                      style: AppTypography.money(size: 32, color: AppColors.ink(context)),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -89,11 +85,13 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     )
                   else
                     AppBadge(
-                      label: subscription.isAwaitingCharge
+                      // nextChargeLabel for every case, rather than
+                      // interpolating a day count here — that produced
+                      // "Charges in 1 days", and it was a second place that
+                      // had to be kept in step with the model's wording.
+                      label: subscription.isAwaitingCharge || subscription.isDueSoon
                           ? subscription.nextChargeLabel
-                          : subscription.isDueSoon
-                              ? 'Charges in ${subscription.daysUntilCharge} days'
-                              : 'Active',
+                          : 'Active',
                       variant: subscription.isAwaitingCharge
                           ? AppBadgeVariant.neutral
                           : subscription.isDueSoon
@@ -148,9 +146,9 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             formatNaira(subscription.previousAmount!),
-                            style: AppTypography.mono(
+                            style: AppTypography.money(
                               size: 18,
-                              weight: FontWeight.w600,
+                              weight: FontWeight.w700,
                               color: AppColors.muted(context),
                             ),
                           ),
@@ -174,9 +172,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             formatNaira(subscription.amount),
-                            style: AppTypography.mono(
+                            style: AppTypography.money(
                               size: 18,
-                              weight: FontWeight.w600,
                               color: AppColors.ink(context),
                             ),
                           ),
@@ -277,8 +274,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           ),
                           Text(
                             formatNaira(subscription.charges[i].amount),
-                            style: AppTypography.mono(
-                                size: 13, weight: FontWeight.w600, color: AppColors.ink(context)),
+                            style: AppTypography.money(
+                                size: 13, weight: FontWeight.w700, color: AppColors.ink(context)),
                           ),
                         ],
                       ),
