@@ -72,7 +72,30 @@ class _RecurringScreenState extends State<RecurringScreen> {
   }
 
   List<Subscription> get _active => widget.store.byStatus(SubscriptionStatus.active);
-  List<Subscription> get _review => widget.store.byStatus(SubscriptionStatus.unreviewed);
+  /// Surest first.
+  ///
+  /// The detector already computes a confidence for every candidate
+  /// (`computeConfidence` in the backend's detection service, from how many
+  /// charges it saw, how regular their spacing is, whether the narration
+  /// matched a known merchant, and whether the cycle is a named one). That
+  /// number used to be printed on each row as a progress bar, which asked the
+  /// user to do arithmetic on our uncertainty before answering a question
+  /// about their own bank statement.
+  ///
+  /// It is still the right signal, just not the right thing to *show*. Spent
+  /// on ordering instead, it makes the list answer itself from the top: the
+  /// obvious ones go first and clear quickly, and the genuinely ambiguous ones
+  /// arrive last, once the user has already built up a rhythm of answering.
+  /// A tie breaks toward the larger charge, which is the more consequential
+  /// one to get right.
+  List<Subscription> get _review {
+    final list = widget.store.byStatus(SubscriptionStatus.unreviewed).toList();
+    list.sort((a, b) {
+      final byConfidence = b.confidence.compareTo(a.confidence);
+      return byConfidence != 0 ? byConfidence : b.amount.compareTo(a.amount);
+    });
+    return list;
+  }
   List<Subscription> get _cancelled => widget.store.byStatus(SubscriptionStatus.cancelled);
 
   double get _monthlyTotal => _active.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
