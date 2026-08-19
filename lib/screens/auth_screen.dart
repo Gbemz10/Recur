@@ -292,28 +292,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                 ),
 
-                const SizedBox(height: AppSpacing.xl),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.lock_outline_rounded,
-                      size: 15,
-                      color: AppColors.muted(context),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Recur never stores your bank password and can never '
-                        'move money out of your account.',
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.muted(context),
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
