@@ -86,10 +86,44 @@ class AppTypography {
   static TextTheme get light => textTheme(AppColors.neutral900);
   static TextTheme get dark => textTheme(AppColors.neutral50);
 
-  /// The ledger face. Every naira amount, date, and raw bank narration in
-  /// the app should render through this, not the Sans styles above.
-  /// Tabular figures are load-bearing here — without them a counting-up
+  /// The money face.
+  ///
+  /// Amounts used to render in [mono] on the theory that a machine wrote the
+  /// number. That reads well at 11px on a statement row and badly at 38px on
+  /// a hero card, where a monospace naira total looks like terminal output
+  /// rather than money. Plus Jakarta Sans at 700/800 with tabular figures
+  /// keeps the alignment that mattered about mono while looking like a
+  /// currency figure.
+  ///
+  /// [mono] keeps the jobs it is genuinely good at: raw bank narrations,
+  /// uppercase meta labels, references. Those are machine text and should
+  /// still look like it.
+  ///
+  /// Tabular figures are load-bearing either way. Without them a counting-up
   /// total visibly reflows as digit widths change.
+  static TextStyle money({
+    required double size,
+    FontWeight weight = FontWeight.w800,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+  }) {
+    return GoogleFonts.plusJakartaSans(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      // Slightly tighter than the sans default: large figures set at 800 open
+      // up more than the same size in text, and money should read as one
+      // object rather than a row of separate digits.
+      letterSpacing: letterSpacing ?? -size * 0.02,
+      height: height,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    ).copyWith(fontFamilyFallback: _glyphFallback);
+  }
+
+  /// The ledger face. Raw bank narrations, uppercase meta labels, and
+  /// references: text a machine produced and should still look like it.
+  /// Tabular figures are load-bearing here too.
   static TextStyle mono({
     required double size,
     FontWeight weight = FontWeight.w600,

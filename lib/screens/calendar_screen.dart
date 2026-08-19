@@ -24,12 +24,18 @@ class _Occurrence {
 /// angle: not "how much total" but "which day". Someone budgeting around
 /// payday cares which week gets hit, not just the monthly sum.
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key, required this.store});
+  const CalendarScreen({super.key, required this.store, this.embedded = false});
 
   /// Shared with every other tab — a status change confirmed on Home shows
   /// up here immediately, instead of the calendar reading its own stale
   /// snapshot of the subscription list.
   final SubscriptionStore store;
+
+  /// True when this renders as a view inside the Recurring tab rather than as
+  /// a destination of its own. Drops the screen title, description and safe
+  /// area, all of which the host already provides, so embedding it does not
+  /// produce two stacked headers.
+  final bool embedded;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -150,7 +156,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // dashboard_screen.dart — a background refresh failing shouldn't blank
     // out a calendar someone's already looking at.
     if (widget.store.isLoading && widget.store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: _CalendarSkeleton());
+      return widget.embedded
+          ? const _CalendarSkeleton()
+          : const SafeArea(bottom: false, child: _CalendarSkeleton());
     }
 
     if (widget.store.error != null && widget.store.all.isEmpty) {
@@ -176,26 +184,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final isCurrentMonth = _month.year == today.year && _month.month == today.month;
     final selectedOccurrences = _onDay(_selected);
 
-    return SafeArea(
-      bottom: false,
-      child: RefreshIndicator(
+    final body = RefreshIndicator(
         color: AppColors.primary,
         onRefresh: widget.store.load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
+          padding: EdgeInsets.fromLTRB(
+            widget.embedded ? 0 : AppSpacing.xl,
             AppSpacing.lg,
-            AppSpacing.xl,
+            widget.embedded ? 0 : AppSpacing.xl,
             AppSpacing.huge,
           ),
           children: [
-          Text('Calendar', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
-          const SizedBox(height: 4),
-          Text(
-            'Every charge landing this month, mapped to the day it hits.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-          ),
-          const SizedBox(height: AppSpacing.xl),
+          if (!widget.embedded) ...[
+            Text('Calendar', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
+            const SizedBox(height: 4),
+            Text(
+              'Every charge landing this month, mapped to the day it hits.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
 
           // ---- month switcher ----
           Row(
@@ -288,8 +296,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
+
+    return widget.embedded ? body : SafeArea(bottom: false, child: body);
   }
 
   String _selectedDayLabel(DateTime today) {

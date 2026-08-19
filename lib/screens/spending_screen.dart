@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/api_client.dart';
-import '../data/mock_data.dart' show formatNaira;
+import '../data/mock_data.dart' show formatNaira, formatNairaCompact;
 import '../data/spending_store.dart';
 import '../models/spending.dart';
 import '../ui/ui.dart';
@@ -78,20 +78,15 @@ class _SpendingScreenState extends State<SpendingScreen> {
     final store = widget.store;
     final summary = store.summary;
 
-    return Scaffold(
-      backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Spending'),
-      ),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: store.load,
-          child: _buildBody(summary),
-        ),
+    // A tab now rather than a screen pushed from Home, so it owns no Scaffold
+    // and no AppBar: the shell provides both, and a nested one would stack a
+    // second bar under the status bar.
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: store.load,
+        child: _buildBody(summary),
       ),
     );
   }
@@ -144,9 +139,26 @@ class _SpendingScreenState extends State<SpendingScreen> {
 
     final withSpend = summary.categories.where((c) => c.spent > 0 || c.hasBudget).toList();
 
+    final top = summary.categories.where((c) => c.spent > 0).toList();
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.huge),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
       children: [
+        Text('Spending', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5)),
+        const SizedBox(height: 3),
+        Text(
+          'Every debit Recur has read, sorted into what it was for.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+
+        // The donut leads because it answers the question people arrive with,
+        // which is proportion rather than absolute value. The total sits in
+        // its centre so the two are read together instead of the number being
+        // relegated to a caption underneath.
+        if (top.isNotEmpty) _DonutCard(summary: summary, slices: top),
+        if (top.isNotEmpty) const SizedBox(height: AppSpacing.lg),
+
         _TotalCard(summary: summary),
 
         if (summary.uncategorizedCount > 0) ...[
@@ -177,6 +189,136 @@ class _SpendingScreenState extends State<SpendingScreen> {
           const SizedBox(height: AppSpacing.md),
         ],
       ],
+    );
+  }
+}
+
+/// The donut, its total, and a tappable legend.
+///
+/// Tapping a legend row highlights its slice rather than navigating: the
+/// question "which wedge is entertainment" should be answerable without
+/// leaving the chart, and a donut with seven similar-weight colours is
+/// unreadable without some way to point at one.
+class _DonutCard extends StatefulWidget {
+  const _DonutCard({required this.summary, required this.slices});
+
+  final SpendingSummary summary;
+  final List<CategorySpend> slices;
+
+  @override
+  State<_DonutCard> createState() => _DonutCardState();
+}
+
+class _DonutCardState extends State<_DonutCard> {
+  int? _highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    final slices = widget.slices;
+    final focused = _highlighted == null ? null : slices[_highlighted!];
+
+    return AppCard(
+      elevated: true,
+      child: Column(
+        children: [
+          AppDonut(
+            size: 196,
+            thickness: 24,
+            highlighted: _highlighted,
+            slices: [
+              for (final s in slices)
+                DonutSlice(value: s.spent, color: s.category.color(context), label: s.category.label),
+            ],
+            center: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (focused?.category.shortLabel ?? 'This month').toUpperCase(),
+                  style: AppTypography.mono(
+                    size: 10,
+                    color: AppColors.muted(context),
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  formatNairaCompact(focused?.spent ?? widget.summary.total),
+                  style: AppTypography.money(
+                    size: 25,
+                    weight: FontWeight.w700,
+                    color: focused?.category.color(context) ?? AppColors.ink(context),
+                  ),
+                ),
+                if (focused != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${(focused.spent / widget.summary.total * 100).round()}%',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.muted(context)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            alignment: WrapAlignment.center,
+            children: [
+              for (var i = 0; i < slices.length; i++)
+                _LegendChip(
+                  spend: slices[i],
+                  selected: _highlighted == i,
+                  onTap: () => setState(() => _highlighted = _highlighted == i ? null : i),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendChip extends StatelessWidget {
+  const _LegendChip({required this.spend, required this.selected, required this.onTap});
+
+  final CategorySpend spend;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = spend.category.color(context);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? spend.category.tint(context) : Colors.transparent,
+          borderRadius: AppRadius.fullBR,
+          border: Border.all(color: selected ? color : AppColors.border(context)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 7),
+            Text(
+              spend.category.shortLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: selected ? AppColors.ink(context) : AppColors.inkSoft(context),
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -221,7 +363,7 @@ class _TotalCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             formatNaira(summary.total),
-            style: AppTypography.mono(size: 34, weight: FontWeight.w700, color: AppColors.ink(context)),
+            style: AppTypography.money(size: 34, color: AppColors.ink(context)),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -322,7 +464,7 @@ class _CategoryRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 formatNaira(spend.spent),
-                style: AppTypography.mono(size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
+                style: AppTypography.money(size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
               ),
             ],
           ),

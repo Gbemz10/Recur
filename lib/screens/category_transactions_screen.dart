@@ -171,7 +171,7 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
                 ),
                 Text(
                   formatNaira(total),
-                  style: AppTypography.mono(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
+                  style: AppTypography.money(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
                 ),
               ],
             );
@@ -258,7 +258,7 @@ class _TransactionRow extends StatelessWidget {
               children: [
                 Text(
                   formatNaira(transaction.amount),
-                  style: AppTypography.mono(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
+                  style: AppTypography.money(size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
                 ),
                 const SizedBox(height: 3),
                 Text(

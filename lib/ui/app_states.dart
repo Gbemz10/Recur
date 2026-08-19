@@ -185,14 +185,20 @@ class AppSkeletonHeroCard extends StatelessWidget {
 /// a chart) where mirroring the exact structure isn't worth the effort —
 /// just communicates "content is coming, roughly here."
 class AppSkeletonBlock extends StatelessWidget {
-  const AppSkeletonBlock({super.key, this.height = 280, this.radius = 16});
+  const AppSkeletonBlock({super.key, this.height = 280, this.radius = 16, this.width});
 
   final double height;
   final double radius;
 
+  /// Null fills the available width. A value is for the cases where the real
+  /// element does not, like a screen title, where a full-width bar would
+  /// promise a much larger heading than actually arrives.
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
-    return AppSkeleton(height: height, radius: radius);
+    final block = AppSkeleton(height: height, radius: radius);
+    return width == null ? block : SizedBox(width: width, child: block);
   }
 }
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../data/api_client.dart';
 import '../data/mock_data.dart' show formatNaira, formatNairaCompact;
 import '../data/profile_store.dart';
 import '../data/spending_store.dart';
@@ -9,28 +8,24 @@ import '../data/trial_store.dart';
 import '../models/spending.dart';
 import '../models/subscription.dart';
 import '../models/trial.dart';
+import '../theme/recur_brand.dart';
 import '../ui/ui.dart';
-import '../widgets/subscription_tile.dart';
+import 'app_shell.dart' show AppTab;
 import 'profile_screen.dart';
-import 'spending_screen.dart';
 import 'subscription_detail_screen.dart';
 
-/// The home screen.
+/// Home: a digest of the whole app rather than a screen of its own.
 ///
-/// Built around the three questions a financial dashboard has to answer in
-/// about three seconds, without the user reading carefully:
+/// It used to be the subscriptions screen wearing a total, carrying the
+/// Active/Review/Cancelled lists that now live on Recurring. That made Home
+/// and Recurring the same screen twice, and left spending and trials as
+/// places you had to remember to visit.
 ///
-///   1. **How much?**      → the hero total, the largest thing on screen.
-///   2. **Is anything wrong?** → the attention strip, shown only when
-///      something is actually imminent. A permanent banner is wallpaper.
-///   3. **What's coming?**  → the list, grouped by *when it hits* rather
-///      than presented flat, because "this week" and "next month" are
-///      different kinds of problem.
-///
-/// The list is also sorted by cost within each group, and each row carries a
-/// share-of-spend bar, so the expensive things are findable. A flat
-/// alphabetical list of equal-weight rows hides exactly the information
-/// someone opened the app to find.
+/// Every block here is a summary that hands off to the tab that owns it. The
+/// rule for what earns a place: it has to be something you would want to know
+/// without asking. A total, anything imminent, where the rest of the money
+/// went, and anything about to convert. Nothing here is a full list, because
+/// a full list is what the other tabs are for.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
@@ -38,162 +33,92 @@ class DashboardScreen extends StatefulWidget {
     required this.trialStore,
     required this.profileStore,
     required this.spendingStore,
-    required this.onOpenTrials,
+    required this.onOpenTab,
   });
 
-  /// Shared across every tab in [AppShell], so a status change here is
-  /// immediately visible on Calendar and Settings too.
   final SubscriptionStore store;
-
-  /// Manually-entered trial reminders — see [TrialStore].
   final TrialStore trialStore;
-
-  /// Shared with every other tab — see [ProfileStore].
   final ProfileStore profileStore;
-
-  /// Category spend and budgets — see [SpendingStore]. Subscriptions answer
-  /// "what repeats"; this answers "where the rest of it went", which is the
-  /// question the hero total always prompted and could never answer.
   final SpendingStore spendingStore;
 
-  /// Switches [AppShell] to the Trials tab — the strip below surfaces a
-  /// due-soon trial inline, but managing it happens on its own tab, not a
-  /// screen pushed on top of Home.
-  final VoidCallback onOpenTrials;
+  /// Switches the shell to another destination. Home is a set of doorways, so
+  /// almost every card takes one.
+  final void Function(AppTab) onOpenTab;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _tab = 0;
-
-  /// +1 when the new tab is to the right of the old one, -1 otherwise.
-  /// Drives which way the content transition slides, so the motion agrees
-  /// with the direction the sliding pill indicator just moved.
-  int _tabDirection = 1;
-
-  static const _tabs = ['Active', 'Review', 'Cancelled'];
-
-  /// Subscription ids with a status change currently in flight — checked
-  /// before starting another one, and used to disable a tile's own
-  /// Confirm/Dismiss buttons while it's mid-request. Without this, a fast
-  /// double-tap fires two overlapping PATCH requests for the same id
-  /// before the first one's response even removes the row from Review.
-  final Set<String> _pendingIds = {};
-
   @override
   void initState() {
     super.initState();
-    widget.store.addListener(_handleStoreChange);
-    widget.trialStore.addListener(_handleStoreChange);
-    widget.profileStore.addListener(_handleStoreChange);
-    widget.spendingStore.addListener(_handleStoreChange);
+    for (final store in _stores) {
+      store.addListener(_onChange);
+    }
   }
 
   @override
   void dispose() {
-    widget.store.removeListener(_handleStoreChange);
-    widget.trialStore.removeListener(_handleStoreChange);
-    widget.profileStore.removeListener(_handleStoreChange);
-    widget.spendingStore.removeListener(_handleStoreChange);
+    for (final store in _stores) {
+      store.removeListener(_onChange);
+    }
     super.dispose();
   }
 
-  void _handleStoreChange() {
-    if (mounted) setState(() {});
-  }
+  List<Listenable> get _stores =>
+      [widget.store, widget.trialStore, widget.profileStore, widget.spendingStore];
 
-  void _selectTab(int i) {
-    if (i == _tab) return;
-    setState(() {
-      _tabDirection = i > _tab ? 1 : -1;
-      _tab = i;
-    });
+  void _onChange() {
+    if (mounted) setState(() {});
   }
 
   List<Subscription> get _active => widget.store.byStatus(SubscriptionStatus.active);
   List<Subscription> get _review => widget.store.byStatus(SubscriptionStatus.unreviewed);
-  List<Subscription> get _cancelled => widget.store.byStatus(SubscriptionStatus.cancelled);
 
-  double get _monthlyTotal =>
-      _active.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
+  double get _monthlyTotal => _active.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
 
-  double get _savedMonthly =>
-      _cancelled.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
-
-  /// Soonest first; ties on the same day break toward the larger charge —
-  /// the more consequential one to flag. `List.sort` isn't stable in Dart,
-  /// so without an explicit second key here, two same-day subscriptions
-  /// would order arbitrarily (and could flip between runs with no change
-  /// to the underlying data).
   int _byUrgency(Subscription a, Subscription b) {
     final byDay = a.daysUntilCharge.compareTo(b.daysUntilCharge);
     return byDay != 0 ? byDay : b.amount.compareTo(a.amount);
   }
 
-  /// Closest upcoming charge among confirmed subscriptions, regardless of
-  /// whether it lands within the "this week" window. Surfaced on the hero
-  /// card so "what's next" doesn't require switching tabs to find out.
-  Subscription? get _nextUp {
-    final upcoming = _active.where((s) => s.daysUntilCharge >= 0).toList()
-      ..sort(_byUrgency);
-    return upcoming.isEmpty ? null : upcoming.first;
+  /// The next few charges, whether or not they land inside a week. Home always
+  /// answers "what is coming", even in a quiet month.
+  ///
+  /// Overdue rows are included rather than filtered out. An earlier version
+  /// took only `daysUntilCharge >= 0`, which meant a charge whose date had
+  /// just passed vanished from Home completely, taking the most urgent item on
+  /// the screen with it. `_byUrgency` already sorts negatives first, so they
+  /// land at the top where they belong.
+  List<Subscription> get _upNext {
+    final list = [..._active]..sort(_byUrgency);
+    return list.take(3).toList();
   }
 
-  /// Everything landing within a week, soonest first.
   List<Subscription> get _thisWeek {
     final list = _active.where((s) => s.isDueSoon).toList()..sort(_byUrgency);
     return list;
   }
 
-  double get _thisWeekTotal =>
-      _thisWeek.fold(0.0, (sum, s) => sum + s.amount);
+  double get _thisWeekTotal => _thisWeek.fold(0.0, (sum, s) => sum + s.amount);
 
-  /// Trial reminders converting soon enough to be worth interrupting the
-  /// dashboard for — same "only when genuinely imminent" bar as
-  /// [_thisWeek] above.
-  List<TrialReminder> get _trialsDueSoon {
-    final list = widget.trialStore.upcoming.where((t) => t.isDueSoon || t.isOverdue).toList();
-    return list;
-  }
+  List<Subscription> get _priceChanges =>
+      _active.where((s) => s.hasPriceChange && s.priceIncreased).toList();
 
-
-  Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
-    if (_pendingIds.contains(sub.id)) return;
-    setState(() => _pendingIds.add(sub.id));
-    try {
-      await widget.store.updateStatus(sub, status);
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
-    } finally {
-      if (mounted) setState(() => _pendingIds.remove(sub.id));
-    }
-  }
-
-  void _openSpending() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SpendingScreen(store: widget.spendingStore)),
-    );
-  }
+  List<TrialReminder> get _trialsDueSoon =>
+      widget.trialStore.upcoming.where((t) => t.isDueSoon || t.isOverdue).toList();
 
   Future<void> _openDetail(Subscription sub) async {
-    final result = await Navigator.of(context).push<SubscriptionStatus>(
-      MaterialPageRoute(
-        builder: (_) => SubscriptionDetailScreen(subscription: sub),
-      ),
+    await Navigator.of(context).push<SubscriptionStatus>(
+      MaterialPageRoute(builder: (_) => SubscriptionDetailScreen(subscription: sub)),
     );
-    if (result != null) _updateStatus(sub, result);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Only takes over the whole screen for the very first load — once
-    // there's data on hand, a failed background refresh shouldn't rip the
-    // dashboard out from under someone who was already looking at it.
     if (widget.store.isLoading && widget.store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: _DashboardSkeleton());
+      return const SafeArea(bottom: false, child: _HomeSkeleton());
     }
 
     if (widget.store.error != null && widget.store.all.isEmpty) {
@@ -215,6 +140,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    const gap = SizedBox(height: AppSpacing.lg);
+
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
@@ -225,364 +152,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
           widget.profileStore.load(),
           widget.spendingStore.load(),
         ]),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _Greeting(store: widget.store, profileStore: widget.profileStore),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.huge),
+          children: [
+            _Greeting(profileStore: widget.profileStore, store: widget.store),
+            const SizedBox(height: AppSpacing.lg),
+
+            _HeroTotal(
+              monthly: _monthlyTotal,
+              count: _active.length,
+              onTap: () => widget.onOpenTab(AppTab.recurring),
             ),
 
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.lg,
-                  AppSpacing.xl,
-                  0,
-                ),
-                child: _HeroTotal(
-                  monthly: _monthlyTotal,
-                  count: _active.length,
-                  savedMonthly: _savedMonthly,
-                  nextUp: _nextUp,
-                ),
+            // Only ever appears when something is genuinely imminent. A
+            // permanent banner is wallpaper.
+            if (_thisWeek.isNotEmpty) ...[
+              gap,
+              _AttentionStrip(
+                total: _thisWeekTotal,
+                subs: _thisWeek,
+                onTap: () => widget.onOpenTab(AppTab.recurring),
               ),
+            ],
+
+            if (_priceChanges.isNotEmpty) ...[
+              gap,
+              _PriceChangeStrip(
+                subs: _priceChanges,
+                onTap: () => _openDetail(_priceChanges.first),
+              ),
+            ],
+
+            if (_trialsDueSoon.isNotEmpty) ...[
+              gap,
+              _TrialStrip(
+                trials: _trialsDueSoon,
+                onTap: () => widget.onOpenTab(AppTab.trials),
+              ),
+            ],
+
+            gap,
+            _SpendingCard(
+              store: widget.spendingStore,
+              onTap: () => widget.onOpenTab(AppTab.spending),
             ),
 
-            // Only appears when something is genuinely imminent.
-            if (_thisWeek.isNotEmpty && _tab == 0)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    AppSpacing.lg,
-                    AppSpacing.xl,
-                    0,
-                  ),
-                  child: _AttentionStrip(
-                    total: _thisWeekTotal,
-                    subs: _thisWeek,
-                  ),
-                ),
+            if (_review.isNotEmpty) ...[
+              gap,
+              _ReviewNudge(
+                count: _review.length,
+                onTap: () => widget.onOpenTab(AppTab.recurring),
               ),
+            ],
 
-            // A trial converting soon is the same kind of tension as a
-            // charge landing soon — it just hasn't happened yet, so it gets
-            // its own strip rather than being folded into the one above.
-            if (_trialsDueSoon.isNotEmpty && _tab == 0)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    _thisWeek.isEmpty ? AppSpacing.lg : AppSpacing.md,
-                    AppSpacing.xl,
-                    0,
-                  ),
-                  child: _TrialStrip(
-                    trials: _trialsDueSoon,
-                    onTap: widget.onOpenTrials,
-                  ),
-                ),
+            if (_upNext.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              _SectionHeader(
+                label: 'Up next',
+                actionLabel: 'See all',
+                onAction: () => widget.onOpenTab(AppTab.recurring),
               ),
-
-            // Sits between the subscription hero and the subscription list on
-            // purpose. Subscriptions are the thing this app is for, so they
-            // keep the top and the bottom of the screen; spending is the
-            // context that makes the hero total mean something ("₦63k
-            // repeating, out of ₦240k total"), so it goes between them rather
-            // than competing for the top slot.
-            if (_tab == 0)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    AppSpacing.xxl,
-                    AppSpacing.xl,
-                    0,
-                  ),
-                  child: _SpendingCard(
-                    store: widget.spendingStore,
-                    onTap: _openSpending,
-                  ),
-                ),
-              ),
-
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  AppSpacing.xxl,
-                  AppSpacing.xl,
-                  AppSpacing.lg,
-                ),
-                child: AppTabs(
-                  labels: _tabs,
-                  selectedIndex: _tab,
-                  onSelect: _selectTab,
-                ),
-              ),
-            ),
-
-            SliverToBoxAdapter(
-              child: ClipRect(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final offset = Tween<Offset>(
-                      begin: Offset(0.06 * _tabDirection, 0),
-                      end: Offset.zero,
-                    ).animate(animation);
-                    return SlideTransition(
-                      position: offset,
-                      child: FadeTransition(opacity: animation, child: child),
-                    );
-                  },
-                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      ...previousChildren,
-                      if (currentChild != null) currentChild,
-                    ],
-                  ),
-                  child: KeyedSubtree(
-                    key: ValueKey(_tab),
-                    child: _buildBody(),
-                  ),
-                ),
-              ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.huge)),
+              const SizedBox(height: AppSpacing.md),
+              for (var i = 0; i < _upNext.length; i++) ...[
+                if (i > 0) const SizedBox(height: AppSpacing.sm),
+                _UpNextRow(subscription: _upNext[i], onTap: () => _openDetail(_upNext[i])),
+              ],
+            ],
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildBody() => switch (_tab) {
-        0 => _activeContent(),
-        1 => _reviewContent(),
-        _ => _cancelledContent(),
-      };
-
-  // ------------------------------------------------------------------ active
-
-  Widget _activeContent() {
-    if (_active.isEmpty) {
-      return const AppEmptyState(
-        icon: Icons.autorenew_rounded,
-        title: 'No active subscriptions',
-        message: 'Once we detect a repeating charge it will show up here.',
-      );
-    }
-
-    final week = _thisWeek;
-    final weekIds = week.map((s) => s.id).toSet();
-    final later = _active.where((s) => !weekIds.contains(s.id)).toList()
-      ..sort((a, b) => b.monthlyEquivalent.compareTo(a.monthlyEquivalent));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (week.isNotEmpty) ...[
-          _sectionHeader('Next 7 days', '${week.length}'),
-          _list(week),
-        ],
-        if (later.isNotEmpty) ...[
-          _sectionHeader('Later', '${later.length}'),
-          _list(later),
-        ],
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------------ review
-
-  Widget _reviewContent() {
-    if (_review.isEmpty) {
-      return const AppEmptyState(
-        icon: Icons.fact_check_outlined,
-        title: 'Nothing to review',
-        message: 'Every detected charge has been confirmed or dismissed.',
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            0,
-            AppSpacing.xl,
-            AppSpacing.lg,
-          ),
-          child: Text(
-            'These repeat, but not regularly enough for us to be certain. '
-            'Confirming teaches the detection what to look for.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.neutral500, height: 1.5),
-          ),
-        ),
-        _list(_review, review: true),
-      ],
-    );
-  }
-
-  // --------------------------------------------------------------- cancelled
-
-  Widget _cancelledContent() {
-    if (_cancelled.isEmpty) {
-      return const AppEmptyState(
-        icon: Icons.do_not_disturb_on_outlined,
-        title: 'Nothing cancelled yet',
-        message: 'When you cancel something it moves here, so you can see '
-            'what you stopped paying for.',
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            0,
-            AppSpacing.xl,
-            AppSpacing.lg,
-          ),
-          child: _SavedBanner(monthly: _savedMonthly),
-        ),
-        _list(_cancelled),
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------------ pieces
-
-  Widget _sectionHeader(String label, String count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.md,
-        AppSpacing.xl,
-        AppSpacing.md,
-      ),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-              color: AppColors.neutral500,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: AppColors.neutral100,
-              borderRadius: AppRadius.fullBR,
-            ),
-            child: Text(
-              count,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: AppColors.neutral500,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: Divider(color: AppColors.border(context))),
-        ],
-      ),
-    );
-  }
-
-  Widget _list(List<Subscription> items, {bool review = false}) {
-    final total = _monthlyTotal;
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpacing.md),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-            child: SubscriptionTile(
-              subscription: items[i],
-              shareOfSpend: total > 0 && !review
-                  ? items[i].monthlyEquivalent / total
-                  : null,
-              showConfidence: review,
-              busy: _pendingIds.contains(items[i].id),
-              onTap: () => _openDetail(items[i]),
-              onConfirm: review
-                  ? () => _updateStatus(items[i], SubscriptionStatus.active)
-                  : null,
-              onDismiss: review
-                  ? () =>
-                      _updateStatus(items[i], SubscriptionStatus.cancelled)
-                  : null,
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
 
 // ---------------------------------------------------------------------------
 
-/// Reads [ProfileStore] directly rather than fetching its own copy — the
-/// parent `DashboardScreen` already listens to it and rebuilds this on
-/// every change, so there's exactly one load for the whole tab, not one
-/// per widget that happens to show an avatar. During that one load this
-/// shows a plain skeleton circle instead of a placeholder name/initial —
-/// "A" for "Account" flashing before the real initial arrives read as a
-/// glitch, not a loading state.
+/// Greeting plus avatar. Reads [ProfileStore] through the parent, which
+/// already listens to it, so there is one load for the tab rather than one
+/// per widget that happens to show a face.
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.store, required this.profileStore});
+  const _Greeting({required this.profileStore, required this.store});
 
-  final SubscriptionStore store;
   final ProfileStore profileStore;
 
-  String get _timeOfDay {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
+  /// ProfileScreen shows subscription stats alongside the account, so it
+  /// needs the same shared list every other tab reads.
+  final SubscriptionStore store;
+
+  String get _partOfDay {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   }
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final profile = profileStore.profile;
+    final name = profile?.displayName?.split(' ').first;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.lg,
-        AppSpacing.xl,
-        0,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.lg),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // "Good morning, Gbemiga" rather than a greeting stacked over
+                // "Your money". They know whose money it is; the only thing
+                // worth saying here is their name. With no name on file yet
+                // the greeting stands alone rather than inventing a
+                // placeholder to sit under it.
                 Text(
-                  _timeOfDay,
-                  style: text.bodySmall?.copyWith(color: AppColors.neutral500),
+                  name == null ? _partOfDay : '$_partOfDay,',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
                 ),
-                Text(
-                  'Your repeats',
-                  style: text.headlineSmall?.copyWith(letterSpacing: -0.4),
-                ),
+                if (name != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
+                  ),
+                ],
               ],
             ),
           ),
@@ -592,9 +284,11 @@ class _Greeting extends StatelessWidget {
                 builder: (_) => ProfileScreen(store: store, profileStore: profileStore),
               ),
             ),
-            child: profileStore.isInitialLoad
-                ? const ClipOval(child: AppSkeleton(width: 40, height: 40))
-                : AppAvatar(name: profile?.displayLabel ?? 'Account', imageUrl: profile?.avatarUrl),
+            child: AppAvatar(
+              imageUrl: profile?.avatarUrl,
+              name: profile?.displayName ?? profile?.email ?? '',
+              size: 40,
+            ),
           ),
         ],
       ),
@@ -602,166 +296,289 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-/// First-load placeholder mirroring the real layout — hero card, then a
-/// few list rows — so the dashboard reads as "loading this" rather than
-/// a blank screen with a spinner.
-class _DashboardSkeleton extends StatelessWidget {
-  const _DashboardSkeleton();
+/// The number the whole app exists to produce.
+///
+/// On the brand gradient rather than a plain surface, which is the one place
+/// in the app that treatment is spent. It is the single most important figure
+/// here, it is the same object the onboarding preview shows, and giving it
+/// real weight is most of what stops Home reading as a settings list.
+class _HeroTotal extends StatelessWidget {
+  const _HeroTotal({required this.monthly, required this.count, required this.onTap});
+
+  final double monthly;
+  final int count;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
-      children: const [
-        AppSkeleton(width: 160, height: 20),
-        SizedBox(height: 4),
-        AppSkeleton(width: 220, height: 13),
-        SizedBox(height: AppSpacing.xl),
-        AppSkeletonHeroCard(),
-        SizedBox(height: AppSpacing.xl),
-        AppSkeletonListTile(),
-        SizedBox(height: AppSpacing.md),
-        AppSkeletonListTile(),
-        SizedBox(height: AppSpacing.md),
-        AppSkeletonListTile(),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        decoration: BoxDecoration(
+          gradient: RecurBrand.brandGradient,
+          borderRadius: AppRadius.xlBR,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.28),
+              blurRadius: 28,
+              spreadRadius: -8,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // No icon. The label is already explicit, and a glyph beside it
+            // only competed with the figure underneath, which is the one
+            // thing on this card meant to be looked at.
+            Text(
+              'TOTAL MONTHLY SUBSCRIPTIONS',
+              style: AppTypography.mono(
+                size: 10.5,
+                weight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.85),
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Counts up on first paint. The figure is the point of the screen,
+            // and watching it assemble is what makes it feel calculated rather
+            // than merely printed.
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: monthly),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => Text(
+                formatNaira(value),
+                style: AppTypography.money(size: 38, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              count == 1 ? '1 active subscription' : '$count active subscriptions',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Colors.white.withValues(alpha: 0.82)),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Text(
+                  '${formatNaira(monthly * 12)} a year',
+                  style: AppTypography.money(
+                    size: 12.5,
+                    weight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'View all',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
+                ),
+                Icon(Icons.chevron_right_rounded, size: 17, color: Colors.white.withValues(alpha: 0.9)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Section title with an optional action on the right.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label, this.actionLabel, this.onAction});
+
+  final String label;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        const Spacer(),
+        if (actionLabel != null)
+          GestureDetector(
+            onTap: onAction,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Text(
+                    actionLabel!,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelMedium
+                        ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+                  ),
+                  Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primary),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
 }
 
-/// The one number the app exists to show, styled like a statement line
-/// rather than a marketing card: paper surface, ink text, the total set in
-/// the ledger face with tabular figures so it never jitters sideways while
-/// counting up. Everything else — the eyebrow, the yearly read, what's
-/// next, what's already saved — sits quietly around it, separated by a
-/// single dashed rule instead of colour blocks or icons competing for
-/// attention.
-class _HeroTotal extends StatelessWidget {
-  const _HeroTotal({
-    required this.monthly,
-    required this.count,
-    required this.savedMonthly,
-    this.nextUp,
+/// A coloured strip for something imminent. One shape, three meanings,
+/// separated only by colour and copy, so the page has a consistent way of
+/// saying "look at this".
+class _AlertStrip extends StatelessWidget {
+  const _AlertStrip({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.onTap,
   });
 
-  final double monthly;
-  final int count;
-  final double savedMonthly;
-  final Subscription? nextUp;
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String detail;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.xl,
-        AppSpacing.xl,
-        AppSpacing.lg,
-      ),
-      decoration: BoxDecoration(
-        // Was hardcoded AppColors.white/neutral200 — the single most
-        // prominent card on the whole screen stayed a bright light-mode
-        // card regardless of theme, which is likely the worst offender
-        // behind "no contrast in some screens." surface()/border() already
-        // resolve to the right tone for whichever theme is active.
-        color: AppColors.surface(context),
-        borderRadius: AppRadius.xlBR,
-        border: Border.all(color: AppColors.border(context)),
-        boxShadow: AppShadows.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'LEAVING THIS MONTH',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.3,
-                    color: AppColors.warning,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.09),
+          borderRadius: AppRadius.lgBR,
+          border: Border.all(color: color.withValues(alpha: 0.26)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: AppRadius.mdBR),
+              child: Icon(icon, size: 19, color: color),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: AppColors.ink(context)),
                   ),
-                ),
-              ),
-              if (nextUp != null) _NextUpPill(subscription: nextUp!),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: monthly),
-            duration: const Duration(milliseconds: 1100),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) => FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                formatNaira(value),
-                maxLines: 1,
-                style: AppTypography.mono(
-                  size: 40,
-                  weight: FontWeight.w600,
-                  color: AppColors.ink(context),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    detail,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          const LedgerDivider(),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Text(
-                '${formatNaira(monthly * 12)} / yr',
-                style: AppTypography.mono(
-                  size: 12,
-                  weight: FontWeight.w500,
-                  color: AppColors.neutral500,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Container(width: 3, height: 3, decoration: const BoxDecoration(color: AppColors.neutral300, shape: BoxShape.circle)),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                '$count active',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.neutral500),
-              ),
-              const Spacer(),
-              if (savedMonthly > 0)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.trending_down_rounded, size: 13, color: AppColors.success),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${formatNaira(savedMonthly)}/mo cut',
-                      style: AppTypography.mono(size: 11.5, weight: FontWeight.w600, color: AppColors.success),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ],
+            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.muted(context)),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Small "here's what's coming" pill in the card's top-right corner. The
-/// hero card is the one place a user glances at daily — surfacing the
-/// soonest charge here means they don't have to switch tabs to find it.
-/// The dashboard's window into spending, and the entry point to the full
-/// breakdown.
-///
-/// Kept deliberately small. The hero total above it is this app's headline
-/// number and nothing on Home should compete with it, so this shows one
-/// figure and the three categories carrying most of it, then gets out of the
-/// way. Everything else lives one tap deeper on [SpendingScreen].
-///
-/// Renders nothing at all until there is something to say: a user with no
-/// linked bank, or whose first sync has not landed, gets no empty card and no
-/// spinner on their home screen.
+class _AttentionStrip extends StatelessWidget {
+  const _AttentionStrip({required this.total, required this.subs, required this.onTap});
+
+  final double total;
+  final List<Subscription> subs;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = subs.first;
+    return _AlertStrip(
+      color: AppColors.warning,
+      icon: Icons.schedule_rounded,
+      title: '${formatNaira(total)} hits this week',
+      detail: '${first.displayName} first, ${first.nextChargeLabel.toLowerCase()}',
+      onTap: onTap,
+    );
+  }
+}
+
+class _PriceChangeStrip extends StatelessWidget {
+  const _PriceChangeStrip({required this.subs, required this.onTap});
+
+  final List<Subscription> subs;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = subs.first;
+    return _AlertStrip(
+      color: AppColors.danger,
+      icon: Icons.trending_up_rounded,
+      title: subs.length == 1 ? '${first.displayName} went up' : '${subs.length} prices went up',
+      detail: subs.length == 1
+          ? 'Now ${formatNaira(first.amount)}, was ${formatNaira(first.previousAmount!)}'
+          : 'Tap to see what changed and by how much',
+      onTap: onTap,
+    );
+  }
+}
+
+class _TrialStrip extends StatelessWidget {
+  const _TrialStrip({required this.trials, required this.onTap});
+
+  final List<TrialReminder> trials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = trials.first;
+    return _AlertStrip(
+      color: AppColors.info,
+      icon: Icons.timer_rounded,
+      title: trials.length == 1 ? '${first.label} converts soon' : '${trials.length} trials convert soon',
+      detail: first.isOverdue
+          ? 'This one has already passed its end date'
+          : 'Cancel before it turns into a real charge',
+      onTap: onTap,
+    );
+  }
+}
+
+class _ReviewNudge extends StatelessWidget {
+  const _ReviewNudge({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AlertStrip(
+      color: AppColors.primary,
+      icon: Icons.fact_check_outlined,
+      title: count == 1 ? '1 charge to review' : '$count charges to review',
+      detail: 'Confirming teaches the detection what to look for',
+      onTap: onTap,
+    );
+  }
+}
+
+/// Home's window into spending: the month's total, the split, and the top few
+/// categories. Everything else lives on the Spending tab.
 class _SpendingCard extends StatelessWidget {
   const _SpendingCard({required this.store, required this.onTap});
 
@@ -770,16 +587,13 @@ class _SpendingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (store.isLoading && !store.hasData) {
-      return const AppSkeletonHeroCard();
-    }
-    // A spending failure is not worth breaking Home over: subscriptions are
-    // the point of this screen and they loaded fine.
+    if (store.isLoading && !store.hasData) return const AppSkeletonHeroCard();
+    // A spending failure should not break Home, whose actual subject loaded.
     if (store.error != null || !store.hasData) return const SizedBox.shrink();
 
     final summary = store.summary;
-    final top = summary.topCategories();
-    final over = summary.overBudget;
+    final top = summary.topCategories(4);
+    if (top.isEmpty) return const SizedBox.shrink();
 
     return AppCard(
       onTap: onTap,
@@ -787,7 +601,6 @@ class _SpendingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -798,15 +611,14 @@ class _SpendingCard extends StatelessWidget {
                       style: AppTypography.mono(
                         size: 10.5,
                         color: AppColors.muted(context),
-                        letterSpacing: 1.1,
+                        letterSpacing: 1,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       formatNaira(summary.total),
-                      style: AppTypography.mono(
+                      style: AppTypography.money(
                         size: 26,
-                        weight: FontWeight.w700,
                         color: AppColors.ink(context),
                       ),
                     ),
@@ -816,163 +628,83 @@ class _SpendingCard extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, size: 22, color: AppColors.muted(context)),
             ],
           ),
-
-          if (top.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
-            for (final spend in top) ...[
-              _MiniCategoryRow(spend: spend, total: summary.total),
-              if (spend != top.last) const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
+          AppSplitBar(
+            slices: [
+              for (final c in summary.categories.where((c) => c.spent > 0))
+                DonutSlice(value: c.spent, color: c.category.color(context)),
             ],
-          ],
-
-          if (over.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.warning),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    over.length == 1
-                        ? '${over.first.category.label} is over budget'
-                        : '${over.length} categories are over budget',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
-                  ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final c in top)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: c.category.color(context), shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      c.category.shortLabel,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft(context)),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      formatNairaCompact(c.spent),
+                      style: AppTypography.money(
+                        size: 11.5,
+                        weight: FontWeight.w700,
+                        color: AppColors.ink(context),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// One compact category line: name, share meter, amount.
-class _MiniCategoryRow extends StatelessWidget {
-  const _MiniCategoryRow({required this.spend, required this.total});
-
-  final CategorySpend spend;
-  final double total;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = spend.category.color(context);
-    return Row(
-      children: [
-        Icon(spend.category.icon, size: 15, color: color),
-        const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          width: 78,
-          child: Text(
-            spend.category.shortLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft(context)),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Expanded(
-          child: AppMeter(
-            // Share of the month, not of a budget: this row is about
-            // proportion, and the budget story is told on the screen behind
-            // the tap rather than crammed in here.
-            progress: total > 0 ? spend.spent / total : 0,
-            color: color,
-            height: 4,
-            showOverflowNotch: false,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text(
-          formatNairaCompact(spend.spent),
-          style: AppTypography.mono(size: 12.5, weight: FontWeight.w600, color: AppColors.ink(context)),
-        ),
-      ],
-    );
-  }
-}
-
-class _NextUpPill extends StatelessWidget {
-  const _NextUpPill({required this.subscription});
+/// One upcoming charge. Deliberately lighter than [SubscriptionTile]: this is
+/// a preview of the Recurring tab, not a second copy of it.
+class _UpNextRow extends StatelessWidget {
+  const _UpNextRow({required this.subscription, required this.onTap});
 
   final Subscription subscription;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final label = switch (subscription.daysUntilCharge) {
-      0 => 'today',
-      1 => 'tomorrow',
-      final d => 'in ${d}d',
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-      decoration: BoxDecoration(
-        // Now that the hero card around this pill correctly darkens (see
-        // _HeroTotal), a hardcoded light neutral100 here would read as an
-        // odd bright pill inside an otherwise dark card.
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: AppRadius.fullBR,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              '${subscription.brand.name} $label',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.inkSoft(context)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shown only when money is actually about to move. A banner that's always
-/// there stops being read within a day.
-class _AttentionStrip extends StatelessWidget {
-  const _AttentionStrip({required this.total, required this.subs});
-
-  final double total;
-  final List<Subscription> subs;
-
-  @override
-  Widget build(BuildContext context) {
-    final soonest = subs.first;
-
-    return Container(
+    final due = subscription.isDueSoon;
+    return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.warningBg,
-        borderRadius: AppRadius.lgBR,
-        border: Border.all(
-          color: AppColors.warning.withValues(alpha: 0.28),
-        ),
-      ),
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.16),
+              color: subscription.accentColor.withValues(alpha: 0.12),
               borderRadius: AppRadius.mdBR,
             ),
-            child: const Icon(
-              Icons.schedule_rounded,
-              size: 18,
-              color: AppColors.warning,
+            child: Center(
+              child: Text(
+                subscription.displayName.characters.first.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: subscription.accentColor,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -981,158 +713,51 @@ class _AttentionStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${formatNaira(total)} hits this week',
-                  style: AppTypography.mono(
-                    size: 14,
-                    weight: FontWeight.w600,
-                    color: AppColors.neutral900,
-                  ),
+                  subscription.displayName,
+                  style: Theme.of(context).textTheme.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Text(
-                  '${soonest.displayName} first, '
-                  '${soonest.nextChargeLabel.toLowerCase()}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.neutral600,
-                  ),
+                  subscription.nextChargeLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: due ? AppColors.warning : AppColors.muted(context),
+                        fontWeight: due ? FontWeight.w700 : FontWeight.w500,
+                      ),
                 ),
               ],
             ),
           ),
+          Text(
+            formatNaira(subscription.amount),
+            style: AppTypography.money(size: 15, weight: FontWeight.w700, color: AppColors.ink(context)),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Shown only when a manually-logged trial is close to converting — the
-/// exact "only when genuinely imminent" bar as [_AttentionStrip], applied
-/// to trials the detection engine can't see yet.
-class _TrialStrip extends StatelessWidget {
-  const _TrialStrip({required this.trials, required this.onTap});
-
-  final List<TrialReminder> trials;
-  final VoidCallback onTap;
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final soonest = trials.first;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: AppRadius.lgBR,
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: AppColors.warningBg,
-            borderRadius: AppRadius.lgBR,
-            border: Border.all(
-              color: AppColors.warning.withValues(alpha: 0.28),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.16),
-                  borderRadius: AppRadius.mdBR,
-                ),
-                child: const Icon(
-                  Icons.hourglass_bottom_rounded,
-                  size: 18,
-                  color: AppColors.warning,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      trials.length == 1
-                          ? '${soonest.label} trial ${soonest.endsLabel.toLowerCase()}'
-                          : '${trials.length} trials ending soon',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.neutral900,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    const Text(
-                      'Tap to review and cancel before they charge',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.neutral600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.warning, size: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SavedBanner extends StatelessWidget {
-  const _SavedBanner({required this.monthly});
-
-  final double monthly;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.successBg,
-        borderRadius: AppRadius.lgBR,
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.savings_outlined,
-            size: 20,
-            color: AppColors.success,
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                  color: AppColors.neutral800,
-                ),
-                children: [
-                  const TextSpan(text: 'You have cut '),
-                  TextSpan(
-                    text: formatNaira(monthly),
-                    style: AppTypography.mono(size: 13, weight: FontWeight.w600, color: AppColors.neutral900),
-                  ),
-                  const TextSpan(text: ' a month. That is '),
-                  TextSpan(
-                    text: formatNaira(monthly * 12),
-                    style: AppTypography.mono(size: 13, weight: FontWeight.w600, color: AppColors.neutral900),
-                  ),
-                  const TextSpan(text: ' over a year.'),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xxl, AppSpacing.xl, 0),
+      children: const [
+        AppSkeletonBlock(height: 22, width: 110),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeletonBlock(height: 186, radius: 16),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeletonBlock(height: 74, radius: 12),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeletonHeroCard(),
+        SizedBox(height: AppSpacing.xxl),
+        AppSkeletonListTile(),
+        AppSkeletonListTile(),
+      ],
     );
   }
 }

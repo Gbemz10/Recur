@@ -329,7 +329,7 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
       child: Column(
         children: [
           const Spacer(),
-          Icon(Icons.hourglass_top_rounded, size: 56, color: AppColors.muted(context)),
+          Icon(Icons.timer_outlined, size: 56, color: AppColors.muted(context)),
           const SizedBox(height: AppSpacing.xl),
           Text('Taking longer than usual', style: text.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),

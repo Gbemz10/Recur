@@ -6,10 +6,15 @@ import '../data/spending_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
 import '../ui/ui.dart';
-import 'calendar_screen.dart';
 import 'dashboard_screen.dart';
+import 'recurring_screen.dart';
 import 'settings_screen.dart';
+import 'spending_screen.dart';
 import 'trial_reminders_screen.dart';
+
+/// The five bottom-nav destinations, named rather than indexed so a caller
+/// asking Home to jump somewhere does not have to know the tab order.
+enum AppTab { home, recurring, spending, trials, settings }
 
 /// Bottom-nav host for the four primary destinations.
 ///
@@ -42,17 +47,29 @@ class _AppShellState extends State<AppShell> {
   /// have to read one list that a budget edit updates once.
   final SpendingStore _spendingStore = SpendingStore();
 
+  /// Five destinations, each answering one question.
+  ///
+  /// Home is a digest of the other four rather than a screen of its own
+  /// content: how much, what is imminent, where the rest went, what converts
+  /// soon. Recurring absorbed the Active/Review/Cancelled lists that used to
+  /// live on Home along with the old Calendar tab, since a month grid is a
+  /// view of those subscriptions rather than a separate subject. Spending was
+  /// a screen pushed from Home and is now top level, because "where did it
+  /// all go" is a question people arrive with, not one they drill into.
   static const _items = [
-    AppNavItem(label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home_rounded),
-    AppNavItem(label: 'Calendar', icon: Icons.calendar_today_outlined, selectedIcon: Icons.calendar_today_rounded),
-    // A trial isn't a subscription yet — it doesn't have a charge date, an
-    // amount, or a cycle, so it doesn't belong in the same list as
-    // Home/Calendar's confirmed and detected charges. It gets its own
-    // destination rather than being squeezed into Settings, where a task
-    // this time-sensitive would go unnoticed.
-    AppNavItem(label: 'Trials', icon: Icons.hourglass_empty_rounded, selectedIcon: Icons.hourglass_bottom_rounded),
+    AppNavItem(label: 'Home', icon: Icons.grid_view_outlined, selectedIcon: Icons.grid_view_rounded),
+    AppNavItem(label: 'Recurring', icon: Icons.autorenew_outlined, selectedIcon: Icons.autorenew_rounded),
+    AppNavItem(label: 'Spending', icon: Icons.pie_chart_outline_rounded, selectedIcon: Icons.pie_chart_rounded),
+    // A trial is not a subscription yet: no charge date, no amount, no cycle.
+    // It gets its own destination rather than being squeezed into Settings,
+    // where something this time-sensitive would go unnoticed.
+    AppNavItem(label: 'Trials', icon: Icons.timer_outlined, selectedIcon: Icons.timer_rounded),
     AppNavItem(label: 'Settings', icon: Icons.settings_outlined, selectedIcon: Icons.settings_rounded),
   ];
+
+  /// Lets Home hand off to another destination by name. Home is a digest, so
+  /// nearly every card on it is a doorway into the tab that owns that data.
+  void _goToTab(AppTab tab) => setState(() => _index = tab.index);
 
   @override
   void dispose() {
@@ -76,9 +93,10 @@ class _AppShellState extends State<AppShell> {
             trialStore: _trialStore,
             profileStore: _profileStore,
             spendingStore: _spendingStore,
-            onOpenTrials: () => setState(() => _index = 2),
+            onOpenTab: _goToTab,
           ),
-          CalendarScreen(store: _store),
+          RecurringScreen(store: _store),
+          SpendingScreen(store: _spendingStore),
           TrialRemindersScreen(store: _trialStore),
           SettingsScreen(
             store: _store,
