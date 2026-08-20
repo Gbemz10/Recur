@@ -394,3 +394,266 @@ export {
   sansFont,
   monoFont,
 };
+
+// ------------------------------------------------------------ notifications
+
+/** Naira, grouped, no decimals. Matches the app's formatNaira. */
+function naira(amount: number): string {
+  return `₦${Math.round(amount).toLocaleString('en-NG')}`;
+}
+
+/** "Tue 4 Nov". Weekday included, because these emails are about *when*. */
+function shortDay(date: Date): string {
+  // Lagos time, not the server's. A charge lands on the day the account
+  // holder is living in, and Render runs in UTC.
+  const parts = new Intl.DateTimeFormat('en-NG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Africa/Lagos',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('weekday')} ${get('day')} ${get('month')}`;
+}
+
+/** One charge as a row: name on the left, amount on the right. */
+function chargeRow(name: string, when: string, amount: number, last: boolean): string {
+  return `<tr>
+<td style="padding:0 0 ${last ? '0' : '14px'};">
+<span class="ink-900" style="font-family:${sansFont}; font-size:14.5px; font-weight:700; color:${light.ink900};">${escapeHtml(name)}</span><br>
+<span class="ink-500" style="font-family:${sansFont}; font-size:12.5px; color:${light.ink500};">${escapeHtml(when)}</span>
+</td>
+<td align="right" style="padding:0 0 ${last ? '0' : '14px'}; vertical-align:top; white-space:nowrap;">
+<span class="ink-900" style="font-family:${sansFont}; font-size:14.5px; font-weight:800; color:${light.ink900};">${escapeHtml(naira(amount))}</span>
+</td>
+</tr>`;
+}
+
+export interface RenewalReminderCharge {
+  name: string;
+  amount: number;
+  chargeDate: Date;
+}
+
+/**
+ * The heads-up before a charge lands.
+ *
+ * Batched: one email per user per run, however many charges are inside their
+ * lead window. Three separate emails on the same morning is how a useful
+ * reminder becomes something people filter, and the whole product is a case
+ * against subscriptions nobody notices.
+ *
+ * Deliberately not a call to action. It states what is about to leave the
+ * account and stops, because the only person who knows whether that is fine
+ * is the one reading it.
+ */
+export function renderRenewalReminderEmail(input: {
+  charges: RenewalReminderCharge[];
+  leadDays: number;
+}): RenderedEmail {
+  const { charges, leadDays } = input;
+  const total = charges.reduce((sum, c) => sum + c.amount, 0);
+  const one = charges.length === 1;
+  const first = charges[0]!;
+
+  const title = one
+    ? `${escapeHtml(first.name)} charges ${escapeHtml(shortDay(first.chargeDate))}`
+    : `${charges.length} charges are coming up`;
+
+  const lede = one
+    ? `${naira(first.amount)} leaves your account on ${shortDay(first.chargeDate)}.`
+    : `${naira(total)} across ${charges.length} subscriptions, all within the next ${leadDays} ${leadDays === 1 ? 'day' : 'days'}.`;
+
+  const rows = charges
+    .map((c, i) => chargeRow(c.name, shortDay(c.chargeDate), c.amount, i === charges.length - 1))
+    .join('\n');
+
+  const html = emailShell(
+    `
+${eyebrow('Coming up')}
+${headline(title)}
+<p class="ink-600" style="margin:0 0 26px; font-family:${sansFont}; font-size:14.5px; line-height:1.65; color:${light.ink600};">${escapeHtml(lede)}</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+${rows}
+</table>
+
+${divider()}
+
+<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
+Recur watches your statement, so this is what your bank is about to be asked for. If any of it is a surprise, that is the point of the email. You can turn these off in Settings.
+</p>
+`,
+    one
+      ? `${naira(first.amount)} to ${first.name} on ${shortDay(first.chargeDate)}.`
+      : `${naira(total)} across ${charges.length} subscriptions in the next ${leadDays} days.`,
+  );
+
+  const text = [
+    one ? 'Coming up' : `${charges.length} charges are coming up`,
+    '',
+    lede,
+    '',
+    ...charges.map((c) => `${c.name} · ${shortDay(c.chargeDate)} · ${naira(c.amount)}`),
+    '',
+    'If any of it is a surprise, that is the point of the email. You can turn these off in Settings.',
+    '',
+    'Recur, Lagos, Nigeria',
+  ].join('\n');
+
+  return {
+    subject: one
+      ? `${first.name} charges ${shortDay(first.chargeDate)}`
+      : `${naira(total)} in subscriptions coming up`,
+    text,
+    html,
+  };
+}
+
+export interface DigestCategory {
+  label: string;
+  spent: number;
+}
+
+/**
+ * The Monday summary.
+ *
+ * Leads with the week ahead rather than the week behind, because a total you
+ * can still do something about is worth more than one you cannot. What the
+ * month has cost so far comes second, as context for it.
+ */
+export function renderWeeklyDigestEmail(input: {
+  weekAhead: RenewalReminderCharge[];
+  monthSoFar: number;
+  monthLabel: string;
+  topCategories: DigestCategory[];
+  activeCount: number;
+  monthlyTotal: number;
+}): RenderedEmail {
+  const { weekAhead, monthSoFar, monthLabel, topCategories, activeCount, monthlyTotal } = input;
+  const weekTotal = weekAhead.reduce((sum, c) => sum + c.amount, 0);
+
+  const title = weekAhead.length === 0
+    ? 'Nothing charges this week'
+    : `${naira(weekTotal)} charges this week`;
+
+  const lede = weekAhead.length === 0
+    ? `No subscriptions are due in the next seven days. You are tracking ${activeCount} of them, ${naira(monthlyTotal)} a month in total.`
+    : `Across ${weekAhead.length} ${weekAhead.length === 1 ? 'subscription' : 'subscriptions'}. You are tracking ${activeCount} in total, ${naira(monthlyTotal)} a month.`;
+
+  const rows = weekAhead
+    .map((c, i) => chargeRow(c.name, shortDay(c.chargeDate), c.amount, i === weekAhead.length - 1))
+    .join('\n');
+
+  const categoryRows = topCategories
+    .map(
+      (c, i) => chargeRow(c.label, 'so far this month', c.spent, i === topCategories.length - 1),
+    )
+    .join('\n');
+
+  const html = emailShell(
+    `
+${eyebrow('Your week')}
+${headline(title)}
+<p class="ink-600" style="margin:0 0 26px; font-family:${sansFont}; font-size:14.5px; line-height:1.65; color:${light.ink600};">${escapeHtml(lede)}</p>
+
+${
+  weekAhead.length > 0
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+${rows}
+</table>`
+    : ''
+}
+
+${divider()}
+
+${eyebrow(`${monthLabel} so far`)}
+<p class="ink-900" style="margin:0 0 20px; font-family:${sansFont}; font-size:26px; font-weight:800; letter-spacing:-0.6px; color:${light.ink900};">${escapeHtml(naira(monthSoFar))}</p>
+
+${
+  topCategories.length > 0
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+${categoryRows}
+</table>`
+    : `<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">Nothing categorised yet this month.</p>`
+}
+
+${divider()}
+
+<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
+Sent every Monday. You can turn this off in Settings.
+</p>
+`,
+    weekAhead.length === 0
+      ? `Nothing charges this week. ${naira(monthSoFar)} spent in ${monthLabel} so far.`
+      : `${naira(weekTotal)} charges this week. ${naira(monthSoFar)} spent in ${monthLabel} so far.`,
+  );
+
+  const text = [
+    'Your week',
+    '',
+    title,
+    lede,
+    '',
+    ...(weekAhead.length > 0
+      ? weekAhead.map((c) => `${c.name} · ${shortDay(c.chargeDate)} · ${naira(c.amount)}`)
+      : []),
+    '',
+    `${monthLabel} so far: ${naira(monthSoFar)}`,
+    ...(topCategories.length > 0
+      ? topCategories.map((c) => `${c.label} · ${naira(c.spent)}`)
+      : ['Nothing categorised yet this month.']),
+    '',
+    'Sent every Monday. You can turn this off in Settings.',
+    '',
+    'Recur, Lagos, Nigeria',
+  ].join('\n');
+
+  return { subject: title, text, html };
+}
+
+/**
+ * A trial is about to convert.
+ *
+ * Its own template rather than the renewal one with a zero amount, which read
+ * as "Showmax trial ends charges Sun 23 Aug" and put ₦0 next to it. A trial
+ * has no amount by definition: nothing has been charged yet, and that is the
+ * entire reason this reminder is worth sending.
+ */
+export function renderTrialReminderEmail(input: {
+  label: string;
+  endsAt: Date;
+  daysAway: number;
+}): RenderedEmail {
+  const { label, endsAt, daysAway } = input;
+  const when =
+    daysAway <= 0 ? 'today' : daysAway === 1 ? 'tomorrow' : `in ${daysAway} days`;
+  const lede = `Your ${label} trial ends ${when}, on ${shortDay(endsAt)}. If you do nothing, it becomes a paid subscription.`;
+
+  const html = emailShell(
+    `
+${eyebrow('Trial ending')}
+${headline(`${escapeHtml(label)} ends ${escapeHtml(when)}`)}
+<p class="ink-600" style="margin:0 0 26px; font-family:${sansFont}; font-size:14.5px; line-height:1.65; color:${light.ink600};">${escapeHtml(lede)}</p>
+
+${divider()}
+
+<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
+You asked Recur to remind you about this one. Once it charges, it will show up on its own. You can turn these off in Settings.
+</p>
+`,
+    lede,
+  );
+
+  const text = [
+    'Trial ending',
+    '',
+    lede,
+    '',
+    'You asked Recur to remind you about this one. Once it charges, it will show up on its own.',
+    '',
+    'Recur, Lagos, Nigeria',
+  ].join('\n');
+
+  return { subject: `${label} trial ends ${when}`, text, html };
+}

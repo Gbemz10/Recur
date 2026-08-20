@@ -71,6 +71,13 @@
       "when": 1787052725695,
       "tag": "0009_add_spending_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787239540495,
+      "tag": "0010_conscious_power_pack",
+      "breakpoints": true
     }
   ]
 }

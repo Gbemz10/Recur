@@ -34,6 +34,17 @@ const schema = z.object({
   OTP_TTL_MINUTES: z.coerce.number().int().positive().default(10),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 
+  // Whether the API process runs the notification timer itself. Off means
+  // something external (a platform cron) is expected to POST /notifications/run
+  // instead, which is the correct setting the moment there is more than one
+  // instance, since the in-process guard against overlap is per-process.
+  NOTIFICATIONS_SCHEDULER: z.enum(['on', 'off']).default('on'),
+  NOTIFICATIONS_INTERVAL_MINUTES: z.coerce.number().int().positive().default(30),
+  // Shared secret for POST /notifications/run. Empty disables the endpoint
+  // outright rather than leaving it open, so forgetting to set it fails
+  // closed.
+  NOTIFICATIONS_RUN_TOKEN: z.string().optional().default(''),
+
   EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
   EMAIL_FROM: z.string().default('Recur <noreply@recur.website>'),
   RESEND_API_KEY: z.string().optional().default(''),

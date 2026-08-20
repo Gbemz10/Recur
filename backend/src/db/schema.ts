@@ -241,6 +241,17 @@ export const subscriptions = pgTable('subscriptions', {
 
   cycle: billingCycleEnum('cycle').notNull(),
   nextChargeDate: timestamp('next_charge_date', { withTimezone: true }).notNull(),
+
+  // The charge date a renewal reminder has already gone out for.
+  //
+  // Storing the date itself rather than a "reminded" flag or a timestamp is
+  // what makes the job idempotent for free: it re-sends exactly when this
+  // stops matching nextChargeDate, which is precisely when detection has
+  // rolled the projection to a new cycle. A boolean would need clearing on
+  // every roll, and a sent-at timestamp would need the job to work out
+  // whether it belonged to this cycle or the last one.
+  renewalRemindedFor: timestamp('renewal_reminded_for', { withTimezone: true }),
+
   category: subscriptionCategoryEnum('category').notNull(),
   status: subscriptionStatusEnum('status').notNull().default('UNREVIEWED'),
 
@@ -391,6 +402,39 @@ export const budgets = pgTable('budgets', {
 }, (table) => ({
   uniqueUserCategory: unique().on(table.userId, table.category),
 }));
+
+// --------------------------------------------------------------- notifications
+
+// What a user has asked to be told about, and the bookkeeping that stops a
+// scheduled job telling them twice.
+//
+// One row per user, created lazily on first read rather than at signup, so
+// the defaults below are the single source of truth for "never touched this
+// screen" instead of being duplicated into the signup path.
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+
+  // A heads-up before a charge lands.
+  renewalReminders: boolean('renewal_reminders').notNull().default(true),
+  // How many days ahead. The app offers 1, 3 and 7; the column takes any
+  // value in range so the choice can widen without a migration.
+  reminderLeadDays: integer('reminder_lead_days').notNull().default(3),
+
+  // The Monday summary of the week ahead.
+  weeklyDigest: boolean('weekly_digest').notNull().default(true),
+  // ISO week the last digest covered, as 'YYYY-Www'. A week string rather
+  // than a timestamp because the question the job asks is "has this week's
+  // digest gone out", and a timestamp would make that a date calculation on
+  // every row instead of a string compare.
+  digestSentForWeek: text('digest_sent_for_week'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 // -------------------------------------------------------------------- trials
 

@@ -8,6 +8,7 @@ import '../data/banks.dart';
 import '../data/linked_bank.dart';
 import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
+import '../data/notification_store.dart';
 import '../data/theme_controller.dart';
 import '../ui/ui.dart';
 import '../widgets/bank_logo.dart';
@@ -53,20 +54,52 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _renewalReminders = true;
-  bool _weeklyDigest = true;
+  /// Server-backed, so a reminder preference set on one device is the one the
+  /// job actually reads. These were local `setState` flags: the switches moved
+  /// and nothing else in the system ever knew.
+  final _notifications = NotificationStore();
+
   bool _pushEnabled = true;
-  int _reminderDays = 3;
 
   @override
   void initState() {
     super.initState();
     widget.profileStore.addListener(_handleStoreChange);
     widget.bankStore.addListener(_handleStoreChange);
+    _notifications.addListener(_handleStoreChange);
+  }
+
+  /// Persists a preference change, putting the switch back if it does not
+  /// stick. Silent success: a toast for every toggle is noise, but a toggle
+  /// that quietly failed is a lie.
+  Future<void> _saveNotifications({
+    bool? renewalReminders,
+    bool? weeklyDigest,
+    int? reminderLeadDays,
+  }) async {
+    try {
+      await _notifications.update(
+        renewalReminders: renewalReminders,
+        weeklyDigest: weeklyDigest,
+        reminderLeadDays: reminderLeadDays,
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackbar(
+        context,
+        message: 'Could not save that. Check your connection and try again.',
+        variant: AppAlertVariant.danger,
+      );
+    }
   }
 
   @override
   void dispose() {
+    _notifications.removeListener(_handleStoreChange);
+    _notifications.dispose();
     widget.profileStore.removeListener(_handleStoreChange);
     widget.bankStore.removeListener(_handleStoreChange);
     super.dispose();
@@ -434,10 +467,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.notifications_active_outlined,
                         title: 'Renewal reminders',
                         subtitle: 'A heads-up before a charge hits',
-                        value: _renewalReminders,
-                        onChanged: (v) => setState(() => _renewalReminders = v),
+                        value: _notifications.renewalReminders,
+                        onChanged: _notifications.isInitialLoad
+                            ? null
+                            : (v) => _saveNotifications(renewalReminders: v),
                       ),
-                      if (_renewalReminders) ...[
+                      if (_notifications.renewalReminders) ...[
                         Divider(height: 1, color: AppColors.border(context)),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
@@ -455,8 +490,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               for (final d in [1, 3, 7]) ...[
                                 _DayChip(
                                   days: d,
-                                  selected: _reminderDays == d,
-                                  onTap: () => setState(() => _reminderDays = d),
+                                  selected: _notifications.reminderLeadDays == d,
+                                  onTap: () => _saveNotifications(reminderLeadDays: d),
                                 ),
                                 if (d != 7) const SizedBox(width: AppSpacing.sm),
                               ],
@@ -469,8 +504,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.mail_outline_rounded,
                         title: 'Weekly digest',
                         subtitle: 'A Monday email of what is coming up',
-                        value: _weeklyDigest,
-                        onChanged: (v) => setState(() => _weeklyDigest = v),
+                        value: _notifications.weeklyDigest,
+                        onChanged: _notifications.isInitialLoad
+                            ? null
+                            : (v) => _saveNotifications(weeklyDigest: v),
                       ),
                       Divider(height: 1, color: AppColors.border(context)),
                       _ToggleRow(
@@ -721,7 +758,12 @@ class _ToggleRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null disables the switch, which is what a row whose real value has not
+  /// arrived yet should be: showing a default as though it were the user's
+  /// own setting, and letting them toggle it, writes a preference they never
+  /// chose.
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
