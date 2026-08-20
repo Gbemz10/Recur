@@ -289,6 +289,11 @@ class Subscription {
   /// [isAwaitingCharge]: the word Overdue asserted a missed bill that the data
   /// cannot support, and did it in alert red on a screen about someone's money.
   String get nextChargeLabel {
+    // A stopped subscription outranks any projection, because the projection
+    // is the thing that is wrong about it. Said plainly, in the ordinary
+    // colour: nothing is going wrong right now, there is just a question
+    // worth answering.
+    if (hasStopped) return 'No charge since ${_monthYear(lastChargeDate!)}';
     final d = daysUntilCharge;
     if (d < 0) return 'Expected ${_shortDate(nextChargeDate)}';
     if (d == 0) return 'Charges today';
@@ -312,6 +317,17 @@ class Subscription {
   ];
 
   static String _shortDate(DateTime d) => '${d.day} ${_shortMonths[d.month - 1]}';
+
+  static String _monthYear(DateTime d) => '${_shortMonths[d.month - 1]} ${d.year}';
+
+  /// "Jul 2026" for the most recent observed charge, or null when there is no
+  /// history. Exposed so callers can say when it last charged without doing
+  /// string surgery on [nextChargeLabel], which is display copy and free to
+  /// change wording.
+  String? get lastChargeLabel {
+    final last = lastChargeDate;
+    return last == null ? null : _monthYear(last);
+  }
 
   Subscription copyWith({SubscriptionStatus? status}) => Subscription(
         id: id,

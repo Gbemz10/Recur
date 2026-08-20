@@ -85,11 +85,17 @@ class SubscriptionTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Text(
-                          subscription.cycle.label,
-                          style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
-                        ),
-                        const _Dot(),
+                        // "Monthly · No charge since Jul 2026" does not fit, and
+                        // the half that gets truncated is the half that matters.
+                        // A subscription that has stopped is not cycling, so the
+                        // cadence is the part worth dropping.
+                        if (!subscription.hasStopped || cancelled) ...[
+                          Text(
+                            subscription.cycle.label,
+                            style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
+                          ),
+                          const _Dot(),
+                        ],
                         Flexible(
                           child: Text(
                             cancelled ? 'Cancelled' : subscription.nextChargeLabel,

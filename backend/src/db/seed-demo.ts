@@ -142,6 +142,18 @@ const recurring: RecurringSeed[] = [
   { slug: 'showmax', narration: 'SHOWMAX NG RECURRING', amount: 3500, everyDays: 31, count: 3, startedDaysAgo: 14, status: 'UNREVIEWED' },
   { slug: 'ifitness', narration: 'IFITNESS LEKKI POS', amount: 25000, everyDays: 33, count: 2, startedDaysAgo: 17, status: 'UNREVIEWED' },
 
+  // --- stopped charging, still marked active --------------------------------
+  //
+  // The case the product exists for, and the one a projected date cannot show
+  // you: six monthly charges that ended five months ago. The backend's
+  // projectNextChargeDate walks forward in whole cycles until it lands in the
+  // future, so this still reports a date next week and still counts toward
+  // the monthly total. Only reading the charge history reveals it.
+  //
+  // Seeded deliberately, because a demo whose data is uniformly healthy cannot
+  // show the one thing worth showing.
+  { slug: 'bolt', narration: 'BOLT.EU RIDE PASS NG', amount: 8500, everyDays: 30, count: 6, startedDaysAgo: 152, status: 'ACTIVE' },
+
   // --- cancelled ------------------------------------------------------------
   { slug: 'apple', narration: 'APPLE.COM/BILL ITUNES', amount: 1100, everyDays: 30, count: 4, startedDaysAgo: 35, status: 'CANCELLED' },
 ];

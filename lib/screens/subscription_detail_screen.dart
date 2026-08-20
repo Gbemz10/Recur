@@ -89,10 +89,15 @@ class SubscriptionDetailScreen extends StatelessWidget {
                       // interpolating a day count here — that produced
                       // "Charges in 1 days", and it was a second place that
                       // had to be kept in step with the model's wording.
-                      label: subscription.isAwaitingCharge || subscription.isDueSoon
+                      label: subscription.hasStopped ||
+                              subscription.isAwaitingCharge ||
+                              subscription.isDueSoon
                           ? subscription.nextChargeLabel
                           : 'Active',
-                      variant: subscription.isAwaitingCharge
+                      // Neutral for a stopped one. It is a question, not an
+                      // alarm: no money is going wrong at this moment, we
+                      // simply cannot tell whether it should still be here.
+                      variant: subscription.hasStopped || subscription.isAwaitingCharge
                           ? AppBadgeVariant.neutral
                           : subscription.isDueSoon
                               ? AppBadgeVariant.warning
@@ -104,6 +109,40 @@ class SubscriptionDetailScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: AppSpacing.lg),
+
+            // ---- has this stopped? ----
+            //
+            // The projected charge date cannot answer this. It is computed by
+            // walking forward from the last charge in whole cycles until it
+            // lands in the future, so a subscription that died a year ago
+            // still reports a date next week and keeps counting toward the
+            // monthly total. Reading the charge history directly is the only
+            // way to notice, and once noticed the only person who knows the
+            // answer is the one holding the phone. So: ask, and let the
+            // button already at the bottom of this screen be the answer.
+            if (subscription.hasStopped && !cancelled) ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Have you cancelled this?', style: text.titleMedium),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Recur has not seen a charge for this since '
+                      '${subscription.lastChargeLabel}, but it still counts '
+                      '${formatNaira(subscription.monthlyEquivalent)} a month toward '
+                      'your total. If it is gone, mark it cancelled at the bottom of '
+                      'this screen and the total will catch up.',
+                      style: text.bodySmall?.copyWith(
+                        color: AppColors.muted(context),
+                        height: 1.55,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // ---- cost breakdown ----
             Row(
