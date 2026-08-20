@@ -35,11 +35,66 @@ import { hashPassword } from '../lib/password.js';
 import { runDetectionForUser } from '../modules/detection/service.js';
 import { categorizeTransactionsForUser } from '../modules/spending/categorize.js';
 
-// Credentials are fixed and printed at the end. This account is a fixture, not
-// a person — never create it against a production database.
 const DEMO_EMAIL = 'demo@recur.website';
-const DEMO_PASSWORD = 'RecurDemo2026';
 const DEMO_NAME = 'Ada Okonkwo';
+
+/**
+ * The demo password, from `DEMO_PASSWORD` with a development-only fallback.
+ *
+ * The fallback is committed, so treat it as public: anyone with the repo knows
+ * it. That is acceptable for a local fixture and unacceptable anywhere real,
+ * which is what [assertSafeTarget] is for. Set `DEMO_PASSWORD` in the
+ * environment to use something that is not in git history.
+ */
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'RecurDemo2026';
+
+/**
+ * Refuses to run anywhere that looks like production.
+ *
+ * This script creates a fully verified account whose password is published in
+ * this file. Against a real database that is an unauthorised login, so the rule
+ * cannot be "remember not to do that" — it has to be enforced by the thing
+ * doing the writing, at the moment it would write.
+ *
+ * Two independent checks, because either signal alone can be wrong: NODE_ENV is
+ * easy to leave unset, and a hosted database URL is easy to point at while
+ * NODE_ENV still says development.
+ */
+function assertSafeTarget() {
+  const env = process.env.NODE_ENV ?? 'development';
+  const url = process.env.DATABASE_URL ?? '';
+  const override = process.env.ALLOW_DEMO_SEED === 'yes-i-am-sure';
+
+  const reasons: string[] = [];
+  if (env === 'production') reasons.push(`NODE_ENV is "${env}"`);
+
+  // Managed Postgres hosts people actually deploy Recur against. A local or
+  // Docker database never matches these.
+  const hostedPattern = /(render\.com|amazonaws\.com|neon\.tech|railway\.app|heroku|fly\.dev|azure\.com)/i;
+  const host = url.replace(/^[^@]*@/, '');
+  if (hostedPattern.test(host)) {
+    reasons.push('DATABASE_URL points at a managed host');
+  }
+  if (/[?&]sslmode=require/i.test(url) && env === 'production') {
+    reasons.push('DATABASE_URL requires SSL under a production NODE_ENV');
+  }
+
+  if (reasons.length === 0) return;
+
+  if (override) {
+    console.warn(`WARNING: seeding a demo account despite ${reasons.join(' and ')}.`);
+    console.warn('This creates a known-password account. Delete it when the demo is over.');
+    return;
+  }
+
+  console.error('Refusing to seed the demo account.');
+  for (const reason of reasons) console.error(`  - ${reason}`);
+  console.error('');
+  console.error('This script creates a verified user whose password is committed to the repo.');
+  console.error('If you genuinely mean to do this, set ALLOW_DEMO_SEED=yes-i-am-sure,');
+  console.error('and set DEMO_PASSWORD to something that is not in git history.');
+  process.exit(1);
+}
 
 /** `days` ago, at a fixed hour so ordering is stable across runs. */
 function daysAgo(days: number): Date {
@@ -200,6 +255,7 @@ const demoBudgets: { category: 'FOOD' | 'TRANSPORT' | 'SHOPPING'; limit: number 
 ];
 
 async function main() {
+  assertSafeTarget();
   console.log(`Building demo account for ${DEMO_EMAIL}...`);
 
   // ---- user -------------------------------------------------------------
