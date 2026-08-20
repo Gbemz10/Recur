@@ -234,7 +234,15 @@ class _RecurringScreenState extends State<RecurringScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.lg),
-                child: AppTabs(labels: _tabs, selectedIndex: _tab, onSelect: _selectTab),
+                child: AppTabs(
+                  labels: _tabs,
+                  // Only Review is counted. Active and Cancelled are where
+                  // things live; Review is the one that is asking for
+                  // something, and a number on all three would say nothing.
+                  badges: [0, _review.length, 0],
+                  selectedIndex: _tab,
+                  onSelect: _selectTab,
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -336,8 +344,10 @@ class _RecurringScreenState extends State<RecurringScreen> {
     // heading and a paragraph above it repeating that in longer words.
     final soon = _active.where((s) => s.isDueSoon || s.isAwaitingCharge).toList()..sort(_byUrgency);
     final soonIds = soon.map((s) => s.id).toSet();
-    final later = _active.where((s) => !soonIds.contains(s.id)).toList()
-      ..sort((a, b) => b.monthlyEquivalent.compareTo(a.monthlyEquivalent));
+    // Soonest first, like the group above it. Sorting this by cost put a
+    // yearly plan 300 days out above a monthly one charging next week, which
+    // reads as a jumble on a list whose whole axis is time.
+    final later = _active.where((s) => !soonIds.contains(s.id)).toList()..sort(_byUrgency);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

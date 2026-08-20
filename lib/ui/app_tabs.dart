@@ -19,6 +19,7 @@ class AppTabs extends StatelessWidget {
     required this.onSelect,
     this.icons,
     this.itemWidth,
+    this.badges,
   });
 
   final List<String> labels;
@@ -35,6 +36,11 @@ class AppTabs extends StatelessWidget {
   /// (Active/Review/Cancelled); a value makes the control size to its own
   /// content, which is what a switch sitting in a header row needs.
   final double? itemWidth;
+
+  /// Optional count per segment, drawn as a small pill after the label.
+  /// Indexes match [labels]; null or zero draws nothing, because a badge
+  /// reading 0 is a badge asking to be ignored.
+  final List<int>? badges;
 
   static const Duration _duration = Duration(milliseconds: 280);
   static const Curve _curve = Curves.easeOutCubic;
@@ -58,6 +64,8 @@ class AppTabs extends StatelessWidget {
       ),
     );
   }
+
+  int _badgeAt(int i) => (badges != null && i < badges!.length) ? badges![i] : 0;
 
   Widget _control(BuildContext context, double tabWidth, double padding) {
     final scheme = Theme.of(context).colorScheme;
@@ -130,18 +138,34 @@ class AppTabs extends StatelessWidget {
                             )
                           : Padding(
                               padding: const EdgeInsets.symmetric(vertical: 9),
-                              child: AnimatedDefaultTextStyle(
-                                duration: _duration,
-                                curve: _curve,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight:
-                                      i == selectedIndex ? FontWeight.w700 : FontWeight.w600,
-                                  color: i == selectedIndex
-                                      ? AppColors.ink(context)
-                                      : AppColors.muted(context),
-                                ),
-                                child: Text(labels[i], textAlign: TextAlign.center),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: AnimatedDefaultTextStyle(
+                                      duration: _duration,
+                                      curve: _curve,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight:
+                                            i == selectedIndex ? FontWeight.w700 : FontWeight.w600,
+                                        color: i == selectedIndex
+                                            ? AppColors.ink(context)
+                                            : AppColors.muted(context),
+                                      ),
+                                      child: Text(
+                                        labels[i],
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_badgeAt(i) > 0) ...[
+                                    const SizedBox(width: 5),
+                                    _CountBadge(count: _badgeAt(i), selected: i == selectedIndex),
+                                  ],
+                                ],
                               ),
                             ),
                     ),
@@ -150,6 +174,36 @@ class AppTabs extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The count beside a tab label. It takes the tab's own selected/unselected
+/// colour so it reads as part of the label rather than a notification badge
+/// stuck on top of one.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count, required this.selected});
+
+  final int count;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = selected ? AppColors.primary : AppColors.muted(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 17),
+      height: 17,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: ink.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        // Past a point the exact number stops mattering and the width starts to.
+        count > 99 ? '99+' : '$count',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, height: 1, color: ink),
       ),
     );
   }
