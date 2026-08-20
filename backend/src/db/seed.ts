@@ -2,26 +2,8 @@ import argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
 import { db, pool } from './client.js';
 import { users, merchants, subscriptions, chargeRecords } from './schema.js';
+import { merchantSeeds, seedMerchants } from './merchantSeeds.js';
 
-// Mirrors lib/data/merchants.dart on the client — same slugs, same colors,
-// so a bundled logo asset on either side resolves the same way.
-// `trialProne: true` marks merchants known to run free-trial-then-charge
-// signups — the detection engine's single-occurrence trial heuristic (see
-// detection/service.ts) only ever fires for these, so it doesn't start
-// flagging every one-off debit as a "possible trial."
-const merchantSeeds = [
-  { slug: 'netflix', name: 'Netflix', domain: 'netflix.com', brandColor: '#E50914', category: 'STREAMING' as const, trialProne: true },
-  { slug: 'dstv', name: 'DStv', domain: 'dstv.com', brandColor: '#0072CE', category: 'STREAMING' as const, trialProne: false },
-  { slug: 'mtn', name: 'MTN', domain: 'mtn.ng', brandColor: '#FFCB05', category: 'TELECOM' as const, trialProne: false },
-  { slug: 'spotify', name: 'Spotify', domain: 'spotify.com', brandColor: '#1DB954', category: 'STREAMING' as const, trialProne: true },
-  { slug: 'openai', name: 'ChatGPT Plus', domain: 'openai.com', brandColor: '#10A37F', category: 'SOFTWARE' as const, trialProne: true },
-  { slug: 'canva', name: 'Canva', domain: 'canva.com', brandColor: '#7D2AE8', category: 'SOFTWARE' as const, trialProne: true },
-  { slug: 'showmax', name: 'Showmax', domain: 'showmax.com', brandColor: '#E10098', category: 'STREAMING' as const, trialProne: true },
-  { slug: 'apple', name: 'Apple iCloud', domain: 'apple.com', brandColor: '#555555', category: 'SOFTWARE' as const, trialProne: false },
-  { slug: 'ifitness', name: 'i-Fitness Gym', domain: 'ifitness.com.ng', brandColor: '#EF6C00', category: 'FITNESS' as const, trialProne: true },
-  { slug: 'bolt', name: 'Bolt', domain: 'bolt.eu', brandColor: '#34D186', category: 'OTHER' as const, trialProne: false },
-  { slug: 'chicken_republic', name: 'Chicken Republic', domain: 'chicken-republic.com', brandColor: '#E01F26', category: 'OTHER' as const, trialProne: false },
-];
 
 function daysFromNow(days: number): Date {
   const d = new Date();
@@ -37,12 +19,7 @@ function monthsAgo(months: number, day = 14): Date {
 
 async function main() {
   console.log('Seeding merchants...');
-  for (const merchant of merchantSeeds) {
-    await db
-      .insert(merchants)
-      .values(merchant)
-      .onConflictDoUpdate({ target: merchants.slug, set: merchant });
-  }
+  await seedMerchants();
   const seededMerchants = await db.select().from(merchants);
   const bySlug = Object.fromEntries(seededMerchants.map((m) => [m.slug, m]));
 

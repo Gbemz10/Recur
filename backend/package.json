@@ -1,7 +1,7 @@
 {
   "name": "recur-backend",
   "version": "0.1.0",
-  "description": "Recur API — detects recurring charges from a linked Nigerian bank account, serves the Flutter app.",
+  "description": "Recur API \u2014 detects recurring charges from a linked Nigerian bank account, serves the Flutter app.",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,7 +18,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed-transactions": "tsx src/db/seed-transactions.ts",
-    "db:seed-demo": "tsx src/db/seed-demo.ts"
+    "db:seed-demo": "tsx src/db/seed-demo.ts",
+    "db:seed-merchants": "tsx src/db/seed-merchants.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" ADD COLUMN "cancellation_steps" text[];

@@ -214,6 +214,19 @@ export const merchants = pgTable('merchants', {
   // for a second occurrence would mean waiting for the SECOND real charge,
   // which defeats the point of a trial-forgetting warning.
   trialProne: boolean('trial_prone').notNull().default(false),
+
+  // Plain-language steps for cancelling with this merchant in Nigeria, in
+  // order, one step per element.
+  //
+  // On the merchant rather than the subscription because the steps are a
+  // property of the company, not of one person's plan: every Netflix
+  // subscriber cancels Netflix the same way, and storing it per subscription
+  // would mean the same paragraph copied once per user and updated never.
+  //
+  // Nullable, and the app renders nothing when it is empty. Guidance we do not
+  // have is better absent than guessed at, since a wrong cancellation
+  // instruction costs someone a billing cycle.
+  cancellationSteps: text('cancellation_steps').array(),
 });
 
 export const subscriptions = pgTable('subscriptions', {

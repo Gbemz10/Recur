@@ -168,6 +168,13 @@ class Subscription {
       status: SubscriptionStatus.values.byName(json['status'] as String),
       confidence: (json['confidence'] as num).toDouble(),
       charges: charges.map((c) => ChargeRecord.fromJson(c as Map<String, dynamic>)).toList(),
+      // Never parsed before this, so every API-sourced subscription fell back
+      // to the const [] default and the "How to cancel" section silently did
+      // not render. It looked like a merchant with no guidance rather than a
+      // field that was never wired up.
+      cancellationSteps: (json['cancellationSteps'] as List<dynamic>? ?? const [])
+          .map((step) => step as String)
+          .toList(),
     );
   }
 

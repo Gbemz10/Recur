@@ -35,6 +35,9 @@ function serializeSubscription(sub: SubscriptionWithRelations) {
     category: sub.category.toLowerCase(),
     status: sub.status.toLowerCase(),
     confidence: sub.confidence,
+    // Empty rather than null when we have no guidance, so the client has one
+    // shape to render and "no steps" is not a second case to handle.
+    cancellationSteps: sub.merchant?.cancellationSteps ?? [],
     charges: [...sub.charges]
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .map((charge) => ({ date: charge.date.toISOString(), amount: Number(charge.amount), narration: charge.narration })),
