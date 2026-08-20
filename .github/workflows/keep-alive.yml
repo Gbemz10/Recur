@@ -18,4 +18,9 @@ jobs:
     steps:
       - name: Ping /health
         run: |
-          curl -fsS -o /dev/null -w "status: %{http_code}\n" https://recur-z7q0.onrender.com/health
+          # Retry, because a spun-down service answers the first request with
+          # a 503 while it boots. Without this the ping fails exactly when it
+          # is doing its job, and emails a failure for waking the service up.
+          curl -fsS -o /dev/null -w "status: %{http_code}\n" \
+            --retry 5 --retry-delay 15 --retry-all-errors --max-time 120 \
+            https://recur-z7q0.onrender.com/health

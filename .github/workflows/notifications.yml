@@ -34,6 +34,7 @@ jobs:
           # a spun-down service can take most of a minute to answer the first
           # request.
           curl -fsS --max-time 120 \
+            --retry 5 --retry-delay 15 --retry-all-errors \
             -X POST "$API_BASE/notifications/run" \
             -H "Authorization: Bearer $RUN_TOKEN" \
             -w "\nstatus: %{http_code}\n"
