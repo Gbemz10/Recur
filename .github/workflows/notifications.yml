@@ -13,13 +13,8 @@ name: Send due notifications
 # day of warnings. The job is idempotent, so an extra run costs one query and
 # sends nothing.
 on:
-  # Schedule paused until the backend deploy lands. Production is still serving
-  # a build without /notifications/run, so every hourly run fails on a 404 and
-  # mails the failure. Uncomment the two lines below once the route answers 401
-  # rather than 404, which is the signal that the deploy is live.
-  #
-  # schedule:
-  #   - cron: "17 * * * *"
+  schedule:
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 jobs:
