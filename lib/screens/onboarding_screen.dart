@@ -32,8 +32,7 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
-    with SingleTickerProviderStateMixin {
+class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerProviderStateMixin {
   final PageController _controller = PageController();
 
   /// Drives every preview and the aurora.
@@ -63,8 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'THE PROBLEM',
       title: 'It hides in your statement',
-      body:
-          'Netflix. DStv. A data plan renewing itself. '
+      body: 'Netflix. DStv. A data plan renewing itself. '
           'None of it announces itself. It just leaves.',
       kind: _PreviewKind.statement,
       // Three warm, slightly clashing alarm tones — the chaos before
@@ -75,8 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'WHAT RECUR DOES',
       title: 'One number, finally',
-      body:
-          'We group every charge that repeats and show you the total nobody '
+      body: 'We group every charge that repeats and show you the total nobody '
           'ever sits down and adds up.',
       kind: _PreviewKind.total,
       aurora: [RecurBrand.gradientStart, RecurBrand.gradientEnd, Color(0xFFF2D9A0)],
@@ -84,8 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _Slide(
       eyebrow: 'BEFORE IT HAPPENS',
       title: 'Warned, not surprised',
-      body:
-          'A heads-up days before each renewal lands, with the exact steps '
+      body: 'A heads-up days before each renewal lands, with the exact steps '
           'to cancel if you are done with it.',
       kind: _PreviewKind.notification,
       aurora: [RecurBrand.mint, RecurBrand.gradientEnd, Color(0xFF7BE8C2)],
@@ -160,7 +156,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-
   /// Aurora colours cross-fade between adjacent slides as you swipe.
   List<Color> get _blendedAurora {
     final lower = _offset.floor().clamp(0, _slides.length - 1);
@@ -232,8 +227,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 SizedBox(
                   height: 52,
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     child: Row(
                       children: [
                         // Back fades in from the second slide, but keeps its
@@ -299,9 +293,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       height: 5,
                       width: selected ? 30 : 5,
                       decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border(context),
+                        color: selected ? AppColors.primary : AppColors.border(context),
                         borderRadius: AppRadius.fullBR,
                       ),
                     );
@@ -519,8 +511,7 @@ class _Stage extends StatelessWidget {
   /// which meant the slide's whole point — the alert — was absent half the
   /// time the user was looking at it.
   static double _notifPresence(double t) =>
-      Curves.easeOutBack.transform(((t - 0.14) / 0.26).clamp(0.0, 1.0))
-          .clamp(0.0, 1.0);
+      Curves.easeOutBack.transform(((t - 0.14) / 0.26).clamp(0.0, 1.0)).clamp(0.0, 1.0);
 
   /// Switch *expression* rather than a statement, so the compiler enforces
   /// that every preview kind has floating UI defined for it.
@@ -625,9 +616,12 @@ class _FloatCard extends StatelessWidget {
     return Container(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        // Followed the theme as of the dark-mode pass. Hardcoded white left
+        // these cards glowing on a dark onboarding page, which is the same
+        // drift that made the whole preview render light inside a dark app.
+        color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.neutral200),
+        border: Border.all(color: AppColors.border(context)),
         boxShadow: [
           BoxShadow(
             color: AppColors.neutral900.withValues(alpha: 0.14),
@@ -671,28 +665,32 @@ class _DetectedChip extends StatelessWidget {
             children: [
               Text(
                 '${merchant.name} · $amount',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.neutral900,
+                  color: AppColors.ink(context),
                 ),
               ),
               const SizedBox(height: 1),
-              const Row(
+              // primaryInk, not primary: the brand green is tuned for paper
+              // and drops to about 2:1 on a dark surface, so drawn as a glyph
+              // it has to step up. Changing the fill above without this is
+              // exactly what made the highlighted rows unreadable earlier.
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.autorenew_rounded,
                     size: 10,
-                    color: AppColors.primary,
+                    color: AppColors.primaryInk(context),
                   ),
-                  SizedBox(width: 3),
+                  const SizedBox(width: 3),
                   Text(
                     'every month',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                      color: AppColors.primaryInk(context),
                     ),
                   ),
                 ],
@@ -787,12 +785,12 @@ class _AlertCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Recur',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.neutral900,
+                          color: AppColors.ink(context),
                         ),
                       ),
                       const SizedBox(width: 5),
@@ -801,29 +799,29 @@ class _AlertCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.neutral400,
+                          color: AppColors.muted(context),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
-                  const Text(
+                  Text(
                     'DStv takes ₦19,000 in 2 days',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                       height: 1.25,
-                      color: AppColors.neutral900,
+                      color: AppColors.ink(context),
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Still watching? Tap for how to cancel.',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w500,
                       height: 1.3,
-                      color: AppColors.neutral500,
+                      color: AppColors.muted(context),
                     ),
                   ),
                 ],

@@ -112,7 +112,8 @@ class ApiClient {
     } on ApiException {
       rethrow;
     } catch (_) {
-      throw ApiException("Couldn't reach the server — check your connection.", code: 'NETWORK_ERROR');
+      throw ApiException("Couldn't reach the server — check your connection.",
+          code: 'NETWORK_ERROR');
     }
   }
 
@@ -134,7 +135,8 @@ class ApiClient {
       if (response.statusCode == 401 && auth) {
         final refreshedToken = await _refreshAccessToken();
         if (refreshedToken != null) {
-          headers = await _headers(auth: auth, hasBody: hasBody, overrideAccessToken: refreshedToken);
+          headers =
+              await _headers(auth: auth, hasBody: hasBody, overrideAccessToken: refreshedToken);
           response = await send(headers).timeout(_requestTimeout);
         }
       }
@@ -188,7 +190,20 @@ class ApiClient {
 
   Future<Map<String, dynamic>> post(String path, {Object? body, bool auth = true}) {
     return _authedRequest(
-      (headers) => _http.post(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
+      (headers) =>
+          _http.post(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
+      auth: auth,
+      hasBody: body != null,
+    );
+  }
+
+  /// Used where the call is a true upsert rather than a partial edit — a
+  /// budget is set to a value, not patched toward one, and the backend's
+  /// `PUT /budgets` is idempotent on (user, category) to match.
+  Future<Map<String, dynamic>> put(String path, {Object? body, bool auth = true}) {
+    return _authedRequest(
+      (headers) =>
+          _http.put(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
       auth: auth,
       hasBody: body != null,
     );
@@ -196,7 +211,8 @@ class ApiClient {
 
   Future<Map<String, dynamic>> patch(String path, {Object? body, bool auth = true}) {
     return _authedRequest(
-      (headers) => _http.patch(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
+      (headers) =>
+          _http.patch(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
       auth: auth,
       hasBody: body != null,
     );
@@ -204,7 +220,8 @@ class ApiClient {
 
   Future<Map<String, dynamic>> delete(String path, {Object? body, bool auth = true}) {
     return _authedRequest(
-      (headers) => _http.delete(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
+      (headers) =>
+          _http.delete(_uri(path), headers: headers, body: body == null ? null : jsonEncode(body)),
       auth: auth,
       hasBody: body != null,
     );

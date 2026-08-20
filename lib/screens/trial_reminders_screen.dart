@@ -39,10 +39,9 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   }
 
   Future<void> _addReminder() async {
-    await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    await showAppSheet<bool>(
+      context,
+      title: 'Add a trial reminder',
       builder: (_) => _AddTrialReminderSheet(store: widget.store),
     );
   }
@@ -69,8 +68,10 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
-            child: Text('Trials', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text('Trials',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
           ),
           Expanded(child: _body(context)),
         ],
@@ -105,7 +106,8 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Couldn't load your trial reminders", style: Theme.of(context).textTheme.titleMedium),
+              Text("Couldn't load your trial reminders",
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: AppSpacing.md),
               AppButton(label: 'Try again', onPressed: widget.store.load),
             ],
@@ -118,19 +120,7 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
     // this tab is for and getting them to add the first one — centered,
     // not pinned under a header the way a populated list needs one.
     if (trials.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: AppEmptyState(
-            icon: Icons.hourglass_empty_rounded,
-            title: 'No trials being tracked',
-            message: 'Log a trial the moment you sign up, so nothing '
-                'converts to a real charge without you noticing.',
-            actionLabel: 'Add a trial reminder',
-            onAction: _addReminder,
-          ),
-        ),
-      );
+      return _TrialsEmptyState(onAdd: _addReminder);
     }
 
     // Once there's real content, the header above already says "Trials" —
@@ -178,26 +168,26 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         children: [
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.2,
-              color: AppColors.neutral500,
+              color: AppColors.muted(context),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
-              color: AppColors.neutral100,
+              color: AppColors.track(context),
               borderRadius: AppRadius.fullBR,
             ),
             child: Text(
               count,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: AppColors.neutral500,
+                color: AppColors.muted(context),
               ),
             ),
           ),
@@ -216,6 +206,81 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
           _TrialReminderCard(trial: items[i], onDismiss: () => _dismiss(items[i])),
         ],
         const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+}
+
+/// The empty state, which is the screen most people see first.
+///
+/// The old one was a grey circle, a shrug and a button. This tab is the one
+/// part of Recur the detection engine genuinely cannot do on its own: a trial
+/// has no transaction behind it yet, so nothing exists to detect until the
+/// first charge lands, which is exactly the moment the reminder was supposed
+/// to prevent. So the empty state explains that trade and shows the shape of
+/// what it is asking for, rather than waiting to be understood.
+class _TrialsEmptyState extends StatelessWidget {
+  const _TrialsEmptyState({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+
+    return ListView(
+      padding:
+          const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.huge),
+      children: [
+        // A preview of the thing being asked for, rendered as the real card
+        // shape it will become, so "add a trial" has something to mean.
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withValues(alpha: 0.10),
+                AppColors.primary.withValues(alpha: 0.02),
+              ],
+            ),
+            borderRadius: AppRadius.xlBR,
+            border: Border.all(color: AppColors.border(context)),
+          ),
+          child: Column(
+            children: [
+              // An emblem, not a reading. This used to show a "3 days"
+              // countdown, which is a number in the shape of data on a screen
+              // that by definition has none. The ring is the shape a real
+              // trial card uses; the icon says it is standing in for one.
+              AppProgressRing(
+                progress: 0.72,
+                color: AppColors.primaryInk(context),
+                size: 74,
+                thickness: 5,
+                child: Icon(Icons.timer_rounded, size: 28, color: AppColors.primaryInk(context)),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Before it becomes a charge',
+                  style: text.titleMedium, textAlign: TextAlign.center),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'A trial has no transaction behind it, so Recur cannot detect '
+                'it until the first charge lands.',
+                textAlign: TextAlign.center,
+                style: text.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              AppButton(
+                label: 'Log your first trial',
+                icon: Icons.add_rounded,
+                expand: true,
+                onPressed: onAdd,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -257,54 +322,113 @@ class _TrialReminderCard extends StatelessWidget {
   final TrialReminder trial;
   final VoidCallback onDismiss;
 
+  /// How much of the urgency window has elapsed, for the ring.
+  ///
+  /// Honest about what it is not: the model stores only an end date, never a
+  /// start, so this cannot show how far through a trial you are. It measures
+  /// closeness within a fixed two-week horizon instead, which is what the
+  /// colour and the ring both communicate. Storing the sign-up date would
+  /// make a true progress ring possible and is worth doing.
+  static const _horizonDays = 14;
+
+  double get _pressure {
+    final days = trial.daysUntilEnd;
+    if (days <= 0) return 1;
+    if (days >= _horizonDays) return 0;
+    return 1 - (days / _horizonDays);
+  }
+
+  Color _color(BuildContext context) {
+    if (trial.isOverdue) return AppColors.danger;
+    if (trial.isDueSoon) return AppColors.warning;
+    return AppColors.primaryInk(context);
+  }
+
+  static String _endDate(DateTime d) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${d.day} ${months[d.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final urgent = trial.isDueSoon || trial.isOverdue;
+    final color = _color(context);
+    final days = trial.daysUntilEnd;
+
     return AppCard(
-      child: Row(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: urgent ? AppColors.warningBg : AppColors.infoBg,
-              borderRadius: AppRadius.mdBR,
-            ),
-            child: Icon(
-              Icons.hourglass_bottom_rounded,
-              size: 18,
-              color: urgent ? AppColors.warning : AppColors.info,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trial.label,
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
+          Row(
+            children: [
+              // The countdown is the point of the card, so it gets the ring
+              // and the largest type on the row.
+              AppProgressRing(
+                progress: _pressure,
+                color: color,
+                size: 54,
+                thickness: 4,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      trial.isOverdue ? '!' : '$days',
+                      style: AppTypography.mono(size: 17, weight: FontWeight.w700, color: color),
+                    ),
+                    if (!trial.isOverdue)
+                      Text(
+                        days == 1 ? 'day' : 'days',
+                        style: AppTypography.mono(size: 8, color: AppColors.muted(context)),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  trial.endsLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: urgent ? AppColors.warning : AppColors.neutral500,
-                  ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      trial.label,
+                      style: Theme.of(context).textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(Icons.event_rounded, size: 12, color: AppColors.muted(context)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Ends ${_endDate(trial.trialEndsAt)}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.muted(context)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: IconButton(
-              icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.neutral400),
-              tooltip: 'Dismiss reminder',
-              onPressed: onDismiss,
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close_rounded, size: 18, color: AppColors.muted(context)),
+                tooltip: 'Dismiss reminder',
+                onPressed: onDismiss,
+              ),
+            ],
           ),
         ],
       ),
@@ -403,105 +527,97 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
 
   String _formatDate(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppTextField(
+          controller: _label,
+          label: 'What is it?',
+          hint: 'e.g. Netflix Premium',
+          prefixIcon: Icons.label_outline_rounded,
         ),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.hourglass_bottom_rounded, color: AppColors.warning, size: 28),
-            const SizedBox(height: AppSpacing.md),
-            Text('Add a trial reminder', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'We will show this on your dashboard as the end date gets close.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              controller: _label,
-              label: 'What is it?',
-              hint: 'e.g. Netflix Premium',
-              prefixIcon: Icons.label_outline_rounded,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text('Trial ends', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
+        const SizedBox(height: AppSpacing.lg),
+        Text('Trial ends', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: _pickDate,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                onTap: _pickDate,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border(context)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.neutral500),
-                      const SizedBox(width: AppSpacing.md),
-                      Text(_formatDate(_trialEndsAt), style: Theme.of(context).textTheme.bodyLarge),
-                    ],
-                  ),
-                ),
+                border: Border.all(color: AppColors.border(context)),
               ),
-            ),
-            if (_serverError != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Row(
+              child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _serverError!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
-                    ),
-                  ),
+                  Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.muted(context)),
+                  const SizedBox(width: AppSpacing.md),
+                  Text(_formatDate(_trialEndsAt), style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
+            ),
+          ),
+        ),
+        if (_serverError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  _serverError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
+                ),
+              ),
             ],
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.ghost,
-                    expand: true,
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AppButton(
-                    label: 'Add reminder',
-                    expand: true,
-                    isLoading: _saving,
-                    onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
-                  ),
-                ),
-              ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Cancel',
+                variant: AppButtonVariant.ghost,
+                expand: true,
+                onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppButton(
+                label: 'Add reminder',
+                expand: true,
+                isLoading: _saving,
+                onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

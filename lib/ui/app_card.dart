@@ -30,7 +30,10 @@ class AppCard extends StatelessWidget {
         border: Border.all(color: scheme.outline),
         boxShadow: elevated
             ? [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4)),
               ]
             : null,
       ),
@@ -86,7 +89,7 @@ class AppStatCard extends StatelessWidget {
                   // the second half of the word doesn't.
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(color: AppColors.neutral500),
+                  style: textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
                 ),
               ),
               if (icon != null) ...[
@@ -106,7 +109,7 @@ class AppStatCard extends StatelessWidget {
             child: Text(
               value,
               maxLines: 1,
-              style: AppTypography.mono(size: 26, weight: FontWeight.w600, color: AppColors.ink(context)),
+              style: AppTypography.money(size: 26, color: AppColors.ink(context)),
             ),
           ),
           if (trend != null) ...[

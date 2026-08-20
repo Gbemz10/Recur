@@ -46,7 +46,8 @@ class SubscriptionStore extends ChangeNotifier {
     try {
       final response = await apiClient.get('/subscriptions');
       final rows = response['subscriptions'] as List<dynamic>? ?? const [];
-      _subscriptions = rows.map((row) => Subscription.fromJson(row as Map<String, dynamic>)).toList();
+      _subscriptions =
+          rows.map((row) => Subscription.fromJson(row as Map<String, dynamic>)).toList();
     } on ApiException catch (e) {
       error = e.message;
     } catch (_) {

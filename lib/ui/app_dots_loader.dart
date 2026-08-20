@@ -37,8 +37,7 @@ class AppDotsLoader extends StatefulWidget {
   State<AppDotsLoader> createState() => _AppDotsLoaderState();
 }
 
-class _AppDotsLoaderState extends State<AppDotsLoader>
-    with SingleTickerProviderStateMixin {
+class _AppDotsLoaderState extends State<AppDotsLoader> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
@@ -67,9 +66,7 @@ class _AppDotsLoaderState extends State<AppDotsLoader>
 
             // Rise and fall over the first 60% of the phase, then rest —
             // the pause is what gives the loop its beat.
-            final wave = phase < 0.6
-                ? math.sin((phase / 0.6) * math.pi)
-                : 0.0;
+            final wave = phase < 0.6 ? math.sin((phase / 0.6) * math.pi) : 0.0;
 
             return Padding(
               padding: EdgeInsets.only(right: i == 2 ? 0 : gap),

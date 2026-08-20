@@ -23,8 +23,7 @@ class Merchant {
   /// Temporary source. Google's favicon endpoint is undocumented and only
   /// returns small images, so this is a development stopgap — bundle the
   /// real assets before launch.
-  String get logoUrl =>
-      'https://www.google.com/s2/favicons?domain=$domain&sz=128';
+  String get logoUrl => 'https://www.google.com/s2/favicons?domain=$domain&sz=128';
 
   /// Builds a [Merchant] from the backend's merchant JSON
   /// (`{ slug, name, domain, brandColor }`, see `serializeSubscription` in

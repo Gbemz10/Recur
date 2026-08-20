@@ -7,8 +7,7 @@ import 'merchants.dart';
 class MockData {
   MockData._();
 
-  static DateTime _inDays(int days) =>
-      DateTime.now().add(Duration(days: days));
+  static DateTime _inDays(int days) => DateTime.now().add(Duration(days: days));
 
   static List<ChargeRecord> _history({
     required double amount,
@@ -184,28 +183,22 @@ class MockData {
     ),
   ];
 
-  static List<Subscription> get active => subscriptions
-      .where((s) => s.status == SubscriptionStatus.active)
-      .toList();
+  static List<Subscription> get active =>
+      subscriptions.where((s) => s.status == SubscriptionStatus.active).toList();
 
-  static List<Subscription> get unreviewed => subscriptions
-      .where((s) => s.status == SubscriptionStatus.unreviewed)
-      .toList();
+  static List<Subscription> get unreviewed =>
+      subscriptions.where((s) => s.status == SubscriptionStatus.unreviewed).toList();
 
-  static List<Subscription> get cancelled => subscriptions
-      .where((s) => s.status == SubscriptionStatus.cancelled)
-      .toList();
+  static List<Subscription> get cancelled =>
+      subscriptions.where((s) => s.status == SubscriptionStatus.cancelled).toList();
 
   /// Total normalised monthly spend across confirmed subscriptions.
-  static double get monthlyTotal =>
-      active.fold(0, (sum, s) => sum + s.monthlyEquivalent);
+  static double get monthlyTotal => active.fold(0, (sum, s) => sum + s.monthlyEquivalent);
 
-  static double get yearlyTotal =>
-      active.fold(0, (sum, s) => sum + s.yearlyCost);
+  static double get yearlyTotal => active.fold(0, (sum, s) => sum + s.yearlyCost);
 
   /// What the user has already stopped paying — the "we caught this" number.
-  static double get monthlySaved =>
-      cancelled.fold(0, (sum, s) => sum + s.monthlyEquivalent);
+  static double get monthlySaved => cancelled.fold(0, (sum, s) => sum + s.monthlyEquivalent);
 
   static List<Subscription> get dueSoon {
     final list = active.where((s) => s.isDueSoon).toList()

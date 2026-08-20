@@ -33,16 +33,18 @@ class AppEmptyState extends StatelessWidget {
           Container(
             width: 64,
             height: 64,
-            decoration: const BoxDecoration(color: AppColors.neutral100, shape: BoxShape.circle),
-            child: Icon(icon, size: 28, color: AppColors.neutral400),
+            decoration: BoxDecoration(color: AppColors.track(context), shape: BoxShape.circle),
+            child: Icon(icon, size: 28, color: AppColors.muted(context)),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
+          Text(title,
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
           if (message != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(message!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.neutral500, height: 1.5)),
+                style: TextStyle(fontSize: 13, color: AppColors.muted(context), height: 1.5)),
           ],
           if (actionLabel != null) ...[
             const SizedBox(height: AppSpacing.xl),
@@ -185,14 +187,20 @@ class AppSkeletonHeroCard extends StatelessWidget {
 /// a chart) where mirroring the exact structure isn't worth the effort —
 /// just communicates "content is coming, roughly here."
 class AppSkeletonBlock extends StatelessWidget {
-  const AppSkeletonBlock({super.key, this.height = 280, this.radius = 16});
+  const AppSkeletonBlock({super.key, this.height = 280, this.radius = 16, this.width});
 
   final double height;
   final double radius;
 
+  /// Null fills the available width. A value is for the cases where the real
+  /// element does not, like a screen title, where a full-width bar would
+  /// promise a much larger heading than actually arrives.
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
-    return AppSkeleton(height: height, radius: radius);
+    final block = AppSkeleton(height: height, radius: radius);
+    return width == null ? block : SizedBox(width: width, child: block);
   }
 }
 

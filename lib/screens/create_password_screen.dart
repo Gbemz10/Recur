@@ -103,9 +103,7 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final confirmError =
-        _submitted && !_matches && _confirm.text.isNotEmpty
-            ? 'Passwords do not match'
-            : null;
+        _submitted && !_matches && _confirm.text.isNotEmpty ? 'Passwords do not match' : null;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -154,24 +152,19 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
-
               AppTextField(
                 controller: _password,
                 label: 'Password',
                 hint: 'At least 8 characters',
                 prefixIcon: Icons.lock_outline_rounded,
                 obscureText: _obscure,
-                suffixIcon: _obscure
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
+                suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                 onSuffixIconTap: () => setState(() => _obscure = !_obscure),
               ),
-
               if (_value.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 _StrengthMeter(strength: _strength),
               ],
-
               const SizedBox(height: AppSpacing.lg),
               AppTextField(
                 controller: _confirm,
@@ -181,13 +174,11 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                 obscureText: _obscure,
                 errorText: confirmError,
               ),
-
               const SizedBox(height: AppSpacing.xl),
               _Requirement(met: _longEnough, label: 'At least 8 characters'),
               _Requirement(met: _hasLetter, label: 'Contains a letter'),
               _Requirement(met: _hasNumber, label: 'Contains a number'),
               _Requirement(met: _matches, label: 'Both entries match'),
-
               if (_serverError != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Row(
@@ -203,7 +194,6 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                   ],
                 ),
               ],
-
               const SizedBox(height: AppSpacing.xxl),
               AppButton(
                 label: widget.isReset ? 'Update password' : 'Finish setup',
@@ -287,9 +277,8 @@ class _Requirement extends StatelessWidget {
             width: 17,
             height: 17,
             decoration: BoxDecoration(
-              color: met
-                  ? AppColors.success
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              color:
+                  met ? AppColors.success : Theme.of(context).colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -304,7 +293,7 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
             ),
           ),
         ],

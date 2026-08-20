@@ -24,12 +24,18 @@ class _Occurrence {
 /// angle: not "how much total" but "which day". Someone budgeting around
 /// payday cares which week gets hit, not just the monthly sum.
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key, required this.store});
+  const CalendarScreen({super.key, required this.store, this.embedded = false});
 
   /// Shared with every other tab — a status change confirmed on Home shows
   /// up here immediately, instead of the calendar reading its own stale
   /// snapshot of the subscription list.
   final SubscriptionStore store;
+
+  /// True when this renders as a view inside the Recurring tab rather than as
+  /// a destination of its own. Drops the screen title, description and safe
+  /// area, all of which the host already provides, so embedding it does not
+  /// produce two stacked headers.
+  final bool embedded;
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -37,8 +43,18 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -93,7 +109,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       for (var i = 1; i < sorted.length; i++) sorted[i].date.difference(sorted[i - 1].date).inDays,
     ]..sort();
     final mid = deltas.length ~/ 2;
-    final medianDays = deltas.length.isOdd ? deltas[mid] : ((deltas[mid - 1] + deltas[mid]) / 2).round();
+    final medianDays =
+        deltas.length.isOdd ? deltas[mid] : ((deltas[mid - 1] + deltas[mid]) / 2).round();
     return medianDays > 0 ? medianDays : 30;
   }
 
@@ -134,8 +151,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       .where((o) => o.date.year == day.year && o.date.month == day.month && o.date.day == day.day)
       .toList();
 
-  double get _monthTotal =>
-      _monthOccurrences.fold(0.0, (sum, o) => sum + o.subscription.amount);
+  double get _monthTotal => _monthOccurrences.fold(0.0, (sum, o) => sum + o.subscription.amount);
 
   void _changeMonth(int dir) {
     setState(() {
@@ -150,31 +166,162 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // dashboard_screen.dart — a background refresh failing shouldn't blank
     // out a calendar someone's already looking at.
     if (widget.store.isLoading && widget.store.all.isEmpty) {
-      return const SafeArea(bottom: false, child: _CalendarSkeleton());
+      return widget.embedded
+          ? const _CalendarSkeleton(embedded: true)
+          : const SafeArea(bottom: false, child: _CalendarSkeleton());
     }
 
     if (widget.store.error != null && widget.store.all.isEmpty) {
-      return SafeArea(
-        bottom: false,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Couldn't load your calendar", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.md),
-                AppButton(label: 'Try again', onPressed: widget.store.load),
-              ],
-            ),
+      final error = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Couldn't load your calendar", style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.md),
+              AppButton(label: 'Try again', onPressed: widget.store.load),
+            ],
           ),
         ),
       );
+      return widget.embedded ? error : SafeArea(bottom: false, child: error);
     }
 
     final today = DateTime.now();
     final isCurrentMonth = _month.year == today.year && _month.month == today.month;
     final selectedOccurrences = _onDay(_selected);
+
+    final children = <Widget>[
+      if (!widget.embedded) ...[
+        Text('Calendar',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
+        const SizedBox(height: 4),
+        Text(
+          'Every charge landing this month, mapped to the day it hits.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: AppColors.muted(context), height: 1.5),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+      ],
+
+      // ---- month switcher ----
+      Row(
+        children: [
+          _RoundIconButton(
+              icon: Icons.chevron_left_rounded,
+              onTap: () => _changeMonth(-1),
+              tooltip: 'Previous month'),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  '${_months[_month.month - 1]} ${_month.year}',
+                  style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
+                ),
+                Text(
+                  '${formatNaira(_monthTotal)} tracked',
+                  style: AppTypography.money(
+                      size: 11, weight: FontWeight.w600, color: AppColors.muted(context)),
+                ),
+              ],
+            ),
+          ),
+          _RoundIconButton(
+              icon: Icons.chevron_right_rounded,
+              onTap: () => _changeMonth(1),
+              tooltip: 'Next month'),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.lg),
+
+      // ---- weekday header ----
+      Row(
+        children: [
+          for (final label in _weekdayLabels)
+            Expanded(
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.muted(context)),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.sm),
+
+      // ---- grid ----
+      _MonthGrid(
+        month: _month,
+        selected: _selected,
+        today: isCurrentMonth ? today : null,
+        occurrencesFor: _onDay,
+        onSelect: (day) => setState(() => _selected = day),
+      ),
+
+      const SizedBox(height: AppSpacing.xl),
+      const LedgerDivider(),
+      const SizedBox(height: AppSpacing.xl),
+
+      // ---- selected day list ----
+      Row(
+        children: [
+          Text(
+            _selectedDayLabel(today),
+            style:
+                TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
+          ),
+          if (selectedOccurrences.isNotEmpty) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration:
+                  BoxDecoration(color: AppColors.track(context), borderRadius: AppRadius.fullBR),
+              child: Text(
+                '${selectedOccurrences.length}',
+                style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.muted(context)),
+              ),
+            ),
+          ],
+        ],
+      ),
+      const SizedBox(height: AppSpacing.md),
+
+      if (selectedOccurrences.isEmpty)
+        const AppEmptyState(
+          icon: Icons.event_available_outlined,
+          title: 'Nothing charges this day',
+          message: 'Pick another date on the calendar above to see what lands then.',
+        )
+      else
+        Column(
+          children: [
+            for (var i = 0; i < selectedOccurrences.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppSpacing.md),
+              _OccurrenceRow(occurrence: selectedOccurrences[i]),
+            ],
+          ],
+        ),
+    ];
+
+    // Embedded, the host owns the scroll view and the pull-to-refresh. This
+    // used to build its own ListView regardless, which the host's
+    // CustomScrollView then handed unbounded height — a vertical viewport
+    // with no height to fill lays out to nothing, which is exactly why the
+    // calendar view rendered as a blank screen. As a view rather than a
+    // destination it is just content; the host scrolls it.
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
 
     return SafeArea(
       bottom: false,
@@ -188,112 +335,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
             AppSpacing.xl,
             AppSpacing.huge,
           ),
-          children: [
-          Text('Calendar', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
-          const SizedBox(height: 4),
-          Text(
-            'Every charge landing this month, mapped to the day it hits.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-
-          // ---- month switcher ----
-          Row(
-            children: [
-              _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: () => _changeMonth(-1), tooltip: 'Previous month'),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      '${_months[_month.month - 1]} ${_month.year}',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
-                    ),
-                    Text(
-                      '${formatNaira(_monthTotal)} tracked',
-                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.neutral500),
-                    ),
-                  ],
-                ),
-              ),
-              _RoundIconButton(icon: Icons.chevron_right_rounded, onTap: () => _changeMonth(1), tooltip: 'Next month'),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // ---- weekday header ----
-          Row(
-            children: [
-              for (final label in _weekdayLabels)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      label,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.neutral400),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ---- grid ----
-          _MonthGrid(
-            month: _month,
-            selected: _selected,
-            today: isCurrentMonth ? today : null,
-            occurrencesFor: _onDay,
-            onSelect: (day) => setState(() => _selected = day),
-          ),
-
-          const SizedBox(height: AppSpacing.xl),
-          const LedgerDivider(),
-          const SizedBox(height: AppSpacing.xl),
-
-          // ---- selected day list ----
-          Row(
-            children: [
-              Text(
-                _selectedDayLabel(today),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
-              ),
-              if (selectedOccurrences.isNotEmpty) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: AppColors.neutral100, borderRadius: AppRadius.fullBR),
-                  child: Text(
-                    '${selectedOccurrences.length}',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.neutral500),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          if (selectedOccurrences.isEmpty)
-            const AppEmptyState(
-              icon: Icons.event_available_outlined,
-              title: 'Nothing charges this day',
-              message: 'Pick another date on the calendar above to see what lands then.',
-            )
-          else
-            Column(
-              children: [
-                for (var i = 0; i < selectedOccurrences.length; i++) ...[
-                  if (i > 0) const SizedBox(height: AppSpacing.md),
-                  _OccurrenceRow(occurrence: selectedOccurrences[i]),
-                ],
-              ],
-            ),
-          ],
+          children: children,
         ),
       ),
     );
   }
 
   String _selectedDayLabel(DateTime today) {
-    final sameDay = _selected.year == today.year && _selected.month == today.month && _selected.day == today.day;
+    final sameDay = _selected.year == today.year &&
+        _selected.month == today.month &&
+        _selected.day == today.day;
     if (sameDay) return 'Today';
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return '${weekdays[_selected.weekday - 1]} ${_selected.day} ${_months[_selected.month - 1].substring(0, 3)}';
@@ -303,25 +354,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
 /// First-load placeholder — title, a block standing in for the month grid
 /// (not worth mirroring every day cell), then a couple of occurrence rows.
 class _CalendarSkeleton extends StatelessWidget {
-  const _CalendarSkeleton();
+  const _CalendarSkeleton({this.embedded = false});
+
+  /// Same rule as the screen itself: embedded, the host scrolls us, so
+  /// building our own viewport here would collapse to zero height.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
+    if (embedded) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _items,
+      );
+    }
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
-      children: const [
-        AppSkeleton(width: 140, height: 20),
-        SizedBox(height: 4),
-        AppSkeleton(width: 240, height: 13),
-        SizedBox(height: AppSpacing.xl),
-        AppSkeletonBlock(height: 320),
-        SizedBox(height: AppSpacing.xl),
-        AppSkeletonListTile(),
-        SizedBox(height: AppSpacing.md),
-        AppSkeletonListTile(),
-      ],
+      padding:
+          const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+      children: _items,
     );
   }
+
+  static const List<Widget> _items = [
+    AppSkeleton(width: 140, height: 20),
+    SizedBox(height: 4),
+    AppSkeleton(width: 240, height: 13),
+    SizedBox(height: AppSpacing.xl),
+    AppSkeletonBlock(height: 320),
+    SizedBox(height: AppSpacing.xl),
+    AppSkeletonListTile(),
+    SizedBox(height: AppSpacing.md),
+    AppSkeletonListTile(),
+  ];
 }
 
 class _MonthGrid extends StatelessWidget {
@@ -361,7 +425,8 @@ class _MonthGrid extends StatelessWidget {
         final day = DateTime(month.year, month.month, dayNum);
         final occurrences = occurrencesFor(day);
         final isToday = today != null && today!.day == dayNum;
-        final isSelected = selected.year == day.year && selected.month == day.month && selected.day == dayNum;
+        final isSelected =
+            selected.year == day.year && selected.month == day.month && selected.day == dayNum;
 
         return Padding(
           padding: const EdgeInsets.all(2),
@@ -374,7 +439,7 @@ class _MonthGrid extends StatelessWidget {
                 color: isSelected
                     ? AppColors.primary
                     : isToday
-                        ? AppColors.primaryLight
+                        ? AppColors.primaryTint(context)
                         : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -457,12 +522,13 @@ class _OccurrenceRow extends StatelessWidget {
                   sub.displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
+                  style: TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   sub.cycle.label,
-                  style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
+                  style: TextStyle(fontSize: 12, color: AppColors.muted(context)),
                 ),
               ],
             ),
@@ -472,7 +538,8 @@ class _OccurrenceRow extends StatelessWidget {
           else
             Text(
               formatNaira(sub.amount),
-              style: AppTypography.mono(size: 14, weight: FontWeight.w600, color: AppColors.ink(context)),
+              style: AppTypography.money(
+                  size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
             ),
         ],
       ),
@@ -493,7 +560,7 @@ class _RoundIconButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         // See app_date_picker.dart's twin of this widget for why this
-        // isn't a hardcoded AppColors.neutral100 anymore.
+        // isn't a hardcoded AppColors.track(context) anymore.
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: const CircleBorder(),
         child: InkWell(

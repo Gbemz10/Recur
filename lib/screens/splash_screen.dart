@@ -34,8 +34,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late final AnimationController _main;
   late final AnimationController _ambient;
 
@@ -93,8 +92,7 @@ class _SplashScreenState extends State<SplashScreen>
     // With reduce-motion on, don't make the user sit through a launch
     // sequence they've explicitly asked not to see. Hold the finished mark
     // briefly so the app doesn't appear to flash, then move on.
-    if (!_appliedMotionPreference &&
-        MediaQuery.disableAnimationsOf(context)) {
+    if (!_appliedMotionPreference && MediaQuery.disableAnimationsOf(context)) {
       _appliedMotionPreference = true;
       _ambient.stop();
       _main.stop();
@@ -119,8 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
     const step = span / (_wordmark.length + 1);
     final begin = start + step * index;
     final end = (begin + step * 2).clamp(0.0, 1.0);
-    return Interval(begin, end, curve: Curves.easeOutCubic)
-        .transform(_main.value);
+    return Interval(begin, end, curve: Curves.easeOutCubic).transform(_main.value);
   }
 
   @override
@@ -289,8 +286,7 @@ class _BackdropPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _BackdropPainter old) =>
-      old.wash != wash || old.t != t;
+  bool shouldRepaint(covariant _BackdropPainter old) => old.wash != wash || old.t != t;
 }
 
 /// Orbit rings plus the animated brand mark, drawn in one pass so they
@@ -403,9 +399,7 @@ class _MarkPainter extends CustomPainter {
       canvas.drawCircle(
         center,
         (markR * 0.24) * s,
-        Paint()
-          ..color = RecurBrand.gradientStart
-              .withValues(alpha: (0.18 + 0.22 * corePulse) * s),
+        Paint()..color = RecurBrand.gradientStart.withValues(alpha: (0.18 + 0.22 * corePulse) * s),
       );
     }
   }
@@ -442,8 +436,5 @@ class _MarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MarkPainter old) =>
-      old.rings != rings ||
-      old.mark != mark ||
-      old.settle != settle ||
-      old.orbit != orbit;
+      old.rings != rings || old.mark != mark || old.settle != settle || old.orbit != orbit;
 }

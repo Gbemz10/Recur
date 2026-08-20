@@ -112,7 +112,8 @@ class AppColors {
   // to full Theme-driven styling everywhere at once.
   static bool _isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
-  static Color background(BuildContext context) => _isDark(context) ? darkBackground : lightBackground;
+  static Color background(BuildContext context) =>
+      _isDark(context) ? darkBackground : lightBackground;
   static Color surface(BuildContext context) => _isDark(context) ? darkSurface : lightSurface;
   static Color border(BuildContext context) => _isDark(context) ? darkBorder : lightBorder;
 
@@ -133,4 +134,39 @@ class AppColors {
   /// both dark surfaces while still reading as visibly softer than
   /// `ink()`/`inkSoft()`.
   static Color muted(BuildContext context) => _isDark(context) ? neutral400 : neutral600;
+
+  /// The "empty" half of anything that fills up: meter and progress tracks,
+  /// skeleton blocks, the disc behind an empty-state icon.
+  ///
+  /// This existed as a hardcoded `neutral200`/`neutral100` in half a dozen
+  /// places, which is the same bug the skeleton shimmer had: both are
+  /// near-white, so on a near-black surface a track rendered as a bright bar
+  /// with a coloured bar on top of it, reading as two fills rather than one
+  /// fill and its remainder.
+  static Color track(BuildContext context) => _isDark(context) ? darkBorder : neutral200;
+
+  /// Fill for a row or chip selected in the brand's own hue.
+  ///
+  /// [primaryLight] is a pale mint that only ever worked on light surfaces.
+  /// Used unconditionally it left near-white text sitting on a near-white
+  /// fill in dark mode, which is what made the highlighted rows in the
+  /// onboarding preview unreadable. The dark value is deep enough for
+  /// [ink] to clear 12:1 on it.
+  /// Dark counterpart to [successBg]. Same reasoning as [primaryTint]: the
+  /// light tint is mixed toward white, which on a dark surface reads as a
+  /// bright disc rather than a tint.
+  static Color successTint(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF14372A) : successBg;
+
+  static Color primaryTint(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF14372A) : primaryLight;
+
+  /// Brand green as *text or iconography*, rather than as a fill.
+  ///
+  /// [primary] is tuned to be read on paper and drops to roughly 2:1 against
+  /// dark surfaces, so anything that renders the brand colour as a glyph has
+  /// to step up to this on dark. Fills keep using [primary]: a filled badge
+  /// carries its own contrast with white on top.
+  static Color primaryInk(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF3DBE8B) : primary;
 }

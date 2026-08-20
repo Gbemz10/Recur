@@ -157,7 +157,8 @@ class Subscription {
 
     return Subscription(
       id: json['id'] as String,
-      brand: merchantJson != null ? Merchant.fromJson(merchantJson) : Merchants.unknown(displayName),
+      brand:
+          merchantJson != null ? Merchant.fromJson(merchantJson) : Merchants.unknown(displayName),
       displayName: displayName,
       amount: (json['amount'] as num).toDouble(),
       previousAmount: (json['previousAmount'] as num?)?.toDouble(),
@@ -189,6 +190,58 @@ class Subscription {
     return amount * cycle.chargesPerYear;
   }
 
+  /// Average days between charges, measured from real history where there is
+  /// enough of it and falling back to the cycle's nominal length otherwise.
+  double get intervalDays {
+    if (charges.length >= 2) {
+      final sorted = [...charges]..sort((a, b) => a.date.compareTo(b.date));
+      final totalDays = sorted.last.date.difference(sorted.first.date).inDays;
+      final gaps = sorted.length - 1;
+      if (totalDays > 0 && gaps > 0) return totalDays / gaps;
+    }
+    return 365 / cycle.chargesPerYear;
+  }
+
+  /// The most recent charge actually observed on the bank statement.
+  ///
+  /// Computed rather than trusting position: the API sorts these newest-first
+  /// today, but a list whose meaning depends on someone else's ORDER BY is a
+  /// silent breakage waiting to happen.
+  DateTime? get lastChargeDate {
+    if (charges.isEmpty) return null;
+    return charges.map((c) => c.date).reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  /// Full cycles that have elapsed since the last observed charge, beyond the
+  /// one that was due. 0 means nothing has been missed.
+  int get missedCycles {
+    final last = lastChargeDate;
+    if (last == null) return 0;
+    final elapsed = DateTime.now().difference(last).inDays;
+    final missed = (elapsed / intervalDays).floor() - 1;
+    return missed < 0 ? 0 : missed;
+  }
+
+  /// True when this has not charged for well over a full cycle.
+  ///
+  /// This is the one thing the projected [nextChargeDate] cannot tell you.
+  /// The backend's `projectNextChargeDate` walks forward from the last charge
+  /// in whole cycles *until it lands in the future*, so a subscription that
+  /// stopped charging a year ago still reports a date next week, and keeps
+  /// counting toward the monthly total, forever. Measuring from the charges
+  /// themselves is the only honest read, and the app already has them.
+  ///
+  /// The 1.5x threshold absorbs ordinary billing jitter — weekend settlement,
+  /// a failed retry that lands a few days late — without flagging a healthy
+  /// subscription. Yearly plans are excluded: one missed cycle takes a year to
+  /// establish, by which time the number is far too stale to assert anything.
+  bool get hasStopped {
+    if (cycle == BillingCycle.yearly) return false;
+    final last = lastChargeDate;
+    if (last == null) return false;
+    return DateTime.now().difference(last).inDays > intervalDays * 1.5;
+  }
+
   /// Normalised monthly figure so totals are comparable across cycles.
   double get monthlyEquivalent => yearlyCost / 12;
 
@@ -205,6 +258,19 @@ class Subscription {
 
   bool get isDueSoon => daysUntilCharge >= 0 && daysUntilCharge <= 7;
 
+  /// True when the projected charge date has passed and nothing has replaced
+  /// it. This is **not** a missed payment, and nothing here is owed.
+  ///
+  /// `nextChargeDate` is a projection the detector writes during a sync, and
+  /// `projectNextChargeDate` advances by whole cycles until it lands in the
+  /// future — so the date is always ahead of now at the moment it is stored.
+  /// A date in the past therefore has exactly one cause: no sync has run since
+  /// we predicted it. Two opposite things produce that. Either the charge went
+  /// through normally and we have not pulled transactions yet, or it never
+  /// happened at all (card declined, subscription quietly ended). The app
+  /// cannot tell which, so it must not imply either.
+  bool get isAwaitingCharge => daysUntilCharge < 0;
+
   /// True when Recur has actually observed this subscription's price
   /// change — as opposed to `previousAmount` just being null because no
   /// change has ever happened.
@@ -218,13 +284,34 @@ class Subscription {
   double get priceDelta => hasPriceChange ? amount - previousAmount! : 0;
 
   /// Human-readable countdown, e.g. "Charges tomorrow".
+  ///
+  /// A passed date reads as "Expected 4 Aug" rather than "Overdue". See
+  /// [isAwaitingCharge]: the word Overdue asserted a missed bill that the data
+  /// cannot support, and did it in alert red on a screen about someone's money.
   String get nextChargeLabel {
     final d = daysUntilCharge;
-    if (d < 0) return 'Overdue';
+    if (d < 0) return 'Expected ${_shortDate(nextChargeDate)}';
     if (d == 0) return 'Charges today';
     if (d == 1) return 'Charges tomorrow';
     return 'In $d days';
   }
+
+  static const _shortMonths = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static String _shortDate(DateTime d) => '${d.day} ${_shortMonths[d.month - 1]}';
 
   Subscription copyWith({SubscriptionStatus? status}) => Subscription(
         id: id,

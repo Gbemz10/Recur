@@ -11,6 +11,7 @@ import {
   doublePrecision,
   boolean,
   unique,
+  index,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -45,6 +46,34 @@ export const subscriptionCategoryEnum = pgEnum('subscription_category', [
 ]);
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['UNREVIEWED', 'ACTIVE', 'CANCELLED']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['DEBIT', 'CREDIT']);
+
+// Recur's own spending taxonomy, deliberately coarse. Mono's Transaction
+// Categorisation API returns ~30 categories and a local rule pass can emit
+// whatever it likes; both get mapped down to these eleven before anything
+// reaches the client. The point is a list a person can hold in their head
+// and set a budget against, not an accurate ontology of Nigerian commerce.
+// Mapping down (rather than exposing a provider's list directly) is also
+// what keeps the client stable if Mono ever renames or resizes theirs.
+export const spendingCategoryEnum = pgEnum('spending_category', [
+  'FOOD',
+  'TRANSPORT',
+  'BILLS',
+  'ENTERTAINMENT',
+  'HEALTH',
+  'SHOPPING',
+  'TRANSFERS',
+  'SAVINGS',
+  'LOANS',
+  'EDUCATION',
+  'OTHER',
+]);
+
+// Which pass produced a transaction's category. Ordered weakest to
+// strongest: a RULE result may be overwritten by a later MONO result, and
+// USER beats everything and is never recomputed. Storing the source (rather
+// than just the answer) is what makes the categorizer safely re-runnable
+// over rows it has already touched.
+export const categorySourceEnum = pgEnum('category_source', ['RULE', 'MONO', 'USER']);
 
 // ----------------------------------------------------------------- waitlist
 
@@ -212,6 +241,17 @@ export const subscriptions = pgTable('subscriptions', {
 
   cycle: billingCycleEnum('cycle').notNull(),
   nextChargeDate: timestamp('next_charge_date', { withTimezone: true }).notNull(),
+
+  // The charge date a renewal reminder has already gone out for.
+  //
+  // Storing the date itself rather than a "reminded" flag or a timestamp is
+  // what makes the job idempotent for free: it re-sends exactly when this
+  // stops matching nextChargeDate, which is precisely when detection has
+  // rolled the projection to a new cycle. A boolean would need clearing on
+  // every roll, and a sent-at timestamp would need the job to work out
+  // whether it belonged to this cycle or the last one.
+  renewalRemindedFor: timestamp('renewal_reminded_for', { withTimezone: true }),
+
   category: subscriptionCategoryEnum('category').notNull(),
   status: subscriptionStatusEnum('status').notNull().default('UNREVIEWED'),
 
@@ -273,12 +313,128 @@ export const rawTransactions = pgTable('raw_transactions', {
   narration: text('narration').notNull(),
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
   type: transactionTypeEnum('type').notNull(),
-  category: text('category'),
+
+  // Mono's own raw category string, stored exactly as it arrives. The
+  // Postgres column keeps its original name (`category`) because renaming a
+  // populated column on a live database buys nothing here, but it is
+  // exposed as `monoCategory` in code so it can never be mistaken for
+  // Recur's taxonomy below. These two are different vocabularies and the
+  // whole categorizer depends on not conflating them.
+  monoCategory: text('category'),
+
+  // Recur's taxonomy, and the provenance of that answer. Both null until
+  // the categorizer has run over the row — a freshly synced transaction is
+  // uncategorized, not OTHER, and the spending endpoints distinguish the
+  // two so "we have not looked yet" never renders as "miscellaneous".
+  spendCategory: spendingCategoryEnum('spend_category'),
+  categorySource: categorySourceEnum('category_source'),
+
+  // Cleaned-up counterparty, e.g. "NETFLIX.COM 41725LAGOS NG" -> "Netflix".
+  // This is the key user corrections are keyed on, so one fix teaches every
+  // future charge from the same place.
+  payee: text('payee'),
+
   date: timestamp('date', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   uniqueMonoTransaction: unique().on(table.linkedBankId, table.monoTransactionId),
+
+  // The spending summary and the per-category list both scan this table by
+  // user, then type, then a one-month date range. This table is the largest
+  // in the schema by an order of magnitude (every transaction ever pulled,
+  // ~2,000 per sync, never pruned), so without this those queries degrade
+  // into a sequential scan that gets slower every time a user syncs.
+  userTypeDateIdx: index('raw_transactions_user_type_date_idx').on(table.userId, table.type, table.date),
+
+  // Supports the "apply this correction to every charge from this merchant"
+  // update, which matches on payee across the user's whole history.
+  userPayeeIdx: index('raw_transactions_user_payee_idx').on(table.userId, table.payee),
 }));
+
+// ------------------------------------------------------------------ spending
+
+// A correction the user made, generalised into a standing rule. Recategorising
+// one "NETFLIX.COM 41725LAGOS NG" charge to Entertainment is only satisfying
+// if the next one lands there by itself, so the fix is stored against a match
+// key rather than against the transaction it was made on.
+//
+// `matchKey` is a normalised payee/narration fragment (see the categorizer's
+// `matchKeyFor`), not a foreign key: the whole point is to catch merchants
+// Recur has no `merchants` row for, which is most of them. Unique per user,
+// so re-correcting the same merchant updates the existing rule instead of
+// stacking a second, contradictory one behind it.
+export const userCategoryRules = pgTable('user_category_rules', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  matchKey: text('match_key').notNull(),
+  category: spendingCategoryEnum('category').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueUserMatchKey: unique().on(table.userId, table.matchKey),
+}));
+
+// One row per category the user has chosen to cap. Deliberately not one row
+// per category per month: v1 has no rollover and no envelope arithmetic, so a
+// budget is a standing monthly line rather than a ledger, and spend is
+// computed from `raw_transactions` at read time. That keeps the table tiny
+// and means changing a limit never has to rewrite history.
+export const budgets = pgTable('budgets', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  category: spendingCategoryEnum('category').notNull(),
+  monthlyLimit: numeric('monthly_limit', { precision: 12, scale: 2 }).notNull(),
+
+  // Set when an 80%-of-limit and a 100%-of-limit email have gone out for the
+  // current period, and cleared when the period rolls over. Without these a
+  // job that runs on any schedule at all would re-send the same warning on
+  // every pass. Same shape as trialReminders.remindedAt, for the same reason.
+  notifiedAt80: timestamp('notified_at_80', { withTimezone: true }),
+  notifiedAt100: timestamp('notified_at_100', { withTimezone: true }),
+  notifyPeriod: text('notify_period'), // 'YYYY-MM' the flags above refer to
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueUserCategory: unique().on(table.userId, table.category),
+}));
+
+// --------------------------------------------------------------- notifications
+
+// What a user has asked to be told about, and the bookkeeping that stops a
+// scheduled job telling them twice.
+//
+// One row per user, created lazily on first read rather than at signup, so
+// the defaults below are the single source of truth for "never touched this
+// screen" instead of being duplicated into the signup path.
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+
+  // A heads-up before a charge lands.
+  renewalReminders: boolean('renewal_reminders').notNull().default(true),
+  // How many days ahead. The app offers 1, 3 and 7; the column takes any
+  // value in range so the choice can widen without a migration.
+  reminderLeadDays: integer('reminder_lead_days').notNull().default(3),
+
+  // The Monday summary of the week ahead.
+  weeklyDigest: boolean('weekly_digest').notNull().default(true),
+  // ISO week the last digest covered, as 'YYYY-Www'. A week string rather
+  // than a timestamp because the question the job asks is "has this week's
+  // digest gone out", and a timestamp would make that a date calculation on
+  // every row instead of a string compare.
+  digestSentForWeek: text('digest_sent_for_week'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 // -------------------------------------------------------------------- trials
 
@@ -325,6 +481,16 @@ export const usersRelations = relations(users, ({ many }) => ({
   refreshTokens: many(refreshTokens),
   trialReminders: many(trialReminders),
   knownDevices: many(knownDevices),
+  budgets: many(budgets),
+  categoryRules: many(userCategoryRules),
+}));
+
+export const budgetsRelations = relations(budgets, ({ one }) => ({
+  user: one(users, { fields: [budgets.userId], references: [users.id] }),
+}));
+
+export const userCategoryRulesRelations = relations(userCategoryRules, ({ one }) => ({
+  user: one(users, { fields: [userCategoryRules.userId], references: [users.id] }),
 }));
 
 export const knownDevicesRelations = relations(knownDevices, ({ one }) => ({

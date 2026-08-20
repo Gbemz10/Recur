@@ -57,6 +57,27 @@
       "when": 1786991712207,
       "tag": "0007_thin_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787052693674,
+      "tag": "0008_add_spending_and_budgets",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787052725695,
+      "tag": "0009_add_spending_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787239540495,
+      "tag": "0010_conscious_power_pack",
+      "breakpoints": true
     }
   ]
 }

@@ -36,7 +36,8 @@ class TrialStore extends ChangeNotifier {
     try {
       final response = await apiClient.get('/trials');
       final rows = response['trialReminders'] as List<dynamic>? ?? const [];
-      _trialReminders = rows.map((row) => TrialReminder.fromJson(row as Map<String, dynamic>)).toList();
+      _trialReminders =
+          rows.map((row) => TrialReminder.fromJson(row as Map<String, dynamic>)).toList();
     } on ApiException catch (e) {
       error = e.message;
     } catch (_) {

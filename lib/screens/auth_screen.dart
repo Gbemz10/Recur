@@ -62,8 +62,7 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  bool get _emailValid =>
-      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim());
+  bool get _emailValid => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_email.text.trim());
 
   /// Lowercased, so the same person typing Gbemiga@… and gbemiga@… doesn't
   /// end up with two accounts.
@@ -173,149 +172,114 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
+      // The tap-outside-to-unfocus handler that used to live here is now in
+      // main.dart's MaterialApp.builder, so it applies to every screen rather
+      // than only this one. This was the only screen that ever had it.
       body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          behavior: HitTestBehavior.opaque,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: AppSpacing.xl),
-                const RecurWordmark(),
-                const SizedBox(height: AppSpacing.xxxl),
-
-                Text(
-                  signUp ? 'Create your account' : 'Welcome back',
-                  style: text.headlineSmall?.copyWith(letterSpacing: -0.4),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: AppSpacing.xl),
+              const RecurWordmark(),
+              const SizedBox(height: AppSpacing.xxxl),
+              Text(
+                signUp ? 'Create your account' : 'Welcome back',
+                style: text.headlineSmall?.copyWith(letterSpacing: -0.4),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                signUp
+                    ? 'We will email you a 6-digit code to confirm it is '
+                        'you, then you pick a password.'
+                    : 'Sign in to pick up where you left off.',
+                style: text.bodyMedium?.copyWith(
+                  color: AppColors.muted(context),
+                  height: 1.5,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  signUp
-                      ? 'We will email you a 6-digit code to confirm it is '
-                          'you, then you pick a password.'
-                      : 'Sign in to pick up where you left off.',
-                  style: text.bodyMedium?.copyWith(
-                    color: AppColors.muted(context),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              AppTextField(
+                controller: _email,
+                label: 'Email address',
+                hint: 'you@example.com',
+                prefixIcon: Icons.mail_outline_rounded,
+                keyboardType: TextInputType.emailAddress,
+                errorText: _emailError,
+              ),
+              if (!signUp) ...[
+                const SizedBox(height: AppSpacing.lg),
                 AppTextField(
-                  controller: _email,
-                  label: 'Email address',
-                  hint: 'you@example.com',
-                  prefixIcon: Icons.mail_outline_rounded,
-                  keyboardType: TextInputType.emailAddress,
-                  errorText: _emailError,
+                  controller: _password,
+                  label: 'Password',
+                  hint: 'Your password',
+                  prefixIcon: Icons.lock_outline_rounded,
+                  obscureText: _obscure,
+                  suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  onSuffixIconTap: () => setState(() => _obscure = !_obscure),
+                  errorText: _passwordError,
                 ),
-
-                if (!signUp) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  AppTextField(
-                    controller: _password,
-                    label: 'Password',
-                    hint: 'Your password',
-                    prefixIcon: Icons.lock_outline_rounded,
-                    obscureText: _obscure,
-                    suffixIcon: _obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    onSuffixIconTap: () =>
-                        setState(() => _obscure = !_obscure),
-                    errorText: _passwordError,
-                  ),
-                  // Sits tight under the field it belongs to. A full ghost
-                  // button here floated it away from the password input and
-                  // read as a second primary action.
-                  const SizedBox(height: 2),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _forgotPassword,
-                      // Padding is the tap target, not visual spacing, so
-                      // the label still looks snug against the field.
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 4,
-                        ),
-                        child: Text(
-                          'Forgot password?',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
+                // Sits tight under the field it belongs to. A full ghost
+                // button here floated it away from the password input and
+                // read as a second primary action.
+                const SizedBox(height: 2),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _forgotPassword,
+                    // Padding is the tap target, not visual spacing, so
+                    // the label still looks snug against the field.
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
                       ),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: AppSpacing.xl),
-                AppButton(
-                  label: signUp ? 'Send me a code' : 'Sign in',
-                  size: AppButtonSize.lg,
-                  expand: true,
-                  isLoading: _busy,
-                  onPressed: _busy ? null : _submit,
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        signUp
-                            ? 'Already have an account?'
-                            : 'New to Recur?',
-                        style: text.bodySmall
-                            ?.copyWith(color: AppColors.muted(context)),
-                      ),
-                      AppButton(
-                        label: signUp ? 'Sign in' : 'Create one',
-                        variant: AppButtonVariant.ghost,
-                        size: AppButtonSize.sm,
-                        onPressed: () => setState(() {
-                          _mode = signUp ? _Mode.signIn : _Mode.signUp;
-                          _password.clear();
-                          _emailError = null;
-                          _passwordError = null;
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: AppSpacing.xl),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.lock_outline_rounded,
-                      size: 15,
-                      color: AppColors.muted(context),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
                       child: Text(
-                        'Recur never stores your bank password and can never '
-                        'move money out of your account.',
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.muted(context),
-                          height: 1.5,
+                        'Forgot password?',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
                         ),
                       ),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xl),
+              AppButton(
+                label: signUp ? 'Send me a code' : 'Sign in',
+                size: AppButtonSize.lg,
+                expand: true,
+                isLoading: _busy,
+                onPressed: _busy ? null : _submit,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      signUp ? 'Already have an account?' : 'New to Recur?',
+                      style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
+                    ),
+                    AppButton(
+                      label: signUp ? 'Sign in' : 'Create one',
+                      variant: AppButtonVariant.ghost,
+                      size: AppButtonSize.sm,
+                      onPressed: () => setState(() {
+                        _mode = signUp ? _Mode.signIn : _Mode.signUp;
+                        _password.clear();
+                        _emailError = null;
+                        _passwordError = null;
+                      }),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

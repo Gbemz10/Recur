@@ -171,7 +171,6 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             style: text.bodyMedium?.copyWith(color: AppColors.muted(context)),
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           const _ConsentRow(
             icon: Icons.check_circle_outline_rounded,
             positive: true,
@@ -196,7 +195,6 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             title: 'We never see your bank password',
             body: 'You authorise through your bank, not through us.',
           ),
-
           Text(
             'You stay in control. Disconnect any account and delete its data '
             'from Settings at any time.',
@@ -206,7 +204,6 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.xxl),
-
           AppButton(
             label: 'I understand, continue',
             size: AppButtonSize.lg,
@@ -255,7 +252,8 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             Text(
               "This can take a few seconds, sometimes longer depending on your bank.",
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
+              style:
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.muted(context)),
             ),
           ],
         ),
@@ -278,13 +276,12 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
             tween: Tween(begin: 0, end: 1),
             duration: const Duration(milliseconds: 620),
             curve: Curves.easeOutBack,
-            builder: (context, v, child) =>
-                Transform.scale(scale: v, child: child),
+            builder: (context, v, child) => Transform.scale(scale: v, child: child),
             child: Container(
               width: 92,
               height: 92,
-              decoration: const BoxDecoration(
-                color: AppColors.successBg,
+              decoration: BoxDecoration(
+                color: AppColors.successTint(context),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -329,7 +326,7 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
       child: Column(
         children: [
           const Spacer(),
-          Icon(Icons.hourglass_top_rounded, size: 56, color: AppColors.muted(context)),
+          Icon(Icons.timer_outlined, size: 56, color: AppColors.muted(context)),
           const SizedBox(height: AppSpacing.xl),
           Text('Taking longer than usual', style: text.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
@@ -416,8 +413,7 @@ class _PulsingOrb extends StatefulWidget {
   State<_PulsingOrb> createState() => _PulsingOrbState();
 }
 
-class _PulsingOrbState extends State<_PulsingOrb>
-    with SingleTickerProviderStateMixin {
+class _PulsingOrbState extends State<_PulsingOrb> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 2000),

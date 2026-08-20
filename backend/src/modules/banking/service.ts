@@ -8,6 +8,7 @@ import { encryptSecret } from '../../lib/encryption.js';
 import { initiateAccountLinking, unlinkMonoAccount } from '../../lib/mono.js';
 import { syncLinkedBank } from './sync.js';
 import { runDetectionForUser } from '../detection/service.js';
+import { categorizeTransactionsForUser } from '../spending/categorize.js';
 
 function maskAccountNumber(accountNumber: string): string {
   const last4 = accountNumber.slice(-4);
@@ -89,7 +90,9 @@ export async function syncNow(userId: string, linkedBankId: string) {
   if (!bank) throw AppError.notFound('Linked bank not found');
 
   const result = await syncLinkedBank(bank);
-  await runDetectionForUser(userId);
+  // Categorization and detection both read the rows sync just wrote, and
+  // neither reads the other's output, so ordering between them is arbitrary.
+  await Promise.all([categorizeTransactionsForUser(userId), runDetectionForUser(userId)]);
   return result;
 }
 
@@ -167,7 +170,7 @@ export async function handleAccountUpdated(monoAccountId: string, institution: {
   // would just return an incomplete/empty set.
   if (dataStatus === 'AVAILABLE') {
     await syncLinkedBank(bank);
-    await runDetectionForUser(bank.userId);
+    await Promise.all([categorizeTransactionsForUser(bank.userId), runDetectionForUser(bank.userId)]);
   }
 }
 

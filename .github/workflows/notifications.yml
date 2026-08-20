@@ -1,0 +1,40 @@
+name: Send due notifications
+
+# Drives the notification job from outside the API process.
+#
+# The API can run this on its own timer (NOTIFICATIONS_SCHEDULER=on), but that
+# guard against overlapping runs is a per-process flag, so it stops guarding
+# anything the moment Render runs more than one instance. A cron is one caller
+# by construction, which is why production should set the scheduler off and
+# let this own the schedule.
+#
+# Hourly rather than daily: reminders are keyed to a lead in whole days, so the
+# exact hour does not matter, but a daily cron that fails once skips a whole
+# day of warnings. The job is idempotent, so an extra run costs one query and
+# sends nothing.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger notification run
+        env:
+          RUN_TOKEN: ${{ secrets.NOTIFICATIONS_RUN_TOKEN }}
+          API_BASE: ${{ vars.API_BASE_URL || 'https://recur-z7q0.onrender.com' }}
+        run: |
+          if [ -z "$RUN_TOKEN" ]; then
+            echo "NOTIFICATIONS_RUN_TOKEN secret is not set; nothing to do."
+            exit 1
+          fi
+          # --max-time is generous because Render's free tier cold-starts, and
+          # a spun-down service can take most of a minute to answer the first
+          # request.
+          curl -fsS --max-time 120 \
+            --retry 5 --retry-delay 15 --retry-all-errors \
+            -X POST "$API_BASE/notifications/run" \
+            -H "Authorization: Bearer $RUN_TOKEN" \
+            -w "\nstatus: %{http_code}\n"

@@ -3,7 +3,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
 class AppPagination extends StatelessWidget {
-  const AppPagination({super.key, required this.currentPage, required this.totalPages, required this.onPageChange});
+  const AppPagination(
+      {super.key, required this.currentPage, required this.totalPages, required this.onPageChange});
 
   final int currentPage; // 1-indexed
   final int totalPages;

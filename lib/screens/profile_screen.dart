@@ -94,10 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = widget.profileStore.profile;
     if (profile == null) return;
 
-    final updated = await showModalBottomSheet<Profile>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final updated = await showAppSheet<Profile>(
+      context,
+      title: 'Edit profile',
       builder: (_) => _EditProfileSheet(profile: profile),
     );
     if (updated == null || !mounted) return;
@@ -105,10 +104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openChangePassword() async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final changed = await showAppSheet<bool>(
+      context,
+      title: 'Change password',
       builder: (_) => const _ChangePasswordSheet(),
     );
     if (changed == true && mounted) {
@@ -122,7 +120,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _memberSinceLabel(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return 'Member since ${months[date.month - 1]} ${date.year}';
   }
@@ -136,153 +145,331 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildScaffold(BuildContext context) {
+    final cancelled = widget.store.byStatus(SubscriptionStatus.cancelled);
     final active = widget.store.byStatus(SubscriptionStatus.active).length;
-    final cancelled = widget.store.byStatus(SubscriptionStatus.cancelled).length;
-    final saved = widget.store
-        .byStatus(SubscriptionStatus.cancelled)
-        .fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
-
+    final saved = cancelled.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
     final profile = widget.profileStore.profile;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: AppColors.background(context),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: SafeArea(
-        top: false,
-        child: widget.profileStore.isInitialLoad
-            ? const Center(child: AppLoadingIndicator())
-            : profile == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xxl),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text("Couldn't load your profile", style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: AppSpacing.md),
-                          AppButton(label: 'Try again', onPressed: widget.profileStore.load),
-                        ],
-                      ),
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
-                    children: [
-                      Center(
-                        child: Column(
-                          children: [
-                            Stack(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Fixed custom header, like every other screen in the app. The
+            // stock AppBar this used made Profile the one place that looked
+            // like a different product.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.xl,
+                AppSpacing.md,
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: AppColors.ink(context),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    tooltip: 'Back',
+                  ),
+                  Text(
+                    'Profile',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: widget.profileStore.isInitialLoad
+                  ? const Center(child: AppLoadingIndicator())
+                  : profile == null
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.xxl),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                AppAvatar(name: profile.displayLabel, imageUrl: profile.avatarUrl, size: 88),
-                                if (_uploadingPhoto)
-                                  const SizedBox(
-                                    width: 88,
-                                    height: 88,
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 28,
-                                        height: 28,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
-                                      ),
-                                    ),
-                                  ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Material(
-                                    color: AppColors.primary,
-                                    shape: const CircleBorder(),
-                                    child: InkWell(
-                                      customBorder: const CircleBorder(),
-                                      onTap: _uploadingPhoto ? null : _quickChangePhoto,
-                                      child: const SizedBox(
-                                        width: 28,
-                                        height: 28,
-                                        child: Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
+                                Text(
+                                  "Couldn't load your profile",
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                AppButton(
+                                  label: 'Try again',
+                                  onPressed: widget.profileStore.load,
                                 ),
                               ],
                             ),
-                            const SizedBox(height: AppSpacing.lg),
-                            Text(
-                              profile.displayLabel,
-                              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              profile.email,
-                              style: const TextStyle(fontSize: 13, color: AppColors.neutral500),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            AppBadge(label: _memberSinceLabel(profile.memberSince), variant: AppBadgeVariant.neutral),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxl),
-
-                      // ---- quick stats ----
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatTile(
-                              label: 'Active',
-                              value: '$active',
-                              icon: Icons.autorenew_rounded,
-                              color: AppColors.primary,
-                            ),
                           ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: _StatTile(
-                              label: 'Cancelled',
-                              value: '$cancelled',
-                              icon: Icons.do_not_disturb_on_outlined,
-                              color: AppColors.neutral500,
-                            ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.xl,
+                            0,
+                            AppSpacing.xl,
+                            AppSpacing.huge,
                           ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: _StatTile(
-                              label: 'Saved / mo',
-                              value: formatNairaCompact(saved),
-                              icon: Icons.trending_down_rounded,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: AppSpacing.xxl),
-                      AppCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
                           children: [
-                            _EditableRow(label: 'Full name', value: profile.displayName ?? 'Not set', onTap: _openEditProfile),
-                            Divider(height: 1, color: AppColors.border(context)),
-                            _EditableRow(label: 'Email address', value: profile.email),
-                            Divider(height: 1, color: AppColors.border(context)),
-                            _EditableRow(label: 'Password', value: '••••••••', onTap: _openChangePassword),
+                            _IdentityCard(
+                              profile: profile,
+                              active: active,
+                              memberSince: _memberSinceLabel(profile.memberSince),
+                              uploading: _uploadingPhoto,
+                              onChangePhoto: _quickChangePhoto,
+                            ),
+
+                            const SizedBox(height: AppSpacing.xxl),
+                            const _SectionLabel('Your details'),
+                            AppCard(
+                              padding: EdgeInsets.zero,
+                              child: Column(
+                                children: [
+                                  _EditableRow(
+                                    label: 'Full name',
+                                    value: profile.displayName ?? 'Not set',
+                                    onTap: _openEditProfile,
+                                  ),
+                                  Divider(height: 1, color: AppColors.border(context)),
+                                  _EditableRow(
+                                    label: 'Email address',
+                                    value: profile.email,
+                                  ),
+                                  Divider(height: 1, color: AppColors.border(context)),
+                                  _EditableRow(
+                                    label: 'Password',
+                                    value: '••••••••',
+                                    onTap: _openChangePassword,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Only when there is something to report. The
+                            // three stat tiles this replaced always rendered,
+                            // so a new account was greeted by "₦0 Saved / mo"
+                            // — a number whose only job is to say nothing has
+                            // happened yet.
+                            if (cancelled.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xxl),
+                              const _SectionLabel('What you have cancelled'),
+                              _SavedCard(count: cancelled.length, monthly: saved),
+                            ],
                           ],
                         ),
-                      ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                      const SizedBox(height: AppSpacing.xl),
-                      AppButton(
-                        label: 'Edit profile',
-                        variant: AppButtonVariant.outline,
-                        expand: true,
-                        icon: Icons.edit_outlined,
-                        onPressed: _openEditProfile,
+/// Small caps section heading, matching Settings.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Text(
+        label.toUpperCase(),
+        style: AppTypography.mono(
+          size: 10.5,
+          weight: FontWeight.w700,
+          color: AppColors.muted(context),
+        ).copyWith(letterSpacing: 0.8),
+      ),
+    );
+  }
+}
+
+/// Who you are, as one block.
+///
+/// The old version stacked a centred avatar, name, email and a pill, then
+/// three icon tiles below it — the arrangement every profile screen ships
+/// with. This keeps the photo prominent, because it is the one thing on the
+/// screen you actually came to change, and lets a single quiet line carry the
+/// account facts instead of spending three cards on them.
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({
+    required this.profile,
+    required this.active,
+    required this.memberSince,
+    required this.uploading,
+    required this.onChangePhoto,
+  });
+
+  final Profile profile;
+  final int active;
+  final String memberSince;
+  final bool uploading;
+  final VoidCallback onChangePhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    final tracking = active == 1 ? 'tracking 1 subscription' : 'tracking $active subscriptions';
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        width: 1.5,
                       ),
-                    ],
+                    ),
+                    child: AppAvatar(
+                      name: profile.displayLabel,
+                      imageUrl: profile.avatarUrl,
+                      size: 72,
+                    ),
                   ),
+                  if (uploading)
+                    const Positioned.fill(
+                      child: Center(
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    right: 0,
+                    bottom: 2,
+                    child: Material(
+                      color: AppColors.primary,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: uploading ? null : onChangePhoto,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surface(context), width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.displayLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        color: AppColors.ink(context),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      profile.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: AppColors.muted(context)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Divider(height: 1, color: AppColors.border(context)),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '$memberSince, $tracking.',
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.45,
+              color: AppColors.muted(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Appears only once there is something to show. Cancelling is the one thing
+/// the app asks people to do, so when it has happened it deserves a sentence
+/// rather than a tile reading zero.
+class _SavedCard extends StatelessWidget {
+  const _SavedCard({required this.count, required this.monthly});
+
+  final int count;
+  final double monthly;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.13),
+              borderRadius: AppRadius.mdBR,
+            ),
+            child: const Icon(Icons.trending_down_rounded, size: 21, color: AppColors.success),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  count == 1 ? '1 subscription' : '$count subscriptions',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatNairaCompact(monthly)} a month back in your pocket',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.muted(context)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -318,7 +505,8 @@ Future<Profile?> pickAndUploadAvatar(BuildContext context) async {
 
   try {
     final bytes = await picked.readAsBytes();
-    return await ProfileService.uploadAvatar(bytes: bytes, filename: picked.name, mimeType: mimeType);
+    return await ProfileService.uploadAvatar(
+        bytes: bytes, filename: picked.name, mimeType: mimeType);
   } on ApiException catch (e) {
     if (!context.mounted) return null;
     showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
@@ -396,75 +584,63 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Edit profile', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xl),
-            Center(
-              child: Stack(
-                children: [
-                  AppAvatar(name: _profile.displayLabel, imageUrl: _profile.avatarUrl, size: 72),
-                  if (_uploadingPhoto)
-                    const SizedBox(
-                      width: 72,
-                      height: 72,
-                      child: Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Material(
-                      color: AppColors.primary,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: _uploadingPhoto ? null : _changePhoto,
-                        child: const SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: Icon(Icons.camera_alt_rounded, size: 13, color: Colors.white),
-                        ),
-                      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Stack(
+            children: [
+              AppAvatar(name: _profile.displayLabel, imageUrl: _profile.avatarUrl, size: 72),
+              if (_uploadingPhoto)
+                const SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
                     ),
                   ),
-                ],
+                ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Material(
+                  color: AppColors.primary,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _uploadingPhoto ? null : _changePhoto,
+                    child: const SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: Icon(Icons.camera_alt_rounded, size: 13, color: Colors.white),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            AppTextField(
-              label: 'Name',
-              hint: 'Your name',
-              controller: _nameController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              onSubmitted: (_) => _save(),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppButton(
-              label: 'Save',
-              expand: true,
-              isLoading: _saving,
-              onPressed: _saving ? null : _save,
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.xxl),
+        AppTextField(
+          label: 'Name',
+          hint: 'Your name',
+          controller: _nameController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (_) => _save(),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        AppButton(
+          label: 'Save',
+          expand: true,
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
+        ),
+      ],
     );
   }
 }
@@ -513,7 +689,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   bool get _hasLetter => RegExp(r'[A-Za-z]').hasMatch(_newValue);
   bool get _hasNumber => RegExp(r'[0-9]').hasMatch(_newValue);
   bool get _matches => _newValue.isNotEmpty && _newValue == _confirm.text;
-  bool get _valid => _current.text.isNotEmpty && _longEnough && _hasLetter && _hasNumber && _matches;
+  bool get _valid =>
+      _current.text.isNotEmpty && _longEnough && _hasLetter && _hasNumber && _matches;
 
   Future<void> _save() async {
     setState(() {
@@ -540,84 +717,71 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final confirmError = _submitted && !_matches && _confirm.text.isNotEmpty ? 'Passwords do not match' : null;
+    final confirmError =
+        _submitted && !_matches && _confirm.text.isNotEmpty ? 'Passwords do not match' : null;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Signing in on other devices will need this new password.",
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
         ),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: AppSpacing.xl),
+        AppTextField(
+          controller: _current,
+          label: 'Current password',
+          prefixIcon: Icons.lock_outline_rounded,
+          obscureText: _obscure,
+          suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          onSuffixIconTap: () => setState(() => _obscure = !_obscure),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppTextField(
+          controller: _next,
+          label: 'New password',
+          hint: 'At least 8 characters',
+          prefixIcon: Icons.lock_reset_rounded,
+          obscureText: _obscure,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppTextField(
+          controller: _confirm,
+          label: 'Confirm new password',
+          hint: 'Type it again',
+          prefixIcon: Icons.lock_reset_rounded,
+          obscureText: _obscure,
+          errorText: confirmError,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _Requirement(met: _longEnough, label: 'At least 8 characters'),
+        _Requirement(met: _hasLetter, label: 'Contains a letter'),
+        _Requirement(met: _hasNumber, label: 'Contains a number'),
+        _Requirement(met: _matches, label: 'Both entries match'),
+        if (_serverError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
             children: [
-              Text('Change password', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                "Signing in on other devices will need this new password.",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              AppTextField(
-                controller: _current,
-                label: 'Current password',
-                prefixIcon: Icons.lock_outline_rounded,
-                obscureText: _obscure,
-                suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                onSuffixIconTap: () => setState(() => _obscure = !_obscure),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                controller: _next,
-                label: 'New password',
-                hint: 'At least 8 characters',
-                prefixIcon: Icons.lock_reset_rounded,
-                obscureText: _obscure,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                controller: _confirm,
-                label: 'Confirm new password',
-                hint: 'Type it again',
-                prefixIcon: Icons.lock_reset_rounded,
-                obscureText: _obscure,
-                errorText: confirmError,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _Requirement(met: _longEnough, label: 'At least 8 characters'),
-              _Requirement(met: _hasLetter, label: 'Contains a letter'),
-              _Requirement(met: _hasNumber, label: 'Contains a number'),
-              _Requirement(met: _matches, label: 'Both entries match'),
-              if (_serverError != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        _serverError!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
-                      ),
-                    ),
-                  ],
+              const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  _serverError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
                 ),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              AppButton(
-                label: 'Update password',
-                expand: true,
-                isLoading: _saving,
-                onPressed: _saving ? null : _save,
               ),
             ],
           ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        AppButton(
+          label: 'Update password',
+          expand: true,
+          isLoading: _saving,
+          onPressed: _saving ? null : _save,
         ),
-      ),
+      ],
     );
   }
 }
@@ -642,13 +806,13 @@ class _Requirement extends StatelessWidget {
             width: 17,
             height: 17,
             decoration: BoxDecoration(
-              color: met ? AppColors.success : AppColors.neutral100,
+              color: met ? AppColors.success : AppColors.track(context),
               shape: BoxShape.circle,
             ),
             child: Icon(
               met ? Icons.check_rounded : Icons.remove_rounded,
               size: 11,
-              color: met ? Colors.white : AppColors.neutral400,
+              color: met ? Colors.white : AppColors.muted(context),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -657,34 +821,9 @@ class _Requirement extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.neutral500,
+              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value, required this.icon, required this.color});
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.sm),
-      child: Column(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: AppSpacing.sm),
-          Text(value, style: AppTypography.mono(size: 15, weight: FontWeight.w600, color: AppColors.ink(context))),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10.5, color: AppColors.neutral500), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -706,16 +845,18 @@ class _EditableRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 118,
-            child: Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.neutral500)),
+            child: Text(label, style: TextStyle(fontSize: 12.5, color: AppColors.muted(context))),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
+              style: TextStyle(
+                  fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (onTap != null) const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.neutral400),
+          if (onTap != null)
+            Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.muted(context)),
         ],
       ),
     );

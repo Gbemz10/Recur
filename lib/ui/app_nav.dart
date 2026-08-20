@@ -11,7 +11,8 @@ class AppNavItem {
 
 /// Bottom nav bar for mobile layouts (<=4 destinations recommended).
 class AppBottomNav extends StatelessWidget {
-  const AppBottomNav({super.key, required this.items, required this.selectedIndex, required this.onSelect});
+  const AppBottomNav(
+      {super.key, required this.items, required this.selectedIndex, required this.onSelect});
 
   final List<AppNavItem> items;
   final int selectedIndex;
@@ -40,7 +41,9 @@ class AppBottomNav extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          i == selectedIndex ? (items[i].selectedIcon ?? items[i].icon) : items[i].icon,
+                          i == selectedIndex
+                              ? (items[i].selectedIcon ?? items[i].icon)
+                              : items[i].icon,
                           color: i == selectedIndex ? AppColors.primary : AppColors.neutral400,
                           size: 24,
                         ),
@@ -97,19 +100,23 @@ class AppSidebar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
               child: Material(
-                color: i == selectedIndex ? AppColors.primaryLight : Colors.transparent,
+                color: i == selectedIndex ? AppColors.primaryTint(context) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   onTap: () => onSelect(i),
                   borderRadius: BorderRadius.circular(10),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md, vertical: AppSpacing.md),
                     child: Row(
                       children: [
                         Icon(
-                          i == selectedIndex ? (items[i].selectedIcon ?? items[i].icon) : items[i].icon,
+                          i == selectedIndex
+                              ? (items[i].selectedIcon ?? items[i].icon)
+                              : items[i].icon,
                           size: 20,
-                          color: i == selectedIndex ? AppColors.primaryDark : AppColors.neutral500,
+                          color:
+                              i == selectedIndex ? AppColors.primaryDark : AppColors.muted(context),
                         ),
                         const SizedBox(width: AppSpacing.md),
                         Text(
@@ -117,7 +124,8 @@ class AppSidebar extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: i == selectedIndex ? AppColors.primaryDark : AppColors.neutral700,
+                            color:
+                                i == selectedIndex ? AppColors.primaryDark : AppColors.neutral700,
                           ),
                         ),
                       ],

@@ -7,7 +7,8 @@ import 'api_client.dart';
 class AuthService {
   AuthService._();
 
-  static Future<void> signup(String email) => apiClient.post('/auth/signup', body: {'email': email}, auth: false);
+  static Future<void> signup(String email) =>
+      apiClient.post('/auth/signup', body: {'email': email}, auth: false);
 
   static Future<void> forgotPassword(String email) =>
       apiClient.post('/auth/forgot-password', body: {'email': email}, auth: false);
@@ -34,7 +35,11 @@ class AuthService {
   }) async {
     final response = await apiClient.post(
       '/auth/password',
-      body: {'email': email, 'password': password, 'purpose': isReset ? 'RESET_PASSWORD' : 'SIGNUP'},
+      body: {
+        'email': email,
+        'password': password,
+        'purpose': isReset ? 'RESET_PASSWORD' : 'SIGNUP'
+      },
       auth: false,
     );
     await apiClient.saveTokens(
@@ -44,7 +49,8 @@ class AuthService {
   }
 
   static Future<void> login({required String email, required String password}) async {
-    final response = await apiClient.post('/auth/login', body: {'email': email, 'password': password}, auth: false);
+    final response = await apiClient.post('/auth/login',
+        body: {'email': email, 'password': password}, auth: false);
     await apiClient.saveTokens(
       accessToken: response['accessToken'] as String,
       refreshToken: response['refreshToken'] as String,

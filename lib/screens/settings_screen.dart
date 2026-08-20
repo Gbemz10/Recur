@@ -8,6 +8,7 @@ import '../data/banks.dart';
 import '../data/linked_bank.dart';
 import '../data/profile_store.dart';
 import '../data/subscription_store.dart';
+import '../data/notification_store.dart';
 import '../data/theme_controller.dart';
 import '../ui/ui.dart';
 import '../widgets/bank_logo.dart';
@@ -53,20 +54,52 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _renewalReminders = true;
-  bool _weeklyDigest = true;
+  /// Server-backed, so a reminder preference set on one device is the one the
+  /// job actually reads. These were local `setState` flags: the switches moved
+  /// and nothing else in the system ever knew.
+  final _notifications = NotificationStore();
+
   bool _pushEnabled = true;
-  int _reminderDays = 3;
 
   @override
   void initState() {
     super.initState();
     widget.profileStore.addListener(_handleStoreChange);
     widget.bankStore.addListener(_handleStoreChange);
+    _notifications.addListener(_handleStoreChange);
+  }
+
+  /// Persists a preference change, putting the switch back if it does not
+  /// stick. Silent success: a toast for every toggle is noise, but a toggle
+  /// that quietly failed is a lie.
+  Future<void> _saveNotifications({
+    bool? renewalReminders,
+    bool? weeklyDigest,
+    int? reminderLeadDays,
+  }) async {
+    try {
+      await _notifications.update(
+        renewalReminders: renewalReminders,
+        weeklyDigest: weeklyDigest,
+        reminderLeadDays: reminderLeadDays,
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackbar(
+        context,
+        message: 'Could not save that. Check your connection and try again.',
+        variant: AppAlertVariant.danger,
+      );
+    }
   }
 
   @override
   void dispose() {
+    _notifications.removeListener(_handleStoreChange);
+    _notifications.dispose();
     widget.profileStore.removeListener(_handleStoreChange);
     widget.bankStore.removeListener(_handleStoreChange);
     super.dispose();
@@ -105,10 +138,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmDeleteAccount() async {
-    final deleted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final deleted = await showAppSheet<bool>(
+      context,
+      title: 'Delete your account?',
       builder: (_) => const _DeleteAccountSheet(),
     );
     if (deleted == true) {
@@ -162,7 +194,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Unlink ${bank.bankName}?',
-      message: 'Recur stops reading new transactions. Subscriptions already detected stay in your history.',
+      message:
+          'Recur stops reading new transactions. Subscriptions already detected stay in your history.',
       confirmLabel: 'Unlink',
       destructive: true,
     );
@@ -180,306 +213,382 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Fixed header, matching every tab except Home. The explainer line under
+    // the title is gone: "Manage your account, alerts, and data" only restates
+    // the word Settings, and the sections below already name themselves.
     return SafeArea(
       bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.lg,
-          AppSpacing.xl,
-          AppSpacing.huge,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Settings', style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4)),
-          const SizedBox(height: 4),
-          Text(
-            'Manage your account, alerts, and data.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral500, height: 1.5),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-
-          // ---- account ----
-          Builder(
-            builder: (context) {
-              final profile = widget.profileStore.profile;
-              return AppCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ProfileScreen(store: widget.store, profileStore: widget.profileStore),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    widget.profileStore.isInitialLoad
-                        ? const ClipOval(child: AppSkeleton(width: 44, height: 44))
-                        : AppAvatar(name: profile?.displayLabel ?? 'Account', imageUrl: profile?.avatarUrl, size: 44),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            profile?.displayLabel ?? 'Loading…',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            profile?.email ?? '',
-                            style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.neutral400),
-                  ],
-                ),
-              );
-            },
-          ),
-
-          _SectionLabel(widget.bankStore.active.length > 1 ? 'Linked accounts' : 'Linked account'),
-          if (widget.bankStore.isLoading && widget.bankStore.all.isEmpty)
-            const AppSkeletonListTile()
-          else if (widget.bankStore.error != null && widget.bankStore.all.isEmpty) ...[
-            AppCard(
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline_rounded, color: AppColors.danger),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      widget.bankStore.error!,
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted(context)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(
-              label: 'Try again',
-              variant: AppButtonVariant.outline,
-              size: AppButtonSize.sm,
-              expand: true,
-              onPressed: widget.bankStore.load,
-            ),
-          ] else if (widget.bankStore.active.isEmpty) ...[
-            AppCard(
-              child: Row(
-                children: [
-                  const Icon(Icons.account_balance_outlined, color: AppColors.neutral400),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      'No bank connected yet',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.muted(context)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(
-              label: 'Link bank account',
-              size: AppButtonSize.sm,
-              expand: true,
-              icon: Icons.link_rounded,
-              onPressed: _linkBank,
-            ),
-          ] else ...[
-            // Each linked bank gets its own card and its own unlink action —
-            // the backend has always supported more than one, this is just
-            // the first Settings UI that shows more than the first one.
-            for (final bank in widget.bankStore.active) ...[
-              AppCard(
-                child: Row(
-                  children: [
-                    _linkedBankLogo(bank),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            bank.isSyncing ? 'Syncing…' : bank.bankName,
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context)),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            bank.accountNumberMask.isEmpty ? '•••• ••••' : bank.accountNumberMask,
-                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.neutral500),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const AppBadge(label: 'Connected', variant: AppBadgeVariant.success, dot: true),
-                    const SizedBox(width: AppSpacing.sm),
-                    Material(
-                      color: Colors.transparent,
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        icon: const Icon(Icons.link_off_rounded, size: 18, color: AppColors.neutral400),
-                        tooltip: 'Unlink ${bank.bankName.isEmpty ? 'bank' : bank.bankName}',
-                        onPressed: () => _unlinkBank(bank),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            AppButton(
-              label: 'Link another bank',
-              variant: AppButtonVariant.outline,
-              size: AppButtonSize.sm,
-              expand: true,
-              icon: Icons.add_link_rounded,
-              onPressed: _linkBank,
-            ),
-          ],
-
-          _SectionLabel('Appearance'),
-          ListenableBuilder(
-            listenable: themeController,
-            builder: (context, _) => AppCard(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Row(
-                children: [
-                  for (final mode in AppThemeMode.values) ...[
-                    Expanded(
-                      child: _ThemeOptionChip(
-                        icon: switch (mode) {
-                          AppThemeMode.system => Icons.brightness_auto_rounded,
-                          AppThemeMode.light => Icons.light_mode_rounded,
-                          AppThemeMode.dark => Icons.dark_mode_rounded,
-                        },
-                        label: switch (mode) {
-                          AppThemeMode.system => 'System',
-                          AppThemeMode.light => 'Light',
-                          AppThemeMode.dark => 'Dark',
-                        },
-                        selected: themeController.mode == mode,
-                        onTap: () => themeController.setMode(mode),
-                      ),
-                    ),
-                    if (mode != AppThemeMode.dark) const SizedBox(width: AppSpacing.sm),
-                  ],
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.md),
+            child: Text(
+              'Settings',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
             ),
           ),
-
-          _SectionLabel('Notifications'),
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                0,
+                AppSpacing.xl,
+                AppSpacing.huge,
+              ),
               children: [
-                _ToggleRow(
-                  icon: Icons.notifications_active_outlined,
-                  title: 'Renewal reminders',
-                  subtitle: 'A heads-up before a charge hits',
-                  value: _renewalReminders,
-                  onChanged: (v) => setState(() => _renewalReminders = v),
+                // ---- account ----
+                Builder(
+                  builder: (context) {
+                    final profile = widget.profileStore.profile;
+                    final loading = widget.profileStore.isInitialLoad;
+
+                    return AppCard(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileScreen(
+                            store: widget.store,
+                            profileStore: widget.profileStore,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          if (loading)
+                            const ClipOval(child: AppSkeleton(width: 52, height: 52))
+                          else
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.35),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: AppAvatar(
+                                name: profile?.displayLabel ?? 'Account',
+                                imageUrl: profile?.avatarUrl,
+                                size: 48,
+                              ),
+                            ),
+                          const SizedBox(width: AppSpacing.lg),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile?.displayLabel ?? 'Loading…',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    color: AppColors.ink(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  profile?.email ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.muted(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: AppColors.muted(context)),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-                if (_renewalReminders) ...[
-                  Divider(height: 1, color: AppColors.border(context)),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
+
+                _SectionLabel(
+                    widget.bankStore.active.length > 1 ? 'Linked accounts' : 'Linked account'),
+                if (widget.bankStore.isLoading && widget.bankStore.all.isEmpty)
+                  const AppSkeletonListTile()
+                else if (widget.bankStore.error != null && widget.bankStore.all.isEmpty) ...[
+                  AppCard(
                     child: Row(
                       children: [
-                        Text(
-                          'Remind me',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
-                        ),
-                        const Spacer(),
-                        for (final d in [1, 3, 7]) ...[
-                          _DayChip(
-                            days: d,
-                            selected: _reminderDays == d,
-                            onTap: () => setState(() => _reminderDays = d),
+                        const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            widget.bankStore.error!,
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted(context)),
                           ),
-                          if (d != 7) const SizedBox(width: AppSpacing.sm),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppButton(
+                    label: 'Try again',
+                    variant: AppButtonVariant.outline,
+                    size: AppButtonSize.sm,
+                    expand: true,
+                    onPressed: widget.bankStore.load,
+                  ),
+                ] else if (widget.bankStore.active.isEmpty) ...[
+                  AppCard(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_outlined, color: AppColors.neutral400),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            'No bank connected yet',
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.muted(context)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AppButton(
+                    label: 'Link bank account',
+                    size: AppButtonSize.sm,
+                    expand: true,
+                    icon: Icons.link_rounded,
+                    onPressed: _linkBank,
+                  ),
+                ] else ...[
+                  // Each linked bank gets its own card and its own unlink action —
+                  // the backend has always supported more than one, this is just
+                  // the first Settings UI that shows more than the first one.
+                  for (final bank in widget.bankStore.active) ...[
+                    AppCard(
+                      child: Row(
+                        children: [
+                          _linkedBankLogo(bank),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  bank.isSyncing ? 'Syncing…' : bank.bankName,
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.ink(context)),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  bank.accountNumberMask.isEmpty
+                                      ? '•••• ••••'
+                                      : bank.accountNumberMask,
+                                  style: AppTypography.mono(
+                                      size: 12,
+                                      weight: FontWeight.w500,
+                                      color: AppColors.muted(context)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const AppBadge(
+                              label: 'Connected', variant: AppBadgeVariant.success, dot: true),
+                          const SizedBox(width: AppSpacing.sm),
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            child: IconButton(
+                              icon: const Icon(Icons.link_off_rounded,
+                                  size: 18, color: AppColors.neutral400),
+                              tooltip: 'Unlink ${bank.bankName.isEmpty ? 'bank' : bank.bankName}',
+                              onPressed: () => _unlinkBank(bank),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                  AppButton(
+                    label: 'Link another bank',
+                    variant: AppButtonVariant.outline,
+                    size: AppButtonSize.sm,
+                    expand: true,
+                    icon: Icons.add_link_rounded,
+                    onPressed: _linkBank,
+                  ),
+                ],
+
+                _SectionLabel('Appearance'),
+                ListenableBuilder(
+                  listenable: themeController,
+                  builder: (context, _) => AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    child: Row(
+                      children: [
+                        for (final mode in AppThemeMode.values) ...[
+                          Expanded(
+                            child: _ThemeOptionChip(
+                              icon: switch (mode) {
+                                AppThemeMode.system => Icons.brightness_auto_rounded,
+                                AppThemeMode.light => Icons.light_mode_rounded,
+                                AppThemeMode.dark => Icons.dark_mode_rounded,
+                              },
+                              label: switch (mode) {
+                                AppThemeMode.system => 'System',
+                                AppThemeMode.light => 'Light',
+                                AppThemeMode.dark => 'Dark',
+                              },
+                              selected: themeController.mode == mode,
+                              onTap: () => themeController.setMode(mode),
+                            ),
+                          ),
+                          if (mode != AppThemeMode.dark) const SizedBox(width: AppSpacing.sm),
                         ],
                       ],
                     ),
                   ),
-                ],
-                Divider(height: 1, color: AppColors.border(context)),
-                _ToggleRow(
-                  icon: Icons.mail_outline_rounded,
-                  title: 'Weekly digest',
-                  subtitle: 'A Monday email of what is coming up',
-                  value: _weeklyDigest,
-                  onChanged: (v) => setState(() => _weeklyDigest = v),
                 ),
-                Divider(height: 1, color: AppColors.border(context)),
-                _ToggleRow(
-                  icon: Icons.phone_iphone_rounded,
-                  title: 'Push notifications',
-                  subtitle: 'Alerts on this device',
-                  value: _pushEnabled,
-                  onChanged: (v) => setState(() => _pushEnabled = v),
-                ),
-              ],
-            ),
-          ),
 
-          _SectionLabel('Data & privacy'),
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _NavRow(
-                  icon: Icons.download_outlined,
-                  title: 'Export my data',
-                  onTap: () => showAppSnackbar(
-                    context,
-                    message: 'We will email a copy of your data shortly',
-                    variant: AppAlertVariant.success,
+                _SectionLabel('Notifications'),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _ToggleRow(
+                        icon: Icons.notifications_active_outlined,
+                        title: 'Renewal reminders',
+                        subtitle: 'A heads-up before a charge hits',
+                        value: _notifications.renewalReminders,
+                        onChanged: _notifications.isInitialLoad
+                            ? null
+                            : (v) => _saveNotifications(renewalReminders: v),
+                      ),
+                      if (_notifications.renewalReminders) ...[
+                        Divider(height: 1, color: AppColors.border(context)),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Remind me',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppColors.muted(context)),
+                              ),
+                              const Spacer(),
+                              for (final d in [1, 3, 7]) ...[
+                                _DayChip(
+                                  days: d,
+                                  selected: _notifications.reminderLeadDays == d,
+                                  onTap: () => _saveNotifications(reminderLeadDays: d),
+                                ),
+                                if (d != 7) const SizedBox(width: AppSpacing.sm),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                      Divider(height: 1, color: AppColors.border(context)),
+                      _ToggleRow(
+                        icon: Icons.mail_outline_rounded,
+                        title: 'Weekly digest',
+                        subtitle: 'A Monday email of what is coming up',
+                        value: _notifications.weeklyDigest,
+                        onChanged: _notifications.isInitialLoad
+                            ? null
+                            : (v) => _saveNotifications(weeklyDigest: v),
+                      ),
+                      Divider(height: 1, color: AppColors.border(context)),
+                      _ToggleRow(
+                        icon: Icons.phone_iphone_rounded,
+                        title: 'Push notifications',
+                        subtitle: 'Alerts on this device',
+                        value: _pushEnabled,
+                        onChanged: (v) => setState(() => _pushEnabled = v),
+                      ),
+                    ],
                   ),
                 ),
-                Divider(height: 1, color: AppColors.border(context)),
-                _NavRow(
-                  icon: Icons.shield_outlined,
-                  title: 'Privacy policy',
-                  onTap: () {},
+
+                _SectionLabel('Data & privacy'),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _NavRow(
+                        icon: Icons.download_outlined,
+                        title: 'Export my data',
+                        onTap: () => showAppSnackbar(
+                          context,
+                          message: 'We will email a copy of your data shortly',
+                          variant: AppAlertVariant.success,
+                        ),
+                      ),
+                      Divider(height: 1, color: AppColors.border(context)),
+                      _NavRow(
+                        icon: Icons.shield_outlined,
+                        title: 'Privacy policy',
+                        onTap: () {},
+                      ),
+                      Divider(height: 1, color: AppColors.border(context)),
+                      _NavRow(
+                        icon: Icons.delete_outline_rounded,
+                        title: 'Delete account',
+                        danger: true,
+                        onTap: _confirmDeleteAccount,
+                      ),
+                    ],
+                  ),
                 ),
-                Divider(height: 1, color: AppColors.border(context)),
-                _NavRow(
-                  icon: Icons.delete_outline_rounded,
-                  title: 'Delete account',
-                  danger: true,
-                  onTap: _confirmDeleteAccount,
+
+                _SectionLabel('Support'),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _NavRow(
+                          icon: Icons.help_outline_rounded,
+                          title: 'Help centre',
+                          onTap: _openHelpCentre),
+                      Divider(height: 1, color: AppColors.border(context)),
+                      _NavRow(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          title: 'Contact support',
+                          onTap: _contactSupport),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.xxl),
+                AppButton(
+                  label: 'Sign out',
+                  variant: AppButtonVariant.outline,
+                  expand: true,
+                  icon: Icons.logout_rounded,
+                  onPressed: _confirmSignOut,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Center(
+                  child: Text(
+                    'Recur v1.0.0',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.muted(context)),
+                  ),
                 ),
               ],
-            ),
-          ),
-
-          _SectionLabel('Support'),
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _NavRow(icon: Icons.help_outline_rounded, title: 'Help centre', onTap: _openHelpCentre),
-                Divider(height: 1, color: AppColors.border(context)),
-                _NavRow(icon: Icons.chat_bubble_outline_rounded, title: 'Contact support', onTap: _contactSupport),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.xxl),
-          AppButton(
-            label: 'Sign out',
-            variant: AppButtonVariant.outline,
-            expand: true,
-            icon: Icons.logout_rounded,
-            onPressed: _confirmSignOut,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Center(
-            child: Text(
-              'Recur v1.0.0',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.neutral400),
             ),
           ),
         ],
@@ -541,77 +650,76 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.danger.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 23),
         ),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
-            const SizedBox(height: AppSpacing.md),
-            Text('Delete your account?', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'This permanently removes your linked bank connections and everything '
-              'Recur has detected. This cannot be undone.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context), height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            AppTextField(
-              controller: _password,
-              label: 'Confirm your password',
-              prefixIcon: Icons.lock_outline_rounded,
-              obscureText: _obscure,
-              suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-              onSuffixIconTap: () => setState(() => _obscure = !_obscure),
-            ),
-            if (_serverError != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _serverError!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
-                    ),
-                  ),
-                ],
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'This permanently removes your linked bank connections and everything '
+          'Recur has detected. This cannot be undone.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: AppColors.muted(context), height: 1.5),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        AppTextField(
+          controller: _password,
+          label: 'Confirm your password',
+          prefixIcon: Icons.lock_outline_rounded,
+          obscureText: _obscure,
+          suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          onSuffixIconTap: () => setState(() => _obscure = !_obscure),
+        ),
+        if (_serverError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  _serverError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.danger),
+                ),
               ),
             ],
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.ghost,
-                    expand: true,
-                    onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AppButton(
-                    label: 'Delete account',
-                    variant: AppButtonVariant.destructive,
-                    expand: true,
-                    isLoading: _deleting,
-                    onPressed: _deleting || _password.text.isEmpty ? null : _delete,
-                  ),
-                ),
-              ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Cancel',
+                variant: AppButtonVariant.ghost,
+                expand: true,
+                onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: AppButton(
+                label: 'Delete account',
+                variant: AppButtonVariant.destructive,
+                expand: true,
+                isLoading: _deleting,
+                onPressed: _deleting || _password.text.isEmpty ? null : _delete,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }
@@ -626,11 +734,11 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, AppSpacing.xxl, 4, AppSpacing.sm),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.8,
-          color: AppColors.neutral500,
+          color: AppColors.muted(context),
         ),
       ),
     );
@@ -650,7 +758,12 @@ class _ToggleRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// Null disables the switch, which is what a row whose real value has not
+  /// arrived yet should be: showing a default as though it were the user's
+  /// own setting, and letting them toggle it, writes a preference they never
+  /// chose.
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -658,15 +771,19 @@ class _ToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 19, color: AppColors.neutral500),
+          Icon(icon, size: 19, color: AppColors.muted(context)),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.ink(context))),
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink(context))),
                 const SizedBox(height: 1),
-                Text(subtitle, style: const TextStyle(fontSize: 11.5, color: AppColors.neutral500)),
+                Text(subtitle, style: TextStyle(fontSize: 11.5, color: AppColors.muted(context))),
               ],
             ),
           ),
@@ -682,7 +799,8 @@ class _ToggleRow extends StatelessWidget {
 }
 
 class _NavRow extends StatelessWidget {
-  const _NavRow({required this.icon, required this.title, required this.onTap, this.danger = false});
+  const _NavRow(
+      {required this.icon, required this.title, required this.onTap, this.danger = false});
 
   final IconData icon;
   final String title;
@@ -700,10 +818,11 @@ class _NavRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
           child: Row(
             children: [
-              Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.neutral500),
+              Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.muted(context)),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Text(title, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
+                child: Text(title,
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
               ),
               Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.neutral400),
             ],
@@ -742,14 +861,14 @@ class _ThemeOptionChip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.neutral500),
+            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.muted(context)),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : AppColors.neutral500,
+                color: selected ? Colors.white : AppColors.muted(context),
               ),
             ),
           ],
@@ -775,7 +894,7 @@ class _DayChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.neutral100,
+          color: selected ? AppColors.primary : AppColors.track(context),
           borderRadius: AppRadius.fullBR,
         ),
         child: Text(
@@ -783,7 +902,7 @@ class _DayChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : AppColors.neutral600,
+            color: selected ? Colors.white : AppColors.muted(context),
           ),
         ),
       ),

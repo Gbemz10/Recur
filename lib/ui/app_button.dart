@@ -34,20 +34,51 @@ class AppButton extends StatelessWidget {
   final bool isLoading;
   final bool expand;
 
-  double get _height => switch (size) { AppButtonSize.sm => 36, AppButtonSize.md => 44, AppButtonSize.lg => 52 };
+  double get _height =>
+      switch (size) { AppButtonSize.sm => 36, AppButtonSize.md => 44, AppButtonSize.lg => 52 };
 
-  double get _fontSize => switch (size) { AppButtonSize.sm => 13, AppButtonSize.md => 14, AppButtonSize.lg => 15 };
+  double get _fontSize =>
+      switch (size) { AppButtonSize.sm => 13, AppButtonSize.md => 14, AppButtonSize.lg => 15 };
 
-  double get _hPad => switch (size) { AppButtonSize.sm => AppSpacing.md, AppButtonSize.md => AppSpacing.lg, AppButtonSize.lg => AppSpacing.xl };
+  double get _hPad => switch (size) {
+        AppButtonSize.sm => AppSpacing.md,
+        AppButtonSize.md => AppSpacing.lg,
+        AppButtonSize.lg => AppSpacing.xl
+      };
 
   ({Color bg, Color fg, Color? border, Color? hoverBg}) _colors(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return switch (variant) {
-      AppButtonVariant.primary => (bg: AppColors.primary, fg: AppColors.white, border: null, hoverBg: AppColors.primaryDark),
-      AppButtonVariant.secondary => (bg: scheme.surfaceContainerHighest, fg: scheme.onSurface, border: null, hoverBg: null),
-      AppButtonVariant.outline => (bg: Colors.transparent, fg: scheme.onSurface, border: scheme.outline, hoverBg: null),
-      AppButtonVariant.ghost => (bg: Colors.transparent, fg: scheme.onSurface, border: null, hoverBg: null),
-      AppButtonVariant.destructive => (bg: AppColors.danger, fg: AppColors.white, border: null, hoverBg: null),
+      AppButtonVariant.primary => (
+          bg: AppColors.primary,
+          fg: AppColors.white,
+          border: null,
+          hoverBg: AppColors.primaryDark
+        ),
+      AppButtonVariant.secondary => (
+          bg: scheme.surfaceContainerHighest,
+          fg: scheme.onSurface,
+          border: null,
+          hoverBg: null
+        ),
+      AppButtonVariant.outline => (
+          bg: Colors.transparent,
+          fg: scheme.onSurface,
+          border: scheme.outline,
+          hoverBg: null
+        ),
+      AppButtonVariant.ghost => (
+          bg: Colors.transparent,
+          fg: scheme.onSurface,
+          border: null,
+          hoverBg: null
+        ),
+      AppButtonVariant.destructive => (
+          bg: AppColors.danger,
+          fg: AppColors.white,
+          border: null,
+          hoverBg: null
+        ),
     };
   }
 

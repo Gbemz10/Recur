@@ -77,7 +77,8 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _busy = true);
 
     try {
-      await AuthService.verifyOtp(email: widget.email, code: _controller.text, isReset: widget.isReset);
+      await AuthService.verifyOtp(
+          email: widget.email, code: _controller.text, isReset: widget.isReset);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -230,8 +231,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     Expanded(
                       child: Text(
                         _error!,
-                        style:
-                            text.bodySmall?.copyWith(color: AppColors.danger),
+                        style: text.bodySmall?.copyWith(color: AppColors.danger),
                       ),
                     ),
                   ],
@@ -359,10 +359,7 @@ class _ResendCountdownState extends State<_ResendCountdown> {
     if (_left > 0) {
       return Text(
         'Resend code in ${_left}s',
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: AppColors.muted(context)),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
       );
     }
     return AppButton(

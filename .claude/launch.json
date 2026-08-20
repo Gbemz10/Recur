@@ -1,0 +1,32 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "recur-website",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/static-server.mjs"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "recur-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "backend",
+        "run",
+        "dev"
+      ],
+      "port": 4000
+    },
+    {
+      "name": "recur-emails",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/email-server.mjs"
+      ],
+      "port": 4174
+    }
+  ]
+}

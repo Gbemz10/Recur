@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../data/mock_data.dart' show formatNaira;
 import '../models/subscription.dart';
 import '../ui/ui.dart';
 import 'brand_mark.dart';
@@ -17,7 +17,7 @@ class SubscriptionTile extends StatelessWidget {
     required this.subscription,
     required this.onTap,
     this.shareOfSpend,
-    this.showConfidence = false,
+    this.showActions = false,
     this.onConfirm,
     this.onDismiss,
     this.busy = false,
@@ -30,8 +30,8 @@ class SubscriptionTile extends StatelessWidget {
   /// the bar — correct for cancelled items, which cost nothing.
   final double? shareOfSpend;
 
-  /// In the review tab we show how sure the engine is, plus quick actions.
-  final bool showConfidence;
+  /// In the review tab each row asks to be confirmed or dismissed.
+  final bool showActions;
   final VoidCallback? onConfirm;
   final VoidCallback? onDismiss;
 
@@ -44,6 +44,9 @@ class SubscriptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final cancelled = subscription.status == SubscriptionStatus.cancelled;
+    // Only a genuinely imminent charge is urgent. A row whose predicted date
+    // has passed is waiting on a sync, not on the user — see
+    // Subscription.isAwaitingCharge — so it stays in the calm style.
     final urgent = subscription.isDueSoon && !cancelled;
 
     return AppCard(
@@ -75,9 +78,8 @@ class SubscriptionTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.titleSmall?.copyWith(
-                        decoration:
-                            cancelled ? TextDecoration.lineThrough : null,
-                        color: cancelled ? AppColors.neutral400 : null,
+                        decoration: cancelled ? TextDecoration.lineThrough : null,
+                        color: cancelled ? AppColors.muted(context) : null,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -85,21 +87,16 @@ class SubscriptionTile extends StatelessWidget {
                       children: [
                         Text(
                           subscription.cycle.label,
-                          style: text.bodySmall
-                              ?.copyWith(color: AppColors.neutral500),
+                          style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
                         ),
                         const _Dot(),
                         Flexible(
                           child: Text(
-                            cancelled
-                                ? 'Cancelled'
-                                : subscription.nextChargeLabel,
+                            cancelled ? 'Cancelled' : subscription.nextChargeLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodySmall?.copyWith(
-                              color: urgent
-                                  ? AppColors.warning
-                                  : AppColors.neutral500,
+                              color: urgent ? AppColors.warning : AppColors.muted(context),
                               fontWeight: urgent ? FontWeight.w700 : null,
                             ),
                           ),
@@ -115,18 +112,18 @@ class SubscriptionTile extends StatelessWidget {
                 children: [
                   Text(
                     formatNaira(subscription.amount),
-                    style: AppTypography.mono(
+                    style: AppTypography.money(
                       size: 14,
-                      weight: FontWeight.w600,
-                      color: cancelled ? AppColors.neutral400 : AppColors.ink(context),
+                      weight: FontWeight.w700,
+                      color: cancelled ? AppColors.muted(context) : AppColors.ink(context),
                     ),
                   ),
-                  if (subscription.cycle != BillingCycle.monthly &&
-                      !cancelled) ...[
+                  if (subscription.cycle != BillingCycle.monthly && !cancelled) ...[
                     const SizedBox(height: 2),
                     Text(
                       '${formatNaira(subscription.monthlyEquivalent)}/mo',
-                      style: AppTypography.mono(size: 11, weight: FontWeight.w500, color: AppColors.neutral400),
+                      style: AppTypography.money(
+                          size: 11, weight: FontWeight.w600, color: AppColors.muted(context)),
                     ),
                   ],
                   if (shareOfSpend != null && !cancelled) ...[
@@ -140,9 +137,7 @@ class SubscriptionTile extends StatelessWidget {
               ),
             ],
           ),
-          if (showConfidence) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _ConfidenceRow(value: subscription.confidence),
+          if (showActions) ...[
             const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
@@ -194,7 +189,7 @@ class _ShareBar extends StatelessWidget {
         children: [
           DecoratedBox(
             decoration: BoxDecoration(
-              color: AppColors.neutral200,
+              color: AppColors.track(context),
               borderRadius: BorderRadius.circular(2),
             ),
             child: const SizedBox(width: _width, height: 3),
@@ -219,53 +214,6 @@ class _ShareBar extends StatelessWidget {
   }
 }
 
-class _ConfidenceRow extends StatelessWidget {
-  const _ConfidenceRow({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (value * 100).round();
-    final color = value >= 0.8
-        ? AppColors.success
-        : value >= 0.65
-            ? AppColors.warning
-            : AppColors.neutral400;
-
-    return Row(
-      children: [
-        Text(
-          'Confidence',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.neutral500),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: AppRadius.fullBR,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: value),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutCubic,
-              builder: (context, v, _) => LinearProgressIndicator(
-                value: v,
-                minHeight: 6,
-                backgroundColor: AppColors.neutral200,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text('$pct%', style: Theme.of(context).textTheme.labelSmall),
-      ],
-    );
-  }
-}
-
 class _Dot extends StatelessWidget {
   const _Dot();
 
@@ -275,8 +223,8 @@ class _Dot extends StatelessWidget {
       width: 3,
       height: 3,
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      decoration: const BoxDecoration(
-        color: AppColors.neutral300,
+      decoration: BoxDecoration(
+        color: AppColors.muted(context),
         shape: BoxShape.circle,
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../data/mock_data.dart' show formatNaira;
 import '../models/subscription.dart';
 import '../ui/ui.dart';
 import '../widgets/brand_mark.dart';
@@ -16,8 +16,18 @@ class SubscriptionDetailScreen extends StatelessWidget {
   final Subscription subscription;
 
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
@@ -52,18 +62,13 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     child: Text(
                       formatNaira(subscription.amount),
                       maxLines: 1,
-                      style: AppTypography.mono(
-                        size: 32,
-                        weight: FontWeight.w600,
-                        color: AppColors.ink(context),
-                      ),
+                      style: AppTypography.money(size: 32, color: AppColors.ink(context)),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${subscription.cycle.label} · ${subscription.category.label}',
-                    style: text.bodyMedium
-                        ?.copyWith(color: AppColors.neutral500),
+                    style: text.bodyMedium?.copyWith(color: AppColors.muted(context)),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   if (cancelled)
@@ -72,8 +77,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                       variant: AppBadgeVariant.neutral,
                       dot: true,
                     )
-                  else if (subscription.status ==
-                      SubscriptionStatus.unreviewed)
+                  else if (subscription.status == SubscriptionStatus.unreviewed)
                     const AppBadge(
                       label: 'Needs review',
                       variant: AppBadgeVariant.warning,
@@ -81,12 +85,18 @@ class SubscriptionDetailScreen extends StatelessWidget {
                     )
                   else
                     AppBadge(
-                      label: subscription.isDueSoon
-                          ? 'Charges in ${subscription.daysUntilCharge} days'
+                      // nextChargeLabel for every case, rather than
+                      // interpolating a day count here — that produced
+                      // "Charges in 1 days", and it was a second place that
+                      // had to be kept in step with the model's wording.
+                      label: subscription.isAwaitingCharge || subscription.isDueSoon
+                          ? subscription.nextChargeLabel
                           : 'Active',
-                      variant: subscription.isDueSoon
-                          ? AppBadgeVariant.warning
-                          : AppBadgeVariant.success,
+                      variant: subscription.isAwaitingCharge
+                          ? AppBadgeVariant.neutral
+                          : subscription.isDueSoon
+                              ? AppBadgeVariant.warning
+                              : AppBadgeVariant.success,
                       dot: true,
                     ),
                 ],
@@ -131,25 +141,24 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Was',
-                            style: text.bodySmall
-                                ?.copyWith(color: AppColors.neutral500),
+                            style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             formatNaira(subscription.previousAmount!),
-                            style: AppTypography.mono(
+                            style: AppTypography.money(
                               size: 18,
-                              weight: FontWeight.w600,
-                              color: AppColors.neutral500,
+                              weight: FontWeight.w700,
+                              color: AppColors.muted(context),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_rounded,
                       size: 18,
-                      color: AppColors.neutral400,
+                      color: AppColors.muted(context),
                     ),
                     const SizedBox(width: AppSpacing.lg),
                     Expanded(
@@ -158,15 +167,13 @@ class SubscriptionDetailScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Now',
-                            style: text.bodySmall
-                                ?.copyWith(color: AppColors.neutral500),
+                            style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
                             formatNaira(subscription.amount),
-                            style: AppTypography.mono(
+                            style: AppTypography.money(
                               size: 18,
-                              weight: FontWeight.w600,
                               color: AppColors.ink(context),
                             ),
                           ),
@@ -207,21 +214,22 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: AppColors.neutral100,
+                      color: AppColors.track(context),
                       borderRadius: AppRadius.smBR,
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.receipt_long_outlined,
                           size: 16,
-                          color: AppColors.neutral500,
+                          color: AppColors.muted(context),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             subscription.charges.first.narration,
-                            style: AppTypography.mono(size: 12, weight: FontWeight.w500, color: AppColors.neutral600),
+                            style: AppTypography.mono(
+                                size: 12, weight: FontWeight.w500, color: AppColors.muted(context)),
                           ),
                         ),
                       ],
@@ -241,8 +249,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < subscription.charges.length; i++) ...[
-                    if (i > 0)
-                      Divider(height: 1, color: AppColors.border(context)),
+                    if (i > 0) Divider(height: 1, color: AppColors.border(context)),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.lg,
@@ -254,9 +261,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: i == 0
-                                  ? subscription.accentColor
-                                  : AppColors.neutral300,
+                              color: i == 0 ? subscription.accentColor : AppColors.neutral300,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -269,7 +274,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                           ),
                           Text(
                             formatNaira(subscription.charges[i].amount),
-                            style: AppTypography.mono(size: 13, weight: FontWeight.w600, color: AppColors.ink(context)),
+                            style: AppTypography.money(
+                                size: 13, weight: FontWeight.w700, color: AppColors.ink(context)),
                           ),
                         ],
                       ),
@@ -288,21 +294,18 @@ class SubscriptionDetailScreen extends StatelessWidget {
               Text(
                 'Recur cannot cancel on your behalf yet, so here are the '
                 'exact steps.',
-                style: text.bodySmall?.copyWith(color: AppColors.neutral500),
+                style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
               ),
               const SizedBox(height: AppSpacing.md),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0;
-                        i < subscription.cancellationSteps.length;
-                        i++)
+                    for (var i = 0; i < subscription.cancellationSteps.length; i++)
                       Padding(
                         padding: EdgeInsets.only(
-                          bottom: i == subscription.cancellationSteps.length - 1
-                              ? 0
-                              : AppSpacing.lg,
+                          bottom:
+                              i == subscription.cancellationSteps.length - 1 ? 0 : AppSpacing.lg,
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,8 +313,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                             Container(
                               width: 22,
                               height: 22,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primaryLight,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryTint(context),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
@@ -350,8 +353,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 variant: AppButtonVariant.outline,
                 size: AppButtonSize.lg,
                 expand: true,
-                onPressed: () =>
-                    Navigator.of(context).pop(SubscriptionStatus.active),
+                onPressed: () => Navigator.of(context).pop(SubscriptionStatus.active),
               )
             else
               AppButton(
@@ -364,8 +366,7 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   final confirmed = await showAppConfirmDialog(
                     context,
                     title: 'Mark as cancelled?',
-                    message:
-                        'We will stop counting ${subscription.displayName} in '
+                    message: 'We will stop counting ${subscription.displayName} in '
                         'your monthly total and let you know if it charges '
                         'you again.',
                     confirmLabel: 'Mark cancelled',

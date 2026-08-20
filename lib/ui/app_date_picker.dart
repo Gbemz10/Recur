@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import 'app_sheet.dart';
 
 /// Recur's own date picker — a bottom sheet built from the same month-grid
 /// language as the Calendar tab (`calendar_screen.dart`'s `_MonthGrid`),
@@ -21,10 +22,9 @@ Future<DateTime?> showAppDatePicker(
   DateTime? lastDate,
   String title = 'Select a date',
 }) {
-  return showModalBottomSheet<DateTime>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+  return showAppSheet<DateTime>(
+    context,
+    title: title,
     // This picker is always opened from a field inside another modal sheet
     // (the trial-reminder form, so far). That sheet already has its own
     // barrier darkening the screen behind it; without this, a second
@@ -37,7 +37,6 @@ Future<DateTime?> showAppDatePicker(
       initialDate: initialDate,
       firstDate: firstDate ?? DateTime(2000),
       lastDate: lastDate ?? DateTime(2100),
-      title: title,
     ),
   );
 }
@@ -47,13 +46,11 @@ class _AppDatePickerSheet extends StatefulWidget {
     required this.initialDate,
     required this.firstDate,
     required this.lastDate,
-    required this.title,
   });
 
   final DateTime initialDate;
   final DateTime firstDate;
   final DateTime lastDate;
-  final String title;
 
   @override
   State<_AppDatePickerSheet> createState() => _AppDatePickerSheetState();
@@ -61,8 +58,18 @@ class _AppDatePickerSheet extends StatefulWidget {
 
 class _AppDatePickerSheetState extends State<_AppDatePickerSheet> {
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -78,7 +85,8 @@ class _AppDatePickerSheetState extends State<_AppDatePickerSheet> {
     setState(() => _month = DateTime(_month.year, _month.month + dir));
   }
 
-  bool _inRange(DateTime day) => !day.isBefore(_dayOnly(widget.firstDate)) && !day.isAfter(_dayOnly(widget.lastDate));
+  bool _inRange(DateTime day) =>
+      !day.isBefore(_dayOnly(widget.firstDate)) && !day.isAfter(_dayOnly(widget.lastDate));
 
   DateTime _dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -92,87 +100,63 @@ class _AppDatePickerSheetState extends State<_AppDatePickerSheet> {
     final today = DateTime.now();
     final isCurrentMonth = _month.year == today.year && _month.month == today.month;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.xxl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
-              ),
-              Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.close_rounded, size: 20, color: AppColors.neutral400),
-                  ),
+    // Chrome, title and close affordance all come from AppSheet now. The
+    // grabber it adds is a better dismissal cue than the close button was.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ---- month switcher ----
+        Row(
+          children: [
+            _RoundIconButton(
+              icon: Icons.chevron_left_rounded,
+              onTap: _canGoBack ? () => _changeMonth(-1) : null,
+              tooltip: 'Previous month',
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  '${_months[_month.month - 1]} ${_month.year}',
+                  style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
+            ),
+            _RoundIconButton(
+              icon: Icons.chevron_right_rounded,
+              onTap: _canGoForward ? () => _changeMonth(1) : null,
+              tooltip: 'Next month',
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
 
-          // ---- month switcher ----
-          Row(
-            children: [
-              _RoundIconButton(
-                icon: Icons.chevron_left_rounded,
-                onTap: _canGoBack ? () => _changeMonth(-1) : null,
-                tooltip: 'Previous month',
-              ),
+        // ---- weekday header ----
+        Row(
+          children: [
+            for (final label in _weekdayLabels)
               Expanded(
                 child: Center(
                   child: Text(
-                    '${_months[_month.month - 1]} ${_month.year}',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink(context)),
+                    label,
+                    style: const TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.neutral400),
                   ),
                 ),
               ),
-              _RoundIconButton(
-                icon: Icons.chevron_right_rounded,
-                onTap: _canGoForward ? () => _changeMonth(1) : null,
-                tooltip: 'Next month',
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
 
-          // ---- weekday header ----
-          Row(
-            children: [
-              for (final label in _weekdayLabels)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      label,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.neutral400),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ---- grid ----
-          _DatePickerGrid(
-            month: _month,
-            selected: _selected,
-            today: isCurrentMonth ? today : null,
-            inRange: _inRange,
-            onSelect: _select,
-          ),
-        ],
-      ),
+        // ---- grid ----
+        _DatePickerGrid(
+          month: _month,
+          selected: _selected,
+          today: isCurrentMonth ? today : null,
+          inRange: _inRange,
+          onSelect: _select,
+        ),
+      ],
     );
   }
 }
@@ -215,8 +199,12 @@ class _DatePickerGrid extends StatelessWidget {
 
         final day = DateTime(month.year, month.month, dayNum);
         final enabled = inRange(day);
-        final isToday = today != null && today!.day == dayNum && today!.month == month.month && today!.year == month.year;
-        final isSelected = selected.year == day.year && selected.month == day.month && selected.day == dayNum;
+        final isToday = today != null &&
+            today!.day == dayNum &&
+            today!.month == month.month &&
+            today!.year == month.year;
+        final isSelected =
+            selected.year == day.year && selected.month == day.month && selected.day == dayNum;
 
         return Padding(
           padding: const EdgeInsets.all(2),
@@ -229,7 +217,7 @@ class _DatePickerGrid extends StatelessWidget {
                 color: isSelected
                     ? AppColors.primary
                     : isToday
-                        ? AppColors.primaryLight
+                        ? AppColors.primaryTint(context)
                         : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -282,7 +270,8 @@ class _RoundIconButton extends StatelessWidget {
           child: SizedBox(
             width: 36,
             height: 36,
-            child: Icon(icon, size: 20, color: disabled ? AppColors.neutral300 : AppColors.inkSoft(context)),
+            child: Icon(icon,
+                size: 20, color: disabled ? AppColors.neutral300 : AppColors.inkSoft(context)),
           ),
         ),
       ),

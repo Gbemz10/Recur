@@ -37,7 +37,10 @@ export async function syncLinkedBank(bank: LinkedBank) {
       // for subscriptions/charge_records.
       amount: (txn.amount / 100).toFixed(2),
       type: txn.type.toUpperCase() as 'DEBIT' | 'CREDIT',
-      category: txn.category || null,
+      // Mono's own category string, kept verbatim. Recur's taxonomy is a
+      // separate column filled by the categorizer; see db/schema.ts for why
+      // these two are deliberately not the same field.
+      monoCategory: txn.category || null,
       date: new Date(txn.date),
     }));
 
