@@ -6,7 +6,7 @@ import {
   trialReminders,
   users,
 } from '../../db/schema.js';
-import { sendEmail } from '../../lib/email.js';
+import { isEmailSuppressed, sendEmail } from '../../lib/email.js';
 import {
   renderRenewalReminderEmail,
   renderTrialReminderEmail,
@@ -64,6 +64,9 @@ export interface RunSummary {
   trialEmails: number;
   digestEmails: number;
   failures: number;
+  /// Addresses on the suppression list. Counted separately so a run that
+  /// looks busy is not mistaken for a run that actually delivered anything.
+  suppressed: number;
 }
 
 /**
@@ -80,7 +83,13 @@ export interface RunSummary {
  * cost that user's email and nothing more.
  */
 export async function runDueNotifications(now = new Date()): Promise<RunSummary> {
-  const summary: RunSummary = { renewalEmails: 0, trialEmails: 0, digestEmails: 0, failures: 0 };
+  const summary: RunSummary = {
+    renewalEmails: 0,
+    trialEmails: 0,
+    digestEmails: 0,
+    failures: 0,
+    suppressed: 0,
+  };
 
   await runRenewalReminders(now, summary);
   await runTrialReminders(now, summary);
@@ -170,7 +179,8 @@ async function runRenewalReminders(now: Date, summary: RunSummary): Promise<void
         .update(subscriptions)
         .set({ renewalRemindedFor: sql`${subscriptions.nextChargeDate}` })
         .where(and(eq(subscriptions.userId, userId), inArray(subscriptions.id, entry.ids)));
-      summary.renewalEmails += 1;
+      if (isEmailSuppressed(entry.email)) summary.suppressed += 1;
+      else summary.renewalEmails += 1;
     } catch (error) {
       summary.failures += 1;
       console.error(`Renewal reminder failed for user ${userId}:`, error);
@@ -224,7 +234,8 @@ async function runTrialReminders(now: Date, summary: RunSummary): Promise<void> 
         .update(trialReminders)
         .set({ remindedAt: new Date() })
         .where(eq(trialReminders.id, row.id));
-      summary.trialEmails += 1;
+      if (isEmailSuppressed(row.email)) summary.suppressed += 1;
+      else summary.trialEmails += 1;
     } catch (error) {
       summary.failures += 1;
       console.error(`Trial reminder failed for trial ${row.id}:`, error);
@@ -319,7 +330,8 @@ async function runWeeklyDigests(now: Date, summary: RunSummary): Promise<void> {
           text: email.text,
           html: email.html,
         });
-        summary.digestEmails += 1;
+        if (isEmailSuppressed(recipient.email)) summary.suppressed += 1;
+        else summary.digestEmails += 1;
       }
 
       await db

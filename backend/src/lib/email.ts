@@ -12,7 +12,28 @@ interface SendEmailInput {
   html?: string;
 }
 
+const suppressed = new Set(
+  env.EMAIL_SUPPRESS_LIST.split(',')
+    .map((address) => address.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+/**
+ * True for an address the app must never actually mail.
+ *
+ * Exported so a caller can report it honestly; [sendEmail] enforces it either
+ * way, so a caller that forgets to check still cannot send.
+ */
+export function isEmailSuppressed(address: string): boolean {
+  return suppressed.has(address.trim().toLowerCase());
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<void> {
+  if (isEmailSuppressed(input.to)) {
+    console.log(`[email] suppressed (${input.to}): ${input.subject}`);
+    return;
+  }
+
   if (env.EMAIL_PROVIDER === 'console') {
     console.log('\n────────────────── dev email ──────────────────');
     console.log(`to:      ${input.to}`);

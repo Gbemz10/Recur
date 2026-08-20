@@ -31,10 +31,11 @@ export async function tick(): Promise<void> {
   try {
     const summary = await runDueNotifications();
     const sent = summary.renewalEmails + summary.trialEmails + summary.digestEmails;
-    if (sent > 0 || summary.failures > 0) {
+    if (sent > 0 || summary.failures > 0 || summary.suppressed > 0) {
       console.log(
         `[notifications] renewals=${summary.renewalEmails} trials=${summary.trialEmails} ` +
-          `digests=${summary.digestEmails} failures=${summary.failures}`,
+          `digests=${summary.digestEmails} suppressed=${summary.suppressed} ` +
+          `failures=${summary.failures}`,
       );
     }
   } catch (error) {
