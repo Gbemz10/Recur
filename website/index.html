@@ -2161,11 +2161,16 @@
     font-family: var(--mono);
     font-size: 13px;
     letter-spacing: 0.02em;
-    color: var(--ink-faint);
+    color: var(--ink-soft);
     text-decoration: none;
     transition: color 0.2s var(--ease);
   }
-  .footer-contact a:hover { color: var(--forest-ink); }
+  /* The label is the quieter half: it says what the link is for, the address
+     is the thing being offered. Both live inside the anchor so the whole
+     line is one target rather than a label sitting next to a small one. */
+  .footer-contact-label { color: var(--ink-faint); }
+  .footer-contact a:hover,
+  .footer-contact a:hover .footer-contact-label { color: var(--forest-ink); }
   .footer-contact a:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 2px; border-radius: 4px; }
 
   /* ------------------------------------------------------ reveal on scroll */
@@ -2771,7 +2776,7 @@
        rather than inside it, so the cursor light never touches it and it
        keeps its own hit area. -->
   <div class="footer-contact">
-    <a href="mailto:support@recur.website">support@recur.website</a>
+    <a href="mailto:support@recur.website"><span class="footer-contact-label">Contact Us:</span> support@recur.website</a>
   </div>
 </footer>
 
