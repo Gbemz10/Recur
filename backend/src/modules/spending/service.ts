@@ -189,10 +189,20 @@ export async function listTransactions(
   // Explicit `| undefined` rather than bare optionals: this project runs
   // `exactOptionalPropertyTypes`, so "may be absent" and "may be undefined"
   // are different types and the route passes the latter.
-  options: { period: string; category?: string | undefined; limit?: number | undefined },
+  options: {
+    period: string;
+    category?: string | undefined;
+    limit?: number | undefined;
+    offset?: number | undefined;
+  },
 ) {
   const { start, end } = periodRange(options.period);
-  const limit = Math.min(Math.max(options.limit ?? 100, 1), 200);
+  // Was a bare cap of 100 with no way to ask for the rest. A month with more
+  // than that in one category silently lost the tail, and the app had no way
+  // to know it had happened: fewer rows than exist looks exactly like fewer
+  // rows existing.
+  const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+  const offset = Math.max(options.offset ?? 0, 0);
 
   const rows = await db
     .select({
@@ -214,18 +224,44 @@ export async function listTransactions(
         options.category ? eq(rawTransactions.spendCategory, fromWire(options.category)) : undefined,
       ),
     )
-    .orderBy(desc(rawTransactions.date))
-    .limit(limit);
+    // Tie-broken by id. Ordering on date alone is not a total order when two
+    // charges share a timestamp, and an unstable sort under an offset is how
+    // a row gets shown twice on one page and skipped on the next.
+    .orderBy(desc(rawTransactions.date), desc(rawTransactions.id))
+    .limit(limit)
+    .offset(offset);
 
-  return rows.map((row) => ({
-    id: row.id,
-    narration: row.narration,
-    payee: row.payee,
-    amount: Number(row.amount),
-    date: row.date.toISOString(),
-    category: row.category ? toWire(row.category) : null,
-    categorySource: row.categorySource ? row.categorySource.toLowerCase() : null,
-  }));
+  // Counted with the same filter, so the client can tell "that is all of them"
+  // apart from "that is all we sent you". Without it, a full page and a final
+  // page look identical and the UI has to guess.
+  const [counted] = await db
+    .select({ total: sql<string>`count(*)` })
+    .from(rawTransactions)
+    .where(
+      and(
+        eq(rawTransactions.userId, userId),
+        eq(rawTransactions.type, 'DEBIT'),
+        gte(rawTransactions.date, start),
+        lt(rawTransactions.date, end),
+        options.category ? eq(rawTransactions.spendCategory, fromWire(options.category)) : undefined,
+      ),
+    );
+
+  const total = Number(counted?.total ?? 0);
+
+  return {
+    total,
+    hasMore: offset + rows.length < total,
+    transactions: rows.map((row) => ({
+      id: row.id,
+      narration: row.narration,
+      payee: row.payee,
+      amount: Number(row.amount),
+      date: row.date.toISOString(),
+      category: row.category ? toWire(row.category) : null,
+      categorySource: row.categorySource ? row.categorySource.toLowerCase() : null,
+    })),
+  };
 }
 
 /**

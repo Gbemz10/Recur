@@ -66,15 +66,31 @@ class SpendingStore extends ChangeNotifier {
   /// store: this is a drill-down the user opens, reads, and leaves, and
   /// holding every category's list in memory to save one fast request would
   /// mean inventing invalidation rules for data that changes under it.
-  Future<List<SpendTransaction>> transactionsFor(SpendCategory? category) async {
+  /// One page of the transactions behind a category.
+  ///
+  /// [hasMore] comes from the server comparing what it sent against what
+  /// exists, rather than the client inferring it from a full-looking page. A
+  /// last page that happens to be exactly [limit] long is indistinguishable
+  /// from a truncated one otherwise, and guessing wrong either hides rows or
+  /// shows a Load more button that returns nothing.
+  Future<TransactionPage> transactionsFor(
+    SpendCategory? category, {
+    int offset = 0,
+    int limit = 50,
+  }) async {
     final params = <String>[
       if (_period != null) 'period=$_period',
       if (category != null) 'category=${category.name}',
+      'limit=$limit',
+      if (offset > 0) 'offset=$offset',
     ];
-    final query = params.isEmpty ? '' : '?${params.join('&')}';
-    final response = await apiClient.get('/spending/transactions$query');
+    final response = await apiClient.get('/spending/transactions?${params.join('&')}');
     final rows = response['transactions'] as List<dynamic>? ?? const [];
-    return rows.map((r) => SpendTransaction.fromJson(r as Map<String, dynamic>)).toList();
+    return TransactionPage(
+      transactions: rows.map((r) => SpendTransaction.fromJson(r as Map<String, dynamic>)).toList(),
+      total: (response['total'] as num?)?.toInt() ?? rows.length,
+      hasMore: response['hasMore'] as bool? ?? false,
+    );
   }
 
   /// Moves one transaction to a different category, optionally teaching the
@@ -166,4 +182,20 @@ class SpendingStore extends ChangeNotifier {
       categories: categories,
     );
   }
+}
+
+/// One page of transactions, plus what the client needs to know about the rest.
+class TransactionPage {
+  const TransactionPage({
+    required this.transactions,
+    required this.total,
+    required this.hasMore,
+  });
+
+  final List<SpendTransaction> transactions;
+
+  /// How many exist for this category and period, not how many were sent.
+  final int total;
+
+  final bool hasMore;
 }

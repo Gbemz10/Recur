@@ -31,6 +31,16 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
   List<SpendTransaction>? _transactions;
   String? _error;
 
+  /// How many exist for this category, from the server. Used to say so, and
+  /// to know when to stop asking.
+  int _total = 0;
+  bool _hasMore = false;
+  bool _loadingMore = false;
+
+  /// Page size. Small enough that the first screenful arrives quickly, large
+  /// enough that most categories in a month need only one request.
+  static const int _pageSize = 50;
+
   /// Ids with a recategorise request in flight, so a row cannot be tapped
   /// into two overlapping PATCHes. Same guard the dashboard uses for status
   /// changes.
@@ -45,15 +55,57 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
   Future<void> _load() async {
     setState(() => _error = null);
     try {
-      final rows = await widget.store.transactionsFor(widget.category);
+      final page = await widget.store.transactionsFor(widget.category, limit: _pageSize);
       if (!mounted) return;
-      setState(() => _transactions = rows);
+      setState(() {
+        _transactions = page.transactions;
+        _total = page.total;
+        _hasMore = page.hasMore;
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = "Couldn't load these transactions — try again.");
+    }
+  }
+
+  /// Appends the next page.
+  ///
+  /// Guarded by [_loadingMore] because the scroll listener fires on every
+  /// frame near the bottom, and without it one flick queues a dozen identical
+  /// requests that all append the same rows.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    final current = _transactions;
+    if (current == null) return;
+
+    setState(() => _loadingMore = true);
+    try {
+      final page = await widget.store.transactionsFor(
+        widget.category,
+        offset: current.length,
+        limit: _pageSize,
+      );
+      if (!mounted) return;
+      setState(() {
+        _transactions = [...current, ...page.transactions];
+        _total = page.total;
+        _hasMore = page.hasMore;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    } catch (_) {
+      if (!mounted) return;
+      showAppSnackbar(
+        context,
+        message: "Couldn't load more — try again.",
+        variant: AppAlertVariant.danger,
+      );
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -152,43 +204,72 @@ class _CategoryTransactionsScreenState extends State<CategoryTransactionsScreen>
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _load,
-      child: ListView.separated(
-        padding:
-            const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
-        itemCount: transactions.length + 1,
-        separatorBuilder: (_, index) => index == 0
-            ? const SizedBox(height: AppSpacing.lg)
-            : const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  transactions.length == 1
-                      ? '1 transaction'
-                      : '${transactions.length} transactions',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppColors.muted(context)),
-                ),
-                Text(
-                  formatNaira(total),
-                  style: AppTypography.money(
-                      size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
-                ),
-              ],
-            );
+      // Fetch the next page while the last one is still on screen, so the list
+      // grows before the user reaches the end of it. Waiting for the actual
+      // bottom means every page turn is a visible stall.
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 400) {
+            _loadMore();
           }
-
-          final txn = transactions[index - 1];
-          return _TransactionRow(
-            transaction: txn,
-            isPending: _pending.contains(txn.id),
-            onTap: () => _recategorize(txn),
-          );
+          return false;
         },
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.huge),
+          // One header, the rows, and a footer that is either a spinner or
+          // nothing.
+          itemCount: transactions.length + (_hasMore ? 2 : 1),
+          separatorBuilder: (_, index) => index == 0
+              ? const SizedBox(height: AppSpacing.lg)
+              : const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    // The real count, not how many have loaded. "50
+                    // transactions" while more are on the way is a lie that
+                    // corrects itself on scroll, which is worse than either
+                    // number alone.
+                    _total == 1 ? '1 transaction' : '$_total transactions',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.muted(context)),
+                  ),
+                  Text(
+                    formatNaira(total),
+                    style: AppTypography.money(
+                        size: 14, weight: FontWeight.w700, color: AppColors.ink(context)),
+                  ),
+                ],
+              );
+            }
+
+            // Footer slot, only present while there is more to fetch.
+            if (index > transactions.length) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  ),
+                ),
+              );
+            }
+
+            final txn = transactions[index - 1];
+            return _TransactionRow(
+              transaction: txn,
+              isPending: _pending.contains(txn.id),
+              onTap: () => _recategorize(txn),
+            );
+          },
+        ),
       ),
     );
   }

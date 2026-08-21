@@ -48,16 +48,22 @@ export async function spendingRoutes(app: FastifyInstance) {
 
   /** The transactions behind a category, for the tap-through from the breakdown. */
   app.get('/spending/transactions', { onRequest: [app.authenticate] }, async (request, reply) => {
-    const query = request.query as { period?: string; category?: string; limit?: string };
+    const query = request.query as {
+      period?: string;
+      category?: string;
+      limit?: string;
+      offset?: string;
+    };
     const parsed = periodSchema.safeParse(query.period);
     if (!parsed.success) throw AppError.badRequest('Period must look like 2026-08', 'BAD_PERIOD');
 
-    const transactions = await spendingService.listTransactions(request.user.sub, {
+    const page = await spendingService.listTransactions(request.user.sub, {
       period: parsed.data ?? spendingService.currentPeriod(),
       category: query.category,
       limit: query.limit ? Number(query.limit) : undefined,
+      offset: query.offset ? Number(query.offset) : undefined,
     });
-    return reply.send({ transactions });
+    return reply.send(page);
   });
 
   app.patch(
