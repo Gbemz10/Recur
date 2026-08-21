@@ -77,8 +77,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (mounted) setState(() {});
   }
 
-  List<Subscription> get _subs =>
-      widget.store.all.where((s) => s.status != SubscriptionStatus.cancelled).toList();
+  List<Subscription> get _subs => widget.store.all.where((s) => !s.isArchived).toList();
 
   /// Steps a date forward or backward by one full billing cycle.
   DateTime _step(DateTime d, Subscription sub, int dir) {

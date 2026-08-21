@@ -43,11 +43,12 @@ class SubscriptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final cancelled = subscription.status == SubscriptionStatus.cancelled;
+    final archived = subscription.isArchived;
+    final dismissed = subscription.status == SubscriptionStatus.dismissed;
     // Only a genuinely imminent charge is urgent. A row whose predicted date
     // has passed is waiting on a sync, not on the user — see
     // Subscription.isAwaitingCharge — so it stays in the calm style.
-    final urgent = subscription.isDueSoon && !cancelled;
+    final urgent = subscription.isDueSoon && !archived;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -58,7 +59,7 @@ class SubscriptionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Opacity(
-                opacity: cancelled ? 0.45 : 1,
+                opacity: archived ? 0.45 : 1,
                 child: BrandMark(
                   slug: subscription.brand.slug,
                   fallbackLabel: subscription.brand.name,
@@ -78,8 +79,8 @@ class SubscriptionTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.titleSmall?.copyWith(
-                        decoration: cancelled ? TextDecoration.lineThrough : null,
-                        color: cancelled ? AppColors.muted(context) : null,
+                        decoration: archived ? TextDecoration.lineThrough : null,
+                        color: archived ? AppColors.muted(context) : null,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -89,7 +90,7 @@ class SubscriptionTile extends StatelessWidget {
                         // the half that gets truncated is the half that matters.
                         // A subscription that has stopped is not cycling, so the
                         // cadence is the part worth dropping.
-                        if (!subscription.hasStopped || cancelled) ...[
+                        if (!subscription.hasStopped || archived) ...[
                           Text(
                             subscription.cycle.label,
                             style: text.bodySmall?.copyWith(color: AppColors.muted(context)),
@@ -98,7 +99,15 @@ class SubscriptionTile extends StatelessWidget {
                         ],
                         Flexible(
                           child: Text(
-                            cancelled ? 'Cancelled' : subscription.nextChargeLabel,
+                            // "Cancelled" and "Not a subscription" are
+                            // different claims and the row should not blur
+                            // them: one says the user ended it, the other
+                            // says it never existed.
+                            dismissed
+                                ? 'Not a subscription'
+                                : archived
+                                    ? 'Cancelled'
+                                    : subscription.nextChargeLabel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: text.bodySmall?.copyWith(
@@ -121,10 +130,10 @@ class SubscriptionTile extends StatelessWidget {
                     style: AppTypography.money(
                       size: 14,
                       weight: FontWeight.w700,
-                      color: cancelled ? AppColors.muted(context) : AppColors.ink(context),
+                      color: archived ? AppColors.muted(context) : AppColors.ink(context),
                     ),
                   ),
-                  if (subscription.cycle != BillingCycle.monthly && !cancelled) ...[
+                  if (subscription.cycle != BillingCycle.monthly && !archived) ...[
                     const SizedBox(height: 2),
                     Text(
                       '${formatNaira(subscription.monthlyEquivalent)}/mo',
@@ -132,7 +141,7 @@ class SubscriptionTile extends StatelessWidget {
                           size: 11, weight: FontWeight.w600, color: AppColors.muted(context)),
                     ),
                   ],
-                  if (shareOfSpend != null && !cancelled) ...[
+                  if (shareOfSpend != null && !archived) ...[
                     const SizedBox(height: 6),
                     _ShareBar(
                       share: shareOfSpend!,

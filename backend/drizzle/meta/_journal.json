@@ -85,6 +85,13 @@
       "when": 1787267832187,
       "tag": "0011_black_meteorite",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787336711307,
+      "tag": "0012_sour_zombie",
+      "breakpoints": true
     }
   ]
 }

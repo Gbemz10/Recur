@@ -326,7 +326,10 @@ export async function runDetectionForUser(userId: string) {
       let subscriptionId: string;
 
       if (existing) {
-        if (existing.status === 'CANCELLED') continue;
+        // Both are answers the user already gave. Re-detecting either would
+        // resurrect a row they have dealt with, and in the DISMISSED case
+        // would re-ask a question they have explicitly said no to.
+        if (existing.status === 'CANCELLED' || existing.status === 'DISMISSED') continue;
         subscriptionId = existing.id;
         await db
           .update(subscriptions)

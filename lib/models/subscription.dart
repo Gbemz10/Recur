@@ -47,6 +47,13 @@ enum SubscriptionStatus {
 
   /// User marked it cancelled (or we detected it stopped charging).
   cancelled,
+
+  /// The detector was wrong: this never was a subscription.
+  ///
+  /// Distinct from [cancelled], which claims the user ended something they had
+  /// signed up for. Filing a false positive there overstated what they had
+  /// saved by cancelling, with money they had never committed to spend.
+  dismissed,
 }
 
 enum SubscriptionCategory {
@@ -262,6 +269,15 @@ class Subscription {
     );
     return due.difference(today).inDays;
   }
+
+  /// Out of the running: either the user ended it, or it never was one.
+  ///
+  /// Exists so call sites stop writing `status != cancelled` and silently
+  /// meaning "is live". Adding `dismissed` broke exactly that assumption in
+  /// two places, including the calendar, which would have projected charges
+  /// for something the user had just told us was not a subscription.
+  bool get isArchived =>
+      status == SubscriptionStatus.cancelled || status == SubscriptionStatus.dismissed;
 
   bool get isDueSoon => daysUntilCharge >= 0 && daysUntilCharge <= 7;
 

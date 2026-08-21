@@ -36,6 +36,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
   int _tab = 0;
   int _tabDirection = 1;
   _View _view = _View.list;
+  bool _showDismissed = false;
 
   static const _tabs = ['Active', 'Review', 'Cancelled'];
 
@@ -100,6 +101,12 @@ class _RecurringScreenState extends State<RecurringScreen> {
 
   List<Subscription> get _cancelled => widget.store.byStatus(SubscriptionStatus.cancelled);
 
+  /// False positives the user has waved off. They get no tab of their own:
+  /// nobody opens an app to browse things that were never subscriptions. They
+  /// live behind a toggle on Cancelled, which is where someone would go
+  /// looking if they thought they had answered one by mistake.
+  List<Subscription> get _dismissed => widget.store.byStatus(SubscriptionStatus.dismissed);
+
   double get _monthlyTotal => _active.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
   double get _savedMonthly => _cancelled.fold(0.0, (sum, s) => sum + s.monthlyEquivalent);
 
@@ -135,6 +142,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
         SubscriptionStatus.active => '${sub.displayName} moved to Active',
         SubscriptionStatus.cancelled => '${sub.displayName} moved to Cancelled',
         SubscriptionStatus.unreviewed => '${sub.displayName} moved back to Review',
+        SubscriptionStatus.dismissed => '${sub.displayName} dismissed',
       };
 
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
@@ -411,7 +419,9 @@ class _RecurringScreenState extends State<RecurringScreen> {
   }
 
   Widget _cancelledContent() {
-    if (_cancelled.isEmpty) {
+    final dismissed = _dismissed;
+
+    if (_cancelled.isEmpty && dismissed.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: AppEmptyState(
@@ -422,14 +432,56 @@ class _RecurringScreenState extends State<RecurringScreen> {
         ),
       );
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.lg),
-          child: _SavedCard(monthly: _savedMonthly),
-        ),
-        _list(_cancelled),
+        if (_cancelled.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.lg),
+            // Counts cancellations only. A false positive was never money the
+            // user was going to spend, so calling it a saving would be
+            // flattering the app with someone else's number.
+            child: _SavedCard(monthly: _savedMonthly),
+          ),
+          _list(_cancelled),
+        ],
+        if (dismissed.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _showDismissed = !_showDismissed),
+              child: Row(
+                children: [
+                  Text(
+                    dismissed.length == 1
+                        ? '1 dismissed as not a subscription'
+                        : '${dismissed.length} dismissed as not subscriptions',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppColors.muted(context)),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  AnimatedRotation(
+                    turns: _showDismissed ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: AppColors.muted(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showDismissed) ...[
+            const SizedBox(height: AppSpacing.md),
+            _list(dismissed),
+          ],
+        ],
       ],
     );
   }
@@ -480,8 +532,10 @@ class _RecurringScreenState extends State<RecurringScreen> {
               busy: _pendingIds.contains(items[i].id),
               onTap: () => _openDetail(items[i]),
               onConfirm: review ? () => _updateStatus(items[i], SubscriptionStatus.active) : null,
+              // Dismissed, not cancelled. The user is telling us the detector
+              // was wrong, not that they ended something they were paying for.
               onDismiss:
-                  review ? () => _updateStatus(items[i], SubscriptionStatus.cancelled) : null,
+                  review ? () => _updateStatus(items[i], SubscriptionStatus.dismissed) : null,
             ),
           ),
         ],

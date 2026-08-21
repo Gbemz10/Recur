@@ -44,7 +44,25 @@ export const subscriptionCategoryEnum = pgEnum('subscription_category', [
   'FINANCE',
   'OTHER',
 ]);
-export const subscriptionStatusEnum = pgEnum('subscription_status', ['UNREVIEWED', 'ACTIVE', 'CANCELLED']);
+// UNREVIEWED  detected, waiting on the user's yes or no
+// ACTIVE      confirmed a real subscription
+// CANCELLED   was a subscription, the user has ended it
+// DISMISSED   never was a subscription; the detector was wrong
+//
+// DISMISSED exists because the first three could not tell those last two
+// apart. "Not a subscription" used to file a row under CANCELLED, which
+// claimed the user cancelled something they had never subscribed to, and
+// counted money they never spent toward the savings figure on Profile.
+//
+// It also gives detection a memory. Deleting the row instead would mean the
+// next sync re-detects the same charge and asks the same question again,
+// forever, with no record that it was already answered.
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'UNREVIEWED',
+  'ACTIVE',
+  'CANCELLED',
+  'DISMISSED',
+]);
 export const transactionTypeEnum = pgEnum('transaction_type', ['DEBIT', 'CREDIT']);
 
 // Recur's own spending taxonomy, deliberately coarse. Mono's Transaction

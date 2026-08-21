@@ -35,7 +35,11 @@ class SubscriptionDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final cancelled = subscription.status == SubscriptionStatus.cancelled;
+    // Archived covers both endings: the user cancelled it, or it was never a
+    // subscription. Both mean "no live charge", which is what this screen
+    // branches on; only the wording below distinguishes them.
+    final cancelled = subscription.isArchived;
+    final dismissed = subscription.status == SubscriptionStatus.dismissed;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -72,8 +76,8 @@ class SubscriptionDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   if (cancelled)
-                    const AppBadge(
-                      label: 'Cancelled',
+                    AppBadge(
+                      label: dismissed ? 'Not a subscription' : 'Cancelled',
                       variant: AppBadgeVariant.neutral,
                       dot: true,
                     )
@@ -388,7 +392,9 @@ class SubscriptionDetailScreen extends StatelessWidget {
             // ---- actions ----
             if (cancelled)
               AppButton(
-                label: 'Mark as active again',
+                // Reads as a correction for a dismissal and as a reversal for
+                // a cancellation, because that is what each one is.
+                label: dismissed ? 'This is a subscription' : 'Mark as active again',
                 variant: AppButtonVariant.outline,
                 size: AppButtonSize.lg,
                 expand: true,

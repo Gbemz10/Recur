@@ -3,8 +3,13 @@ import { db } from '../../db/client.js';
 import { subscriptions, chargeRecords, merchants } from '../../db/schema.js';
 import { AppError } from '../../lib/errors.js';
 
-type SubscriptionStatusValue = 'UNREVIEWED' | 'ACTIVE' | 'CANCELLED';
-const ALLOWED_STATUSES: SubscriptionStatusValue[] = ['UNREVIEWED', 'ACTIVE', 'CANCELLED'];
+type SubscriptionStatusValue = 'UNREVIEWED' | 'ACTIVE' | 'CANCELLED' | 'DISMISSED';
+const ALLOWED_STATUSES: SubscriptionStatusValue[] = [
+  'UNREVIEWED',
+  'ACTIVE',
+  'CANCELLED',
+  'DISMISSED',
+];
 
 type SubscriptionWithRelations = typeof subscriptions.$inferSelect & {
   merchant: typeof merchants.$inferSelect | null;

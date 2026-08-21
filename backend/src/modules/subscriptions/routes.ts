@@ -4,7 +4,7 @@ import { AppError } from '../../lib/errors.js';
 import * as subscriptionService from './service.js';
 
 const updateStatusSchema = z.object({
-  status: z.enum(['unreviewed', 'active', 'cancelled']),
+  status: z.enum(['unreviewed', 'active', 'cancelled', 'dismissed']),
 });
 
 export async function subscriptionRoutes(app: FastifyInstance) {
