@@ -113,10 +113,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (_) => const _ChangePasswordSheet(),
     );
     if (changed == true && mounted) {
-      showAppSnackbar(
+      // A dialog rather than a toast: this is final, it cannot be undone from
+      // here, and it signed the user out everywhere else. That last part is a
+      // consequence worth being certain they saw, and a toast three seconds
+      // long is exactly the wrong instrument for it.
+      await showAppSuccessDialog(
         context,
-        message: 'Password changed. Other signed-in devices have been signed out.',
-        variant: AppAlertVariant.success,
+        title: 'Password changed',
+        message: 'Anywhere else you were signed in has been signed out. '
+            'You will need the new password there.',
       );
     }
   }

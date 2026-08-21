@@ -272,25 +272,10 @@ class _LinkBankScreenState extends State<LinkBankScreen> {
       child: Column(
         children: [
           const Spacer(),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 620),
-            curve: Curves.easeOutBack,
-            builder: (context, v, child) => Transform.scale(scale: v, child: child),
-            child: Container(
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(
-                color: AppColors.successTint(context),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                size: 48,
-                color: AppColors.success,
-              ),
-            ),
-          ),
+          // The scaling tick this replaces was a reasonable stand-in, but this
+          // is the moment the whole product turns on: a bank is connected and
+          // the app is about to have something to say. It is worth the asset.
+          const AppSuccessAnimation(size: 120),
           const SizedBox(height: AppSpacing.xxl),
           Text('Bank connected', style: text.headlineSmall),
           const SizedBox(height: AppSpacing.sm),

@@ -360,3 +360,134 @@ class _DeleteDialogBody extends StatelessWidget {
     );
   }
 }
+
+/// Shown after something final has happened.
+///
+/// The counterpart to [showAppDeleteDialog], and governed by one rule: a toast
+/// when the change is reversible and carries an Undo, this when the action is
+/// final. Both together would be two pieces of furniture saying the same
+/// thing, and an Undo underneath a celebration is a mixed message.
+///
+/// So this is deliberately rare. Setting a budget cap keeps its snackbar,
+/// because it has an Undo and the user is likely mid-flow. This is for the
+/// moments where something completed and there is nothing left to reverse.
+///
+/// One button, because there is no decision left to make. Dismissing is the
+/// only thing a person can do here, so it should not look like a choice
+/// between two.
+Future<void> showAppSuccessDialog(
+  BuildContext context, {
+  required String title,
+  String? message,
+  String buttonLabel = 'Done',
+}) {
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black.withValues(alpha: 0.5),
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (context, _, __) => _SuccessDialogBody(
+      title: title,
+      message: message,
+      buttonLabel: buttonLabel,
+    ),
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class _SuccessDialogBody extends StatelessWidget {
+  const _SuccessDialogBody({
+    required this.title,
+    required this.message,
+    required this.buttonLabel,
+  });
+
+  final String title;
+  final String? message;
+  final String buttonLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Material(
+            color: AppColors.surface(context),
+            borderRadius: BorderRadius.circular(26),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xxl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AppSuccessAnimation(size: 92),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          height: 1.25,
+                          color: AppColors.ink(context),
+                        ),
+                      ),
+                      if (message != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          message!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            height: 1.55,
+                            color: AppColors.muted(context),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.xxl),
+                      AppButton(
+                        label: buttonLabel,
+                        size: AppButtonSize.lg,
+                        expand: true,
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: AppColors.muted(context),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
