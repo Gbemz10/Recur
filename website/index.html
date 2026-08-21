@@ -2150,6 +2150,24 @@
     .wordmark { margin-top: 28px; }
   }
 
+  /* Small, centred under the word, in the ledger face because it is an
+     address rather than prose. Padded rather than sized up: the link needs
+     to clear the 24px WCAG 2.5.8 hit-area minimum, and at 13px the text
+     alone measures about 17px. */
+  .footer-contact { text-align: center; padding: 0 var(--edge); }
+  .footer-contact a {
+    display: inline-block;
+    padding: 12px 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-faint);
+    text-decoration: none;
+    transition: color 0.2s var(--ease);
+  }
+  .footer-contact a:hover { color: var(--forest-ink); }
+  .footer-contact a:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 2px; border-radius: 4px; }
+
   /* ------------------------------------------------------ reveal on scroll */
   .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
   .reveal.in { opacity: 1; transform: none; }
@@ -2747,6 +2765,13 @@
   <div class="wordmark" id="wordmark" aria-hidden="true">
     <span class="wordmark-base">recur</span>
     <span class="wordmark-lit">recur</span>
+  </div>
+
+  <!-- The one clickable thing left down here. It sits under the wordmark
+       rather than inside it, so the cursor light never touches it and it
+       keeps its own hit area. -->
+  <div class="footer-contact">
+    <a href="mailto:support@recur.website">support@recur.website</a>
   </div>
 </footer>
 
