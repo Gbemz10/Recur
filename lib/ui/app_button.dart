@@ -3,7 +3,24 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_dots_loader.dart';
 
-enum AppButtonVariant { primary, secondary, outline, ghost, destructive }
+enum AppButtonVariant {
+  primary,
+  secondary,
+  outline,
+  ghost,
+
+  /// Filled red. For a destructive action that is the whole point of the
+  /// screen it sits on, where nothing else competes with it.
+  destructive,
+
+  /// Outlined red. For a destructive action offered *beside* a safe one.
+  ///
+  /// A filled red button is the heaviest thing in any row it appears in, and
+  /// weight is what the eye and the thumb both follow. Next to a Cancel, that
+  /// makes the irreversible choice the easy one, which is backwards. Outlined,
+  /// it stays unmistakably dangerous while the safe action carries the weight.
+  destructiveOutline,
+}
 
 enum AppButtonSize { sm, md, lg }
 
@@ -77,6 +94,12 @@ class AppButton extends StatelessWidget {
           bg: AppColors.danger,
           fg: AppColors.white,
           border: null,
+          hoverBg: null
+        ),
+      AppButtonVariant.destructiveOutline => (
+          bg: Colors.transparent,
+          fg: AppColors.danger,
+          border: AppColors.danger.withValues(alpha: 0.45),
           hoverBg: null
         ),
     };

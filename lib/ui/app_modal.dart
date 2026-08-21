@@ -177,6 +177,9 @@ Future<bool> showAppConfirmDialog(
     // Destructive confirms get an emblem by default: the icon does the work of
     // slowing someone down before they have finished reading the sentence.
     icon: icon ?? (destructive ? Icons.warning_amber_rounded : null),
+    // Same rule as the delete dialog: a destructive confirm gives up the
+    // filled style, so the heaviest button in the row is never the one you
+    // cannot undo. Cancel stays outlined either way.
     actions: [
       AppButton(
         label: cancelLabel,
@@ -186,7 +189,7 @@ Future<bool> showAppConfirmDialog(
       ),
       AppButton(
         label: confirmLabel,
-        variant: destructive ? AppButtonVariant.destructive : AppButtonVariant.primary,
+        variant: destructive ? AppButtonVariant.destructiveOutline : AppButtonVariant.primary,
         expand: true,
         onPressed: () => Navigator.of(context).pop(true),
       ),
@@ -305,12 +308,19 @@ class _DeleteDialogBody extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xxl),
+                      // Both outlined, with colour carrying the difference.
+                      // The reference filled the destructive button, which
+                      // made the irreversible action the heaviest thing on
+                      // screen and put it under the resting thumb. Neither
+                      // button being the default is the honest arrangement:
+                      // this is a question, and the app should not be leaning
+                      // on either answer.
                       Row(
                         children: [
                           Expanded(
                             child: AppButton(
                               label: confirmLabel,
-                              variant: AppButtonVariant.destructive,
+                              variant: AppButtonVariant.destructiveOutline,
                               size: AppButtonSize.lg,
                               expand: true,
                               onPressed: () => Navigator.of(context).pop(true),
