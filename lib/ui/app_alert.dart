@@ -85,10 +85,21 @@ class AppAlert extends StatelessWidget {
 }
 
 /// Toast-style transient message. Call `showAppSnackbar(context, ...)`.
+///
+/// Every change a user makes should say so. Most of this app's actions move a
+/// row somewhere else or make it disappear, and a list that silently reshuffles
+/// leaves people wondering whether they tapped the thing they meant to.
+///
+/// [actionLabel] and [onAction] add a trailing button, which is what makes an
+/// undo possible: reversing a status change is one call, and offering it for a
+/// few seconds is cheaper for everyone than a confirmation dialog in front of
+/// every tap.
 void showAppSnackbar(
   BuildContext context, {
   required String message,
   AppAlertVariant variant = AppAlertVariant.info,
+  String? actionLabel,
+  VoidCallback? onAction,
 }) {
   final s = switch (variant) {
     AppAlertVariant.info => AppColors.neutral900,
@@ -96,7 +107,11 @@ void showAppSnackbar(
     AppAlertVariant.warning => AppColors.warning,
     AppAlertVariant.danger => AppColors.danger,
   };
-  ScaffoldMessenger.of(context).showSnackBar(
+  final messenger = ScaffoldMessenger.of(context);
+  // One at a time. Confirming three rows in a row should leave the third
+  // message on screen, not queue three and make the user wait them out.
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
     SnackBar(
       content:
           Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
@@ -104,6 +119,15 @@ void showAppSnackbar(
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.all(AppSpacing.lg),
+      // Long enough to read and reach, without parking over the tab bar.
+      duration: Duration(seconds: onAction != null ? 6 : 3),
+      action: (actionLabel != null && onAction != null)
+          ? SnackBarAction(
+              label: actionLabel,
+              textColor: Colors.white,
+              onPressed: onAction,
+            )
+          : null,
     ),
   );
 }

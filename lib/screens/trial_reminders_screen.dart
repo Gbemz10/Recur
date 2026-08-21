@@ -39,10 +39,16 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   }
 
   Future<void> _addReminder() async {
-    await showAppSheet<bool>(
+    final added = await showAppSheet<bool>(
       context,
       title: 'Add a trial reminder',
       builder: (_) => _AddTrialReminderSheet(store: widget.store),
+    );
+    if (added != true || !mounted) return;
+    showAppSnackbar(
+      context,
+      message: 'Trial reminder added',
+      variant: AppAlertVariant.success,
     );
   }
 
@@ -61,6 +67,15 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
 
     try {
       await widget.store.dismiss(trial);
+      if (!mounted) return;
+      // No undo offered: dismiss is one-way on the store, and a button that
+      // cannot keep its promise is worse than none. The dialog before it is
+      // what carries the weight here.
+      showAppSnackbar(
+        context,
+        message: '${trial.label} deleted',
+        variant: AppAlertVariant.success,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);

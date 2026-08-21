@@ -205,7 +205,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await widget.bankStore.unlink(bank);
       if (!mounted) return;
-      showAppSnackbar(context, message: 'Bank unlinked', variant: AppAlertVariant.info);
+      showAppSnackbar(
+        context,
+        message: '${bank.bankName} unlinked',
+        variant: AppAlertVariant.success,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);

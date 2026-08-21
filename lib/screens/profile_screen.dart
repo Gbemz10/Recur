@@ -83,7 +83,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final updated = await pickAndUploadAvatar(context);
     if (!mounted) return;
     setState(() => _uploadingPhoto = false);
-    if (updated != null) widget.profileStore.setProfile(updated);
+    if (updated == null) return;
+    widget.profileStore.setProfile(updated);
+    showAppSnackbar(context, message: 'Photo updated', variant: AppAlertVariant.success);
   }
 
   /// Single entry point for "change anything about who I am" — both the
@@ -101,6 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (updated == null || !mounted) return;
     widget.profileStore.setProfile(updated);
+    showAppSnackbar(context, message: 'Profile updated', variant: AppAlertVariant.success);
   }
 
   Future<void> _openChangePassword() async {

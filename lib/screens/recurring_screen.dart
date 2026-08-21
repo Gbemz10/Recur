@@ -126,11 +126,35 @@ class _RecurringScreenState extends State<RecurringScreen> {
     widget.section?.value = i;
   }
 
+  /// Where a row lands, said plainly.
+  ///
+  /// Every one of these moves the row to a different tab, so the row the user
+  /// tapped vanishes from under their finger. Without a word about where it
+  /// went, confirming a charge looks identical to deleting one.
+  String _statusMessage(Subscription sub, SubscriptionStatus status) => switch (status) {
+        SubscriptionStatus.active => '${sub.displayName} moved to Active',
+        SubscriptionStatus.cancelled => '${sub.displayName} moved to Cancelled',
+        SubscriptionStatus.unreviewed => '${sub.displayName} moved back to Review',
+      };
+
   Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
     if (_pendingIds.contains(sub.id)) return;
+    // Captured before the call, because the row is what we would put back.
+    final previous = sub.status;
     setState(() => _pendingIds.add(sub.id));
     try {
       await widget.store.updateStatus(sub, status);
+      if (!mounted) return;
+      showAppSnackbar(
+        context,
+        message: _statusMessage(sub, status),
+        variant: AppAlertVariant.success,
+        // Undo rather than a confirmation dialog in front of every tap. This
+        // is a status change, reversing it is the same call with the old
+        // value, and a review list is meant to be answered quickly.
+        actionLabel: 'Undo',
+        onAction: () => _updateStatus(sub, previous),
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);

@@ -59,11 +59,31 @@ class _SpendingScreenState extends State<SpendingScreen> {
     );
     if (result == null || !mounted) return;
 
+    final hadBudget = spend.hasBudget;
+    final previousLimit = spend.monthlyLimit;
+
     try {
       if (result.remove) {
         await widget.store.removeBudget(spend.category);
+        if (!mounted) return;
+        showAppSnackbar(
+          context,
+          message: 'Cap removed from ${spend.category.label.toLowerCase()}',
+          variant: AppAlertVariant.success,
+          actionLabel: hadBudget && previousLimit != null ? 'Undo' : null,
+          onAction: hadBudget && previousLimit != null
+              ? () => widget.store.setBudget(spend.category, previousLimit)
+              : null,
+        );
       } else {
         await widget.store.setBudget(spend.category, result.limit!);
+        if (!mounted) return;
+        showAppSnackbar(
+          context,
+          message:
+              '${formatNaira(result.limit!)} cap set for ${spend.category.label.toLowerCase()}',
+          variant: AppAlertVariant.success,
+        );
       }
     } on ApiException catch (e) {
       if (!mounted) return;
