@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -108,10 +110,12 @@ void showAppSnackbar(
     AppAlertVariant.danger => AppColors.danger,
   };
   final messenger = ScaffoldMessenger.of(context);
+  final duration = Duration(seconds: onAction != null ? 6 : 3);
+
   // One at a time. Confirming three rows in a row should leave the third
   // message on screen, not queue three and make the user wait them out.
   messenger.hideCurrentSnackBar();
-  messenger.showSnackBar(
+  final controller = messenger.showSnackBar(
     SnackBar(
       content:
           Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
@@ -120,7 +124,7 @@ void showAppSnackbar(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: const EdgeInsets.all(AppSpacing.lg),
       // Long enough to read and reach, without parking over the tab bar.
-      duration: Duration(seconds: onAction != null ? 6 : 3),
+      duration: duration,
       action: (actionLabel != null && onAction != null)
           ? SnackBarAction(
               label: actionLabel,
@@ -130,4 +134,22 @@ void showAppSnackbar(
           : null,
     ),
   );
+
+  // Close it ourselves rather than trusting SnackBar.duration.
+  //
+  // ScaffoldMessenger only arms its dismissal timer from inside its own build,
+  // and only once the entrance animation has completed. Hiding the previous
+  // snackbar immediately before showing this one interleaves those two
+  // animations in a way that can leave the timer unarmed, and then the message
+  // sits there forever. Observed: a toast still on screen nine seconds after a
+  // six second duration, surviving a tab change.
+  //
+  // The controller closes exactly this snackbar, so a later one replacing it
+  // is unaffected, and the closed future stops us touching one that has
+  // already gone.
+  var closed = false;
+  unawaited(controller.closed.then((_) => closed = true));
+  Timer(duration + const Duration(milliseconds: 250), () {
+    if (!closed) controller.close();
+  });
 }
