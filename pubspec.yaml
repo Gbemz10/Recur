@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Lottie, for the one place a motion asset earns its size: the moment before
+  # something is destroyed, where a beat of hesitation is the point.
+  lottie: ^3.1.2
   google_fonts: ^6.2.1
   http: ^1.2.2
   http_parser: ^4.0.2
@@ -31,3 +34,4 @@ flutter:
     # bundled logo or the brand's initial — never a network fetch — so this
     # folder is the only thing standing between a user and a real logo.
     - assets/logos/
+    - assets/animations/

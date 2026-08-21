@@ -720,7 +720,7 @@ class _BudgetResult {
   final bool remove;
 }
 
-/// Bottom sheet for setting or clearing one category's monthly cap.
+/// Setting or clearing one category's monthly cap.
 class _BudgetSheet extends StatefulWidget {
   const _BudgetSheet({required this.spend});
 
@@ -731,80 +731,108 @@ class _BudgetSheet extends StatefulWidget {
 }
 
 class _BudgetSheetState extends State<_BudgetSheet> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.spend.hasBudget ? widget.spend.monthlyLimit!.round().toString() : '',
-  );
-  String? _error;
+  late String _digits = widget.spend.hasBudget ? widget.spend.monthlyLimit!.round().toString() : '';
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  /// Suggested caps, built from what this category actually costs rather than
+  /// from round numbers. Someone spending ₦121,000 on food is not helped by
+  /// being offered ₦25,000, and a suggestion that is obviously wrong for you
+  /// makes the whole row something to scroll past.
+  List<double> get _presets {
+    final spent = widget.spend.spent;
+    if (spent <= 0) return const [10000, 25000, 50000, 100000];
+
+    // Round to a step that reads as a decision rather than a measurement.
+    double round(double v) {
+      final step = v >= 100000
+          ? 10000.0
+          : v >= 20000
+              ? 5000.0
+              : 1000.0;
+      return (v / step).round() * step;
+    }
+
+    final seen = <double>{};
+    for (final multiplier in const [0.8, 1.0, 1.25, 1.6]) {
+      final candidate = round(spent * multiplier);
+      if (candidate > 0) seen.add(candidate);
+    }
+    final list = seen.toList()..sort();
+    return list.take(4).toList();
+  }
+
+  String get _helper {
+    final spent = widget.spend.spent;
+    if (spent <= 0) return 'Nothing spent here yet this month';
+    return '${formatNaira(spent)} spent so far this month';
   }
 
   void _submit() {
-    final raw = _controller.text.replaceAll(RegExp(r'[^0-9.]'), '');
-    final value = double.tryParse(raw);
-    if (value == null || value <= 0) {
-      setState(() => _error = 'Enter an amount above zero.');
-      return;
-    }
+    final value = double.tryParse(_digits);
+    if (value == null || value <= 0) return;
     Navigator.of(context).pop(_BudgetResult(limit: value));
   }
 
   @override
   Widget build(BuildContext context) {
     final category = widget.spend.category;
+    final valid = (double.tryParse(_digits) ?? 0) > 0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The category names itself. "Monthly cap for loans" spends a whole
+        // line restating the screen you tapped to get here.
         Row(
           children: [
-            Icon(category.icon, size: 20, color: category.color(context)),
+            Icon(category.icon, size: 22, color: category.color(context)),
             const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                'Monthly cap for ${category.label.toLowerCase()}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            Text(
+              category.label,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.xs),
         Text(
-          'Recur emails you at 80% and again if you go over. It never blocks a payment.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
+          'Recur emails you at 80% and again if you go over.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.muted(context),
+                height: 1.5,
+              ),
         ),
+        const SizedBox(height: AppSpacing.lg),
+        Divider(height: 1, color: AppColors.border(context)),
         const SizedBox(height: AppSpacing.xl),
-        AppTextField(
-          controller: _controller,
-          label: 'Amount (₦)',
-          hint: 'e.g. 50000',
-          keyboardType: TextInputType.number,
-          errorText: _error,
-          onChanged: (_) {
-            if (_error != null) setState(() => _error = null);
-          },
+
+        AppAmountEntry(
+          value: _digits,
+          helper: _helper,
+          presets: _presets,
+          onChanged: (v) => setState(() => _digits = v),
         ),
-        const SizedBox(height: AppSpacing.xl),
+
+        const SizedBox(height: AppSpacing.lg),
         Row(
           children: [
             if (widget.spend.hasBudget) ...[
               Expanded(
                 child: AppButton(
                   label: 'Remove',
-                  variant: AppButtonVariant.secondary,
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.lg,
+                  expand: true,
                   onPressed: () => Navigator.of(context).pop(const _BudgetResult(remove: true)),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
             ],
             Expanded(
               child: AppButton(
                 label: widget.spend.hasBudget ? 'Save cap' : 'Set cap',
-                onPressed: _submit,
+                size: AppButtonSize.lg,
+                expand: true,
+                onPressed: valid ? _submit : null,
               ),
             ),
           ],

@@ -47,6 +47,18 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   }
 
   Future<void> _dismiss(TrialReminder trial) async {
+    // The X used to fire straight through. A trial reminder is hand-entered,
+    // it is the only record that the trial exists, and there is no undo, so
+    // one mis-tap on a 24px target lost something the user typed themselves.
+    final confirmed = await showAppDeleteDialog(
+      context,
+      title: 'Delete this reminder?',
+      message: '${trial.label} will stop being tracked. If it converts to a '
+          'paid subscription, Recur will still detect the charge.',
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed || !mounted) return;
+
     try {
       await widget.store.dismiss(trial);
     } on ApiException catch (e) {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import 'app_button.dart';
+import 'app_delete_animation.dart';
 
 /// Centred dialog: the "are you sure?" and "one short question" cases.
 ///
@@ -192,4 +193,160 @@ Future<bool> showAppConfirmDialog(
     ],
   );
   return result ?? false;
+}
+
+/// The confirmation before something is actually destroyed.
+///
+/// Distinct from [showAppConfirmDialog] with `destructive: true`, which covers
+/// actions that are merely consequential: marking a subscription cancelled
+/// changes a status and can be undone from the same screen. This one is for
+/// deletion, where the row stops existing.
+///
+/// Centred rather than left-aligned, and larger than an ordinary dialog,
+/// because the point is to interrupt. The animation is the reason it works: a
+/// static icon is read in the same glance as the title, whereas motion takes a
+/// beat to resolve, and that beat is the whole feature. It plays once and
+/// stops, so it reads as a reaction to what you just tapped rather than as a
+/// spinner that never resolves.
+Future<bool> showAppDeleteDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String confirmLabel = 'Delete',
+  String cancelLabel = 'Cancel',
+}) async {
+  final result = await showGeneralDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black.withValues(alpha: 0.5),
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (context, _, __) => _DeleteDialogBody(
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      cancelLabel: cancelLabel,
+    ),
+    transitionBuilder: (context, animation, _, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.94, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+  return result ?? false;
+}
+
+class _DeleteDialogBody extends StatelessWidget {
+  const _DeleteDialogBody({
+    required this.title,
+    required this.message,
+    required this.confirmLabel,
+    required this.cancelLabel,
+  });
+
+  final String title;
+  final String message;
+  final String confirmLabel;
+  final String cancelLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Material(
+            color: AppColors.surface(context),
+            borderRadius: BorderRadius.circular(26),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                    AppSpacing.xxl,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AppDeleteAnimation(size: 92),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                          height: 1.25,
+                          color: AppColors.ink(context),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.55,
+                          color: AppColors.muted(context),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              label: confirmLabel,
+                              variant: AppButtonVariant.destructive,
+                              size: AppButtonSize.lg,
+                              expand: true,
+                              onPressed: () => Navigator.of(context).pop(true),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: AppButton(
+                              label: cancelLabel,
+                              variant: AppButtonVariant.outline,
+                              size: AppButtonSize.lg,
+                              expand: true,
+                              onPressed: () => Navigator.of(context).pop(false),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // A second way out, in the corner the thumb is not resting in.
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: AppColors.muted(context),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

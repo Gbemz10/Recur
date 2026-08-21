@@ -191,13 +191,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _unlinkBank(LinkedBank bank) async {
-    final confirmed = await showAppConfirmDialog(
+    // A deletion rather than a status change: the connection stops existing,
+    // and getting it back means going through Mono's consent flow again.
+    final confirmed = await showAppDeleteDialog(
       context,
       title: 'Unlink ${bank.bankName}?',
       message:
           'Recur stops reading new transactions. Subscriptions already detected stay in your history.',
       confirmLabel: 'Unlink',
-      destructive: true,
     );
     if (!confirmed || !mounted) return;
 
