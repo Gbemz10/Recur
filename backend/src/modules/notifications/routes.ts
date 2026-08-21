@@ -4,6 +4,11 @@ import { env } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
 import { rateLimit } from '../../lib/rateLimit.js';
 import { runDueNotifications } from './job.js';
+import {
+  verifyUnsubscribeToken,
+  type UnsubscribeChannel,
+} from '../../lib/unsubscribeToken.js';
+import { renderUnsubscribePage } from '../../lib/unsubscribePage.js';
 import * as notificationsService from './service.js';
 import { MAX_LEAD_DAYS, MIN_LEAD_DAYS } from './service.js';
 
@@ -26,6 +31,20 @@ const updateLimit = rateLimit({
 });
 
 export async function notificationRoutes(app: FastifyInstance) {
+  // Gmail's one-click unsubscribe POSTs `List-Unsubscribe=One-Click` as
+  // application/x-www-form-urlencoded. Fastify only parses JSON out of the
+  // box, so without this the request is rejected with 415 before it reaches
+  // the handler, and the unsubscribe button silently fails in the one client
+  // this feature exists for. Verified: it returned 415 until this was added.
+  //
+  // The body is ignored on purpose. The token lives in the query string, so
+  // there is nothing here worth parsing, only a content type worth accepting.
+  app.addContentTypeParser(
+    ['application/x-www-form-urlencoded', 'text/plain'],
+    { parseAs: 'string' },
+    (_request, _body, done) => done(null, undefined),
+  );
+
   app.get('/notifications/preferences', { onRequest: [app.authenticate] }, async (request, reply) => {
     const preferences = await notificationsService.getPreferencesForApi(request.user.sub);
     return reply.send({ preferences });
@@ -44,6 +63,44 @@ export async function notificationRoutes(app: FastifyInstance) {
       return reply.send({ preferences });
     },
   );
+
+  /**
+   * One-click unsubscribe, per channel.
+   *
+   * Answers both GET and POST on the same path. GET is a person clicking the
+   * link in the footer; POST is RFC 8058, which is what Gmail and Apple Mail
+   * fire when someone uses their own unsubscribe button, and it must not
+   * require any interaction beyond that.
+   *
+   * No session. The token is the authority, and it can only ever turn one
+   * channel off for one user. Requiring a login here would defeat the point:
+   * the person most likely to click has already uninstalled the app.
+   */
+  const unsubscribe = async (token: string) => {
+    const parsed = verifyUnsubscribeToken(token);
+    if (!parsed) return null;
+    const patch =
+      parsed.channel === 'digest' ? { weeklyDigest: false } : { renewalReminders: false };
+    await notificationsService.updatePreferences(parsed.userId, patch);
+    return parsed.channel;
+  };
+
+  app.get('/notifications/unsubscribe', async (request, reply) => {
+    const token = (request.query as { t?: string }).t ?? '';
+    const channel = await unsubscribe(token);
+    return reply
+      .type('text/html; charset=utf-8')
+      .status(channel ? 200 : 400)
+      .send(renderUnsubscribePage(channel));
+  });
+
+  // Gmail and Apple Mail POST here with no body and expect a 2xx. They never
+  // render the response, so it stays deliberately empty.
+  app.post('/notifications/unsubscribe', async (request, reply) => {
+    const token = (request.query as { t?: string }).t ?? '';
+    const channel = await unsubscribe(token);
+    return reply.status(channel ? 204 : 400).send();
+  });
 
   /**
    * Drives one pass of the notification job.

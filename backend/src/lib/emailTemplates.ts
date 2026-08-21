@@ -429,6 +429,19 @@ function chargeRow(name: string, when: string, amount: number, last: boolean): s
 </tr>`;
 }
 
+/**
+ * The closing line on recurring mail, carrying a working unsubscribe link.
+ *
+ * "You can turn this off in Settings" was true but was not an unsubscribe: it
+ * asks someone to open an app, find a screen and flip a switch. The people
+ * most likely to want out are the least likely to still have the app.
+ */
+function unsubscribeFooter(url: string, what: string): string {
+  return `<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
+${escapeHtml(what)} <a href="${escapeHtml(url)}" style="color:${light.ink500}; text-decoration:underline;">Unsubscribe</a>, or manage every notification in the app under Settings.
+</p>`;
+}
+
 export interface RenewalReminderCharge {
   name: string;
   amount: number;
@@ -450,8 +463,9 @@ export interface RenewalReminderCharge {
 export function renderRenewalReminderEmail(input: {
   charges: RenewalReminderCharge[];
   leadDays: number;
+  unsubscribeUrl: string;
 }): RenderedEmail {
-  const { charges, leadDays } = input;
+  const { charges, leadDays, unsubscribeUrl } = input;
   const total = charges.reduce((sum, c) => sum + c.amount, 0);
   const one = charges.length === 1;
   const first = charges[0]!;
@@ -480,9 +494,7 @@ ${rows}
 
 ${divider()}
 
-<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
-Recur watches your statement, so this is what your bank is about to be asked for. If any of it is a surprise, that is the point of the email. You can turn these off in Settings.
-</p>
+${unsubscribeFooter(unsubscribeUrl, 'Recur watches your statement, so this is what your bank is about to be asked for. If any of it is a surprise, that is the point of the email.')}
 `,
     one
       ? `${naira(first.amount)} to ${first.name} on ${shortDay(first.chargeDate)}.`
@@ -496,7 +508,8 @@ Recur watches your statement, so this is what your bank is about to be asked for
     '',
     ...charges.map((c) => `${c.name} · ${shortDay(c.chargeDate)} · ${naira(c.amount)}`),
     '',
-    'If any of it is a surprise, that is the point of the email. You can turn these off in Settings.',
+    'If any of it is a surprise, that is the point of the email.',
+    `Unsubscribe from renewal reminders: ${unsubscribeUrl}`,
     '',
     'Recur, Lagos, Nigeria',
   ].join('\n');
@@ -529,8 +542,10 @@ export function renderWeeklyDigestEmail(input: {
   topCategories: DigestCategory[];
   activeCount: number;
   monthlyTotal: number;
+  unsubscribeUrl: string;
 }): RenderedEmail {
-  const { weekAhead, monthSoFar, monthLabel, topCategories, activeCount, monthlyTotal } = input;
+  const { weekAhead, monthSoFar, monthLabel, topCategories, activeCount, monthlyTotal, unsubscribeUrl } =
+    input;
   const weekTotal = weekAhead.reduce((sum, c) => sum + c.amount, 0);
 
   const title = weekAhead.length === 0
@@ -580,9 +595,7 @@ ${categoryRows}
 
 ${divider()}
 
-<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
-Sent every Monday. You can turn this off in Settings.
-</p>
+${unsubscribeFooter(unsubscribeUrl, 'Sent every Monday.')}
 `,
     weekAhead.length === 0
       ? `Nothing charges this week. ${naira(monthSoFar)} spent in ${monthLabel} so far.`
@@ -604,7 +617,8 @@ Sent every Monday. You can turn this off in Settings.
       ? topCategories.map((c) => `${c.label} · ${naira(c.spent)}`)
       : ['Nothing categorised yet this month.']),
     '',
-    'Sent every Monday. You can turn this off in Settings.',
+    'Sent every Monday.',
+    `Unsubscribe from the weekly digest: ${unsubscribeUrl}`,
     '',
     'Recur, Lagos, Nigeria',
   ].join('\n');
@@ -624,8 +638,9 @@ export function renderTrialReminderEmail(input: {
   label: string;
   endsAt: Date;
   daysAway: number;
+  unsubscribeUrl: string;
 }): RenderedEmail {
-  const { label, endsAt, daysAway } = input;
+  const { label, endsAt, daysAway, unsubscribeUrl } = input;
   const when =
     daysAway <= 0 ? 'today' : daysAway === 1 ? 'tomorrow' : `in ${daysAway} days`;
   const lede = `Your ${label} trial ends ${when}, on ${shortDay(endsAt)}. If you do nothing, it becomes a paid subscription.`;
@@ -638,9 +653,7 @@ ${headline(`${escapeHtml(label)} ends ${escapeHtml(when)}`)}
 
 ${divider()}
 
-<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">
-You asked Recur to remind you about this one. Once it charges, it will show up on its own. You can turn these off in Settings.
-</p>
+${unsubscribeFooter(unsubscribeUrl, 'You asked Recur to remind you about this one. Once it charges, it will show up on its own.')}
 `,
     lede,
   );

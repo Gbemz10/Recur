@@ -62,6 +62,15 @@ const schema = z.object({
   // .env.example). In production, set this to a comma-separated allowlist.
   CORS_ORIGIN: z.string().default('*'),
 
+  // Where this API is reachable from the public internet.
+  //
+  // Unsubscribe links point here rather than at the marketing site, because
+  // the link has to *do* something: flip a preference and say so. It is read
+  // out of an inbox on whatever device happens to be nearby, often long after
+  // the app was uninstalled, so it cannot be a deep link into the app and it
+  // cannot require a session.
+  PUBLIC_API_URL: z.string().default('https://recur-z7q0.onrender.com'),
+
   MONO_SECRET_KEY: z.string().optional().default(''),
   MONO_WEBHOOK_SECRET: z.string().optional().default(''),
   // Where Mono's hosted Connect Link page sends the user's browser/webview

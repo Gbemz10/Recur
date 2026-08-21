@@ -5,6 +5,12 @@ interface SendEmailInput {
   to: string;
   subject: string;
   text: string;
+  /**
+   * Extra SMTP headers. Used for List-Unsubscribe on recurring mail, which is
+   * what makes Gmail and Apple Mail show their own unsubscribe control at the
+   * top of the message rather than leaving it to a link in the footer.
+   */
+  headers?: Record<string, string>;
   /** Optional HTML alternative. Resend (and every real mail client) is
    *  happy with text-only, but a branded HTML version is what actually
    *  renders for the person reading it. Text stays as the fallback for
@@ -60,6 +66,7 @@ export async function sendEmail(input: SendEmailInput): Promise<void> {
       subject: input.subject,
       text: input.text,
       ...(input.html ? { html: input.html } : {}),
+      ...(input.headers ? { headers: input.headers } : {}),
     }),
   });
 

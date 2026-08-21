@@ -7,6 +7,7 @@ import {
   users,
 } from '../../db/schema.js';
 import { isEmailSuppressed, sendEmail } from '../../lib/email.js';
+import { unsubscribeUrl, type UnsubscribeChannel } from '../../lib/unsubscribeToken.js';
 import {
   renderRenewalReminderEmail,
   renderTrialReminderEmail,
@@ -57,6 +58,21 @@ function watMidnightIn(days: number, now: Date): Date {
   wat.setUTCHours(0, 0, 0, 0);
   wat.setUTCDate(wat.getUTCDate() + days);
   return new Date(wat.getTime() - WAT_OFFSET_MS);
+}
+
+/**
+ * The headers that make a mail client show its own unsubscribe button.
+ *
+ * List-Unsubscribe-Post is RFC 8058: it tells Gmail and Apple Mail they may
+ * POST the URL directly instead of opening it, so the reader never leaves
+ * their inbox. Only ever attached to recurring mail; transactional mail
+ * carries none, because there is nothing to unsubscribe from.
+ */
+function unsubscribeHeaders(url: string): Record<string, string> {
+  return {
+    'List-Unsubscribe': `<${url}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
 }
 
 export interface RunSummary {
@@ -168,10 +184,21 @@ async function runRenewalReminders(now: Date, summary: RunSummary): Promise<void
 
   for (const [userId, entry] of byUser) {
     entry.charges.sort((a, b) => a.chargeDate.getTime() - b.chargeDate.getTime());
-    const email = renderRenewalReminderEmail({ charges: entry.charges, leadDays: entry.leadDays });
+    const link = unsubscribeUrl(userId, 'reminders');
+    const email = renderRenewalReminderEmail({
+      charges: entry.charges,
+      leadDays: entry.leadDays,
+      unsubscribeUrl: link,
+    });
 
     try {
-      await sendEmail({ to: entry.email, subject: email.subject, text: email.text, html: email.html });
+      await sendEmail({
+        to: entry.email,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+        headers: unsubscribeHeaders(link),
+      });
       // Marked only after the send resolves. Marking first would lose the
       // reminder entirely on a provider error, and a missed charge warning is
       // worse than a repeated one.
@@ -222,14 +249,24 @@ async function runTrialReminders(now: Date, summary: RunSummary): Promise<void> 
     const daysAway = Math.floor((row.trialEndsAt.getTime() - now.getTime()) / 86400000);
     if (daysAway > row.leadDays) continue;
 
+    // Same channel as renewal reminders: both are gated by the renewalReminders
+    // preference, so they must unsubscribe together or the link would lie.
+    const link = unsubscribeUrl(row.userId, 'reminders');
     const email = renderTrialReminderEmail({
       label: row.label,
       endsAt: row.trialEndsAt,
       daysAway,
+      unsubscribeUrl: link,
     });
 
     try {
-      await sendEmail({ to: row.email, subject: email.subject, text: email.text, html: email.html });
+      await sendEmail({
+        to: row.email,
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+        headers: unsubscribeHeaders(link),
+      });
       await db
         .update(trialReminders)
         .set({ remindedAt: new Date() })
@@ -312,6 +349,7 @@ async function runWeeklyDigests(now: Date, summary: RunSummary): Promise<void> {
           0,
         );
 
+        const link = unsubscribeUrl(recipient.userId, 'digest');
         const email = renderWeeklyDigestEmail({
           weekAhead,
           monthSoFar: spending.total,
@@ -322,6 +360,7 @@ async function runWeeklyDigests(now: Date, summary: RunSummary): Promise<void> {
             .map((c) => ({ label: categoryLabel(c.category), spent: c.spent })),
           activeCount: active.length,
           monthlyTotal,
+          unsubscribeUrl: link,
         });
 
         await sendEmail({
@@ -329,6 +368,7 @@ async function runWeeklyDigests(now: Date, summary: RunSummary): Promise<void> {
           subject: email.subject,
           text: email.text,
           html: email.html,
+          headers: unsubscribeHeaders(link),
         });
         if (isEmailSuppressed(recipient.email)) summary.suppressed += 1;
         else summary.digestEmails += 1;
