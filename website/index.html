@@ -1998,32 +1998,156 @@
   .final .field-error { text-align: center; }
   .final .assurance { justify-content: center; }
 
-  /* ---------------------------------------------------------------- footer */
-  footer.site { border-top: 1px solid var(--line); padding: 52px 0 44px; }
-  .footer-grid { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 36px; }
-  .footer-brand .brand { margin-bottom: 12px; }
-  .footer-brand p { font-size: 14px; color: var(--ink-soft); max-width: 34ch; }
-  .footer-links { display: flex; gap: 56px; flex-wrap: wrap; }
-  .footer-col h4 {
-    font-family: var(--mono);
-    font-size: 11px;
+  /* ------------------------------------------------------------------ faq
+     Native <details>, not a div with a click handler. Disclosure is a solved
+     control: it is keyboard-operable, it announces its own expanded state,
+     and Ctrl+F finds text inside a closed one in current browsers. Rebuilding
+     that by hand is how a page ends up with an FAQ a screen reader cannot
+     open.
+     No boxes. Rules between items and nothing else, so the section reads as
+     a document rather than a stack of cards. */
+  .faq { border-top: 1px solid var(--line); }
+
+  .faq details { border-bottom: 1px solid var(--line); }
+
+  .faq summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 24px 0;
+    cursor: pointer;
+    font-size: 17.5px;
+    /* 700 read as a stack of headings rather than a list of questions. At
+       600 the question still leads its answer without competing with the
+       section head above it. */
     font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-bottom: 14px;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    list-style: none;
   }
-  /* Padding, not margin: the link's own hit area has to clear the 24px
-     WCAG 2.5.8 minimum, and at 14.5px these measured 23px unpadded. */
-  .footer-col a { display: block; font-size: 14.5px; color: var(--ink); text-decoration: none; padding: 4px 0; margin-bottom: 4px; font-weight: 600; }
-  .footer-col a:hover { color: var(--forest-ink); }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 3px; border-radius: 4px; }
+  .faq summary:hover { color: var(--forest-ink); }
+
+  /* A drawn sign, not a rotated chevron and not a glyph from the font. Two
+     rules that cross; the vertical one retracts when the item opens. */
+  .faq-sign {
+    position: relative;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    margin-top: 5px;
+  }
+  .faq-sign::before,
+  .faq-sign::after {
+    content: "";
+    position: absolute;
+    background: var(--ink-faint);
+    transition: transform 260ms var(--ease), background 200ms var(--ease);
+  }
+  .faq-sign::before { left: 0; right: 0; top: 6px; height: 2px; }
+  .faq-sign::after { top: 0; bottom: 0; left: 6px; width: 2px; }
+  details[open] .faq-sign::after { transform: scaleY(0); }
+  .faq summary:hover .faq-sign::before,
+  .faq summary:hover .faq-sign::after { background: var(--forest-ink); }
+
+  .faq-answer {
+    padding: 0 44px 26px 0;
+    margin-top: -4px;
+    font-size: 15.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 68ch;
+  }
+  .faq-answer strong { color: var(--ink); font-weight: 700; }
+
+  /* Height cannot be transitioned from `auto`, and animating it would thrash
+     layout on every toggle besides. The panel is revealed by <details>
+     itself; only its contents ease in, which is the part the eye reads. */
+  @keyframes faqOpen {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  details[open] .faq-answer { animation: faqOpen 260ms var(--ease); }
+
+  @media (max-width: 560px) {
+    .faq summary { font-size: 16px; gap: 16px; }
+    .faq-answer { padding-right: 8px; }
+  }
+
+  /* ---------------------------------------------------------------- footer
+     The link columns and the small lockup are gone: everything they pointed
+     at is one screen up in the nav, and a landing page that ends on a
+     directory ends on an anticlimax. What is left is the wordmark. */
+  /* No rule above it. With only the wordmark left there is nothing for a
+     border to separate, and the line was fencing the page off from its own
+     sign-off. */
+  footer.site { padding: 0 0 28px; }
+
+  /* ---- the wordmark ----
+     The one purely expressive object on the page, and it is at the very
+     bottom where expression costs nothing: everything the reader needed has
+     already been said above it.
+     Two stacked copies of the word. The lower one is set in a barely-there
+     ink so the shape reads as a watermark; the upper one carries the brand
+     gradient and is masked to a soft circle that follows the cursor. So the
+     word is only lit where the reader is actually looking. */
+  .wordmark {
+    position: relative;
+    margin-top: 40px;
+    padding: 0 var(--edge);
+    line-height: 0.78;
+    user-select: none;
+    /* Descenders on "recur" are none, so the box can crop tight. overflow
+       hidden keeps the mask's soft edge from painting outside the footer. */
+    overflow: hidden;
+  }
+  .wordmark span {
+    display: block;
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    /* Sized to fill the measure rather than to a type scale: this is a
+       graphic, and its job is to reach both edges. Derived, not guessed:
+       "recur" at this weight and tracking measures 2.32x its font-size, so
+       filling a viewport minus its two gutters wants ~38.5vw. Left uncapped
+       on purpose — a cap would strand the word in the middle of a wide
+       screen, which is the one thing this object must never do. */
+    font-size: 38.5vw;
+    text-align: center;
+  }
+  .wordmark-base { color: color-mix(in srgb, var(--ink) 11%, transparent); }
+
+  .wordmark-lit {
+    position: absolute;
+    left: var(--edge);
+    right: var(--edge);
+    top: 0;
+    background: linear-gradient(115deg, #0B6E4F 8%, #6E8F45 46%, #D9A441 88%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Parked off-canvas until the pointer arrives, so nothing is lit on
+       load and the effect is unmistakably a response to the reader. */
+    -webkit-mask-image: radial-gradient(circle 190px at var(--mx, -400px) var(--my, -400px),
+      #000 0%, rgba(0, 0, 0, 0.72) 42%, transparent 70%);
+    mask-image: radial-gradient(circle 190px at var(--mx, -400px) var(--my, -400px),
+      #000 0%, rgba(0, 0, 0, 0.72) 42%, transparent 70%);
+  }
+
+  /* Touch has no cursor to track, and a permanently unlit word is a worse
+     object than a quietly legible one. */
+  @media not all and (hover: hover) {
+    .wordmark-base { color: color-mix(in srgb, var(--ink) 16%, transparent); }
+    .wordmark-lit { display: none; }
+  }
 
   @media (max-width: 640px) {
     section { padding: 64px 0; }
     .section-head { margin-bottom: 36px; }
     .final { padding: 72px 0 64px; }
-    footer.site { padding: 40px 0 32px; }
-    .footer-links { gap: 36px; }
+    footer.site { padding: 0 0 20px; }
+    .wordmark { margin-top: 28px; }
   }
 
   /* ------------------------------------------------------ reveal on scroll */
@@ -2545,6 +2669,56 @@
     </div>
   </section>
 
+  <!-- =============================================================== FAQ
+       Placed immediately before the CTA, because these are the questions a
+       reader has left at the moment they are deciding whether to hand over
+       an email. Every answer says the true thing, including the two that are
+       limitations rather than features. -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>The questions people actually ask.</h2>
+      </div>
+
+      <div class="faq reveal">
+        <details>
+          <summary>Which banks does Recur work with?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">Recur connects through Mono, so it reaches most Nigerian banks and the major neobanks: GTBank, Zenith, Access, First Bank, UBA, Kuda, Opay, Moniepoint and the rest. If Mono supports your bank, Recur does. You link the account in about two minutes.</p>
+        </details>
+
+        <details>
+          <summary>How does Recur know a charge repeats?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">It reads your history for charges from the same merchant, at close to the same amount, on a rough schedule. <strong>Two matches is enough to flag it</strong>, and a third confirms the cycle. Recur handles the fact that the amount moves, which is why anything billed in dollars still gets caught even though the naira figure changes every month.</p>
+        </details>
+
+        <details>
+          <summary>Can Recur cancel a subscription for me?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">No, and it will not pretend otherwise. Cancelling means acting on your account with the merchant, which Recur has no access to. What it does instead is tell you the exact steps for that specific merchant, and then watch whether the charge actually stops. <strong>If it does not, you will hear about it</strong>, which is the part people usually find out about a year late.</p>
+        </details>
+
+        <details>
+          <summary>What if it labels something wrong?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">Correct it once and every future charge from that merchant follows. The same applies in reverse: mark something as not recurring and Recur stops counting it in your total. Nigerian bank narrations are messy enough that getting some of them wrong is a certainty, so fixing them is one tap rather than a support ticket.</p>
+        </details>
+
+        <details>
+          <summary>Can Recur move money out of my account?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">No. The connection is read-only by design, and no transfer, payment or withdrawal capability exists in it. You authenticate on Mono&rsquo;s own page, so <strong>Recur never sees or stores your bank login</strong>. You can unlink an account, or delete everything Recur holds on you, whenever you want.</p>
+        </details>
+
+        <details>
+          <summary>What about free trials?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">A trial leaves no transaction behind it, so there is nothing for Recur to find until the first charge lands, by which point you have already paid it. Log the trial once and Recur turns it into a deadline instead. It is the one thing on this page that asks something of you first.</p>
+        </details>
+
+        <details>
+          <summary>What will it cost?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">Recur is not open yet, and pricing is not settled. Everyone on the waitlist gets in free while it is finding its feet, and will know what it costs well before that changes. No card is involved in joining.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   <!-- ========================================================= FINAL CTA -->
   <section class="final" id="waitlist">
     <div class="wrap">
@@ -2567,40 +2741,12 @@
 </main>
 
 <footer class="site">
-  <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <a href="#" class="brand" aria-label="Recur, home">
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="mark-grad-footer" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stop-color="#0b6e4f"/>
-                <stop offset="0.5" stop-color="#6e8f45"/>
-                <stop offset="1" stop-color="#d9a441"/>
-              </linearGradient>
-            </defs>
-            <path d="M 50 18 A 32 32 0 1 1 18 50" stroke="url(#mark-grad-footer)" stroke-width="15.5" stroke-linecap="round" fill="none"/>
-            <path d="M 9 42 L 27 42 L 18 65 Z" fill="#d9a441"/>
-          </svg>
-          <span>recur</span>
-        </a>
-        <p>A ledger for every subscription quietly leaving your Nigerian bank account. Built to be read, not decoded.</p>
-      </div>
-
-      <div class="footer-links">
-        <div class="footer-col">
-          <h4>Product</h4>
-          <a href="#reveal">What it finds</a>
-          <a href="#upcoming">What it watches</a>
-          <a href="#security">Security</a>
-        </div>
-        <div class="footer-col">
-          <h4>Support</h4>
-          <a href="mailto:support@recur.website">Contact support</a>
-          <a href="#waitlist">Get early access</a>
-        </div>
-      </div>
-    </div>
+  <!-- Decorative, and marked so. The word is already in the brand link above
+       and in the page title; a screen reader reading "recur" a third time
+       gains nothing. -->
+  <div class="wordmark" id="wordmark" aria-hidden="true">
+    <span class="wordmark-base">recur</span>
+    <span class="wordmark-lit">recur</span>
   </div>
 </footer>
 
@@ -3187,6 +3333,49 @@
         });
         apply(+b.dataset.days);
       });
+    });
+  })();
+
+  // ---- the footer wordmark lights where the reader is pointing ----
+  //
+  // The lit copy of the word is masked to a soft circle; all this does is
+  // move that circle. Coordinates are relative to the wordmark's own box,
+  // because the mask resolves against the element, not the page.
+  //
+  // The listener sits on the footer rather than the word itself, so the
+  // light is already in the right place by the time the cursor reaches the
+  // letters, instead of snapping on at the boundary.
+  (function () {
+    var mark = document.getElementById('wordmark');
+    if (!mark) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    var lit = mark.querySelector('.wordmark-lit');
+    if (!lit) return;
+
+    var footer = document.querySelector('footer.site');
+    var queued = false, x = 0, y = 0;
+
+    function apply() {
+      queued = false;
+      lit.style.setProperty('--mx', x + 'px');
+      lit.style.setProperty('--my', y + 'px');
+    }
+
+    footer.addEventListener('mousemove', function (e) {
+      var r = mark.getBoundingClientRect();
+      x = e.clientX - r.left;
+      y = e.clientY - r.top;
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(apply);
+    });
+
+    // Park it well outside the box on the way out, rather than freezing a
+    // lit patch wherever the cursor happened to leave.
+    footer.addEventListener('mouseleave', function () {
+      lit.style.setProperty('--mx', '-400px');
+      lit.style.setProperty('--my', '-400px');
     });
   })();
 
