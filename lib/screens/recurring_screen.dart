@@ -455,13 +455,13 @@ class _RecurringScreenState extends State<RecurringScreen> {
               child: Row(
                 children: [
                   Text(
-                    dismissed.length == 1
-                        ? '1 dismissed as not a subscription'
-                        : '${dismissed.length} dismissed as not subscriptions',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: AppColors.muted(context)),
+                    'Dismissed',
+                    style: AppTypography.mono(
+                      size: 10.5,
+                      weight: FontWeight.w700,
+                      color: AppColors.muted(context),
+                      letterSpacing: 1.2,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   AnimatedRotation(
