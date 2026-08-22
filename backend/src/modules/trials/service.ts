@@ -50,6 +50,30 @@ export async function createTrialReminder(
   return serializeTrialReminder(created);
 }
 
+/**
+ * Puts a dismissed reminder back.
+ *
+ * `dismissedAt` was always a soft flag rather than a delete, so the row never
+ * went anywhere; nothing could clear it. That made the app's delete a one-way
+ * door, which is why it needed a confirmation dialog in front of it. With a
+ * way back, an undo is honest and the dialog is unnecessary friction.
+ */
+export async function restoreTrialReminder(userId: string, trialReminderId: string) {
+  const existing = await db.query.trialReminders.findFirst({
+    where: and(eq(trialReminders.id, trialReminderId), eq(trialReminders.userId, userId)),
+  });
+  if (!existing) throw AppError.notFound('Trial reminder not found');
+
+  const [updated] = await db
+    .update(trialReminders)
+    .set({ dismissedAt: null })
+    .where(eq(trialReminders.id, trialReminderId))
+    .returning();
+  if (!updated) throw AppError.notFound('Trial reminder not found');
+
+  return serializeTrialReminder(updated);
+}
+
 export async function dismissTrialReminder(userId: string, trialReminderId: string) {
   const existing = await db.query.trialReminders.findFirst({
     where: and(eq(trialReminders.id, trialReminderId), eq(trialReminders.userId, userId)),

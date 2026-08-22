@@ -108,4 +108,16 @@ class TrialStore extends ChangeNotifier {
       throw ApiException("Couldn't dismiss that reminder — try again.", code: 'CLIENT_ERROR');
     }
   }
+
+  /// Undoes a dismiss. `dismissedAt` was always a soft flag, so the row is
+  /// still there to clear.
+  Future<void> restore(TrialReminder trial) async {
+    try {
+      await apiClient.patch('/trials/${trial.id}/restore');
+      await load();
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException("Couldn't restore that reminder — try again.", code: 'CLIENT_ERROR');
+    }
+  }
 }

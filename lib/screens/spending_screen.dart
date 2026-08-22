@@ -69,7 +69,7 @@ class _SpendingScreenState extends State<SpendingScreen> {
         showAppSnackbar(
           context,
           message: 'Cap removed from ${spend.category.label.toLowerCase()}',
-          variant: AppAlertVariant.success,
+          variant: AppAlertVariant.info,
           actionLabel: hadBudget && previousLimit != null ? 'Undo' : null,
           onAction: hadBudget && previousLimit != null
               ? () => widget.store.setBudget(spend.category, previousLimit)

@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showAppSnackbar(
         context,
         message: '${bank.bankName} unlinked',
-        variant: AppAlertVariant.success,
+        variant: AppAlertVariant.info,
       );
     } on ApiException catch (e) {
       if (!mounted) return;

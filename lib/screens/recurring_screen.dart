@@ -156,7 +156,12 @@ class _RecurringScreenState extends State<RecurringScreen> {
       showAppSnackbar(
         context,
         message: _statusMessage(sub, status),
-        variant: AppAlertVariant.success,
+        // Green only when something was confirmed. Moving a row to Cancelled
+        // or dismissing it are not wins, and colouring them as though they
+        // were makes the colour meaningless everywhere else.
+        variant: status == SubscriptionStatus.active
+            ? AppAlertVariant.success
+            : AppAlertVariant.info,
         // Undo rather than a confirmation dialog in front of every tap. This
         // is a status change, reversing it is the same call with the old
         // value, and a review list is meant to be answered quickly.

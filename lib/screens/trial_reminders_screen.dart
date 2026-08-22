@@ -53,29 +53,32 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
   }
 
   Future<void> _dismiss(TrialReminder trial) async {
-    // The X used to fire straight through. A trial reminder is hand-entered,
-    // it is the only record that the trial exists, and there is no undo, so
-    // one mis-tap on a 24px target lost something the user typed themselves.
-    final confirmed = await showAppDeleteDialog(
-      context,
-      title: 'Delete this reminder?',
-      message: '${trial.label} will stop being tracked. If it converts to a '
-          'paid subscription, Recur will still detect the charge.',
-      confirmLabel: 'Delete',
-    );
-    if (!confirmed || !mounted) return;
-
+    // No confirmation dialog. Deleting a reminder is now reversible, and an
+    // undo the user can ignore costs less than a modal everyone has to answer.
+    // The dialog existed because dismiss was a one-way door; it is not one now.
     try {
       await widget.store.dismiss(trial);
       if (!mounted) return;
-      // No undo offered: dismiss is one-way on the store, and a button that
-      // cannot keep its promise is worse than none. The dialog before it is
-      // what carries the weight here.
       showAppSnackbar(
         context,
         message: '${trial.label} deleted',
-        variant: AppAlertVariant.success,
+        // Neutral, not green. Green reads as "that went well", which is a
+        // strange thing for the app to say about something being removed.
+        // Success colour is for things that succeeded, not for every action
+        // that happened to work.
+        variant: AppAlertVariant.info,
+        actionLabel: 'Undo',
+        onAction: () => _restore(trial),
       );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
+    }
+  }
+
+  Future<void> _restore(TrialReminder trial) async {
+    try {
+      await widget.store.restore(trial);
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);

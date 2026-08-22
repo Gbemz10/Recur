@@ -42,4 +42,10 @@ export async function trialRoutes(app: FastifyInstance) {
     const trialReminder = await trialsService.dismissTrialReminder(request.user.sub, id);
     return reply.send({ trialReminder });
   });
+
+  app.patch('/trials/:id/restore', { onRequest: [app.authenticate] }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const trialReminder = await trialsService.restoreTrialReminder(request.user.sub, id);
+    return reply.send({ trialReminder });
+  });
 }
