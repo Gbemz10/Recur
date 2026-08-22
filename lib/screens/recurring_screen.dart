@@ -150,8 +150,17 @@ class _RecurringScreenState extends State<RecurringScreen> {
     // Captured before the call, because the row is what we would put back.
     final previous = sub.status;
     setState(() => _pendingIds.add(sub.id));
+
+    // Started, not awaited. SubscriptionStore.updateStatus moves the row
+    // optimistically before it touches the network, so the list has already
+    // changed by the time this returns to us. Waiting for the request meant
+    // the row vanished instantly and the message explaining where it went
+    // arrived seconds later, which is the confusing half of both worlds. The
+    // store reverts on failure and the catch below replaces this message with
+    // the error, so an optimistic confirmation is never left standing.
+    final request = widget.store.updateStatus(sub, status);
+
     try {
-      await widget.store.updateStatus(sub, status);
       if (!mounted) return;
       showAppSnackbar(
         context,
@@ -159,15 +168,15 @@ class _RecurringScreenState extends State<RecurringScreen> {
         // Green only when something was confirmed. Moving a row to Cancelled
         // or dismissing it are not wins, and colouring them as though they
         // were makes the colour meaningless everywhere else.
-        variant: status == SubscriptionStatus.active
-            ? AppAlertVariant.success
-            : AppAlertVariant.info,
+        variant:
+            status == SubscriptionStatus.active ? AppAlertVariant.success : AppAlertVariant.info,
         // Undo rather than a confirmation dialog in front of every tap. This
         // is a status change, reversing it is the same call with the old
         // value, and a review list is meant to be answered quickly.
         actionLabel: 'Undo',
         onAction: () => _updateStatus(sub, previous),
       );
+      await request;
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);

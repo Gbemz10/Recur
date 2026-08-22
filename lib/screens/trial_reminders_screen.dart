@@ -56,8 +56,13 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
     // No confirmation dialog. Deleting a reminder is now reversible, and an
     // undo the user can ignore costs less than a modal everyone has to answer.
     // The dialog existed because dismiss was a one-way door; it is not one now.
+    // Same reasoning as the review list: TrialStore.dismiss removes the row
+    // locally before it calls the API, so the card is already gone. Awaiting
+    // the request first left a gap between the row vanishing and anything
+    // explaining it.
+    final request = widget.store.dismiss(trial);
+
     try {
-      await widget.store.dismiss(trial);
       if (!mounted) return;
       showAppSnackbar(
         context,
@@ -70,6 +75,7 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
         actionLabel: 'Undo',
         onAction: () => _restore(trial),
       );
+      await request;
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
