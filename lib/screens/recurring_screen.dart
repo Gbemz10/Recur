@@ -461,33 +461,23 @@ class _RecurringScreenState extends State<RecurringScreen> {
           _list(_cancelled),
         ],
         if (dismissed.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 0),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _showDismissed = !_showDismissed),
-              child: Row(
-                children: [
-                  Text(
-                    'Dismissed',
-                    style: AppTypography.mono(
-                      size: 10.5,
-                      weight: FontWeight.w700,
-                      color: AppColors.muted(context),
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  AnimatedRotation(
-                    turns: _showDismissed ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 180),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 18,
-                      color: AppColors.muted(context),
-                    ),
-                  ),
-                ],
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _showDismissed = !_showDismissed),
+            // Same header as Due soon and Later, count included. Collapsed, a
+            // bare "Dismissed" said nothing about how much was behind it, so
+            // anyone who closed the disclosure lost track of what was in there.
+            child: _sectionHeader(
+              'Dismissed',
+              dismissed.length,
+              trailing: AnimatedRotation(
+                turns: _showDismissed ? 0.5 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: AppColors.muted(context),
+                ),
               ),
             ),
           ),
@@ -500,7 +490,7 @@ class _RecurringScreenState extends State<RecurringScreen> {
     );
   }
 
-  Widget _sectionHeader(String label, int count, {bool accent = false}) {
+  Widget _sectionHeader(String label, int count, {bool accent = false, Widget? trailing}) {
     final color = accent ? AppColors.warning : AppColors.muted(context);
     return Padding(
       padding:
@@ -526,6 +516,10 @@ class _RecurringScreenState extends State<RecurringScreen> {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(child: Divider(color: AppColors.border(context))),
+          if (trailing != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            trailing,
+          ],
         ],
       ),
     );

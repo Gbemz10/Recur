@@ -103,8 +103,14 @@ void showAppSnackbar(
   String? actionLabel,
   VoidCallback? onAction,
 }) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   final s = switch (variant) {
-    AppAlertVariant.info => AppColors.neutral900,
+    // Grey rather than near-black. Black reads as an error banner on a light
+    // screen, and neutral900 on the dark background is 1.1:1 against it, which
+    // is a message you cannot see at all. Lifted in dark so the toast is a
+    // surface rather than a shadow; white text clears 9.4:1 on one and 6.3:1
+    // on the other.
+    AppAlertVariant.info => isDark ? AppColors.neutral600 : AppColors.neutral700,
     AppAlertVariant.success => AppColors.success,
     AppAlertVariant.warning => AppColors.warning,
     AppAlertVariant.danger => AppColors.danger,
