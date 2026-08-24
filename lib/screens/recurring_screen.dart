@@ -145,11 +145,43 @@ class _RecurringScreenState extends State<RecurringScreen> {
         SubscriptionStatus.dismissed => '${sub.displayName} dismissed',
       };
 
-  Future<void> _updateStatus(Subscription sub, SubscriptionStatus status) async {
-    if (_pendingIds.contains(sub.id)) return;
+  /// [isUndo] marks the reversal half of a status change, which is the same
+  /// call with the old value. It stays silent: the user just watched the row
+  /// go somewhere, tapped Undo, and watched it come back, so a second toast
+  /// announcing the return is narrating something they are already looking at
+  /// — and one carrying its own Undo turns a correction into a loop they have
+  /// to tap their way out of. Errors still speak; those are news.
+  Future<void> _updateStatus(
+    Subscription sub,
+    SubscriptionStatus status, {
+    bool isUndo = false,
+  }) async {
+    // The busy state, and the double-tap guard it doubles as, are for taps on
+    // a row. Undo is neither.
+    //
+    // The guard was swallowing it outright: the toast goes up the moment the
+    // change is applied, not when the PATCH lands, so the whole first second
+    // of Undo's life sits inside this row's own in-flight window and every tap
+    // in it returned here without doing anything. Tap it fast — which is how
+    // anyone taps Undo — and the row simply stayed where it had gone.
+    //
+    // Marking the row busy is wrong for the same reason. The reversal is
+    // already on screen before the network hears about it, so the spinner
+    // would land on a row that has finished moving and read as the app
+    // loading something it is not.
+    if (!isUndo) {
+      if (_pendingIds.contains(sub.id)) return;
+      setState(() => _pendingIds.add(sub.id));
+    } else {
+      // Clear the *first* change's busy mark rather than adding one. That
+      // request is still open — it is what the user is undoing — and leaving
+      // its mark standing brings the row back with both its buttons spinning,
+      // which is the app looking busy about something the user has already
+      // moved past.
+      setState(() => _pendingIds.remove(sub.id));
+    }
     // Captured before the call, because the row is what we would put back.
     final previous = sub.status;
-    setState(() => _pendingIds.add(sub.id));
 
     // Started, not awaited. SubscriptionStore.updateStatus moves the row
     // optimistically before it touches the network, so the list has already
@@ -162,26 +194,28 @@ class _RecurringScreenState extends State<RecurringScreen> {
 
     try {
       if (!mounted) return;
-      showAppSnackbar(
-        context,
-        message: _statusMessage(sub, status),
-        // Green only when something was confirmed. Moving a row to Cancelled
-        // or dismissing it are not wins, and colouring them as though they
-        // were makes the colour meaningless everywhere else.
-        variant:
-            status == SubscriptionStatus.active ? AppAlertVariant.success : AppAlertVariant.info,
-        // Undo rather than a confirmation dialog in front of every tap. This
-        // is a status change, reversing it is the same call with the old
-        // value, and a review list is meant to be answered quickly.
-        actionLabel: 'Undo',
-        onAction: () => _updateStatus(sub, previous),
-      );
+      if (!isUndo) {
+        showAppSnackbar(
+          context,
+          message: _statusMessage(sub, status),
+          // Green only when something was confirmed. Moving a row to Cancelled
+          // or dismissing it are not wins, and colouring them as though they
+          // were makes the colour meaningless everywhere else.
+          variant:
+              status == SubscriptionStatus.active ? AppAlertVariant.success : AppAlertVariant.info,
+          // Undo rather than a confirmation dialog in front of every tap. This
+          // is a status change, reversing it is the same call with the old
+          // value, and a review list is meant to be answered quickly.
+          actionLabel: 'Undo',
+          onAction: () => _updateStatus(sub, previous, isUndo: true),
+        );
+      }
       await request;
     } on ApiException catch (e) {
       if (!mounted) return;
       showAppSnackbar(context, message: e.message, variant: AppAlertVariant.danger);
     } finally {
-      if (mounted) setState(() => _pendingIds.remove(sub.id));
+      if (!isUndo && mounted) setState(() => _pendingIds.remove(sub.id));
     }
   }
 
@@ -534,6 +568,12 @@ class _RecurringScreenState extends State<RecurringScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
             child: SubscriptionTile(
+              // Keyed by the subscription, not by its slot. Without this the
+              // rows are matched positionally, so putting one back shifts
+              // every row below it onto a different element and each one
+              // re-resolves its logo — the whole list visibly redraws to
+              // return a single row.
+              key: ValueKey(items[i].id),
               subscription: items[i],
               shareOfSpend: total > 0 && !review ? items[i].monthlyEquivalent / total : null,
               showActions: review,
