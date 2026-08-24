@@ -111,11 +111,27 @@ class TrialStore extends ChangeNotifier {
 
   /// Undoes a dismiss. `dismissedAt` was always a soft flag, so the row is
   /// still there to clear.
+  ///
+  /// Optimistic, exactly like [dismiss] — the row goes back before the
+  /// request, not after it. It used to PATCH and then `load()`, which put the
+  /// whole tab through `isLoading` and refetched every reminder to return a
+  /// row the app was already holding: the list blinked into its skeleton and
+  /// back for one undo. Nothing here needs the server's copy — the row leaving
+  /// was the only change, and putting it back is the exact inverse.
   Future<void> restore(TrialReminder trial) async {
+    // Belt and braces against a double tap, which would otherwise leave the
+    // same reminder in the list twice until the next load.
+    if (_trialReminders.any((t) => t.id == trial.id)) return;
+    _trialReminders = [..._trialReminders, trial];
+    // Position needs no thought: `upcoming` sorts by end date, so the row
+    // lands back where it was.
+    notifyListeners();
+
     try {
       await apiClient.patch('/trials/${trial.id}/restore');
-      await load();
     } catch (e) {
+      _trialReminders = _trialReminders.where((t) => t.id != trial.id).toList();
+      notifyListeners();
       if (e is ApiException) rethrow;
       throw ApiException("Couldn't restore that reminder — try again.", code: 'CLIENT_ERROR');
     }
