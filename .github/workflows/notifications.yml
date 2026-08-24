@@ -20,6 +20,9 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    # See keep-alive.yml: a backstop under the curl budget below, so a hang
+    # ends by itself rather than sitting on a runner.
+    timeout-minutes: 6
     steps:
       - name: Trigger notification run
         env:
@@ -32,9 +35,11 @@ jobs:
           fi
           # --max-time is generous because Render's free tier cold-starts, and
           # a spun-down service can take most of a minute to answer the first
-          # request.
-          curl -fsS --max-time 120 \
-            --retry 5 --retry-delay 15 --retry-all-errors \
+          # request. --retry-max-time bounds the whole thing: curl resets the
+          # --max-time counter per retry, so without it an unreachable backend
+          # holds a runner for thirteen minutes before saying so.
+          curl -fsS --max-time 60 --retry-max-time 180 \
+            --retry 3 --retry-delay 20 --retry-all-errors \
             -X POST "$API_BASE/notifications/run" \
             -H "Authorization: Bearer $RUN_TOKEN" \
             -w "\nstatus: %{http_code}\n"

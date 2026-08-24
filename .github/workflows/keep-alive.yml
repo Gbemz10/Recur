@@ -1,26 +1,45 @@
 name: Keep Render backend alive
 
-# Render's free tier spins a service down after 15 minutes with no inbound
-# traffic, and the next request pays a ~30-60s cold-start penalty. Pinging
-# /health every 10 minutes keeps it under that threshold so it never sleeps.
-# Not officially supported by Render — just a standard, widely-used
-# workaround — and it eats into the workspace's 750 free instance-hours/month
-# (basically the whole month for one always-on service), so this only makes
-# sense if this is the only free service being kept warm on the account.
+# An uptime check, which is what this has turned out to be.
+#
+# It was written to defeat Render's free-tier spin-down: no inbound traffic
+# for 15 minutes puts a service to sleep, and the next request pays a ~30-60s
+# cold start. Measured on 24 Aug, this service does not sleep — left alone for
+# 22 minutes with no pings at all, it answered /health in 0.67s. So the pings
+# are not what is keeping it up.
+#
+# Every 30 minutes rather than every 10, because */10 was never really every
+# 10: GitHub drops scheduled runs under load and throttles short intervals
+# hardest, and only 388 of the first 1,559 slots ever fired — about one every
+# 40 minutes. Asking for less, and getting most of it, says the same thing
+# about whether the backend is up.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # A backstop, not the real limit — the curl budget below decides. This is
+    # here so a hang no runner can interrupt still ends by itself.
+    timeout-minutes: 6
     steps:
       - name: Ping /health
         run: |
           # Retry, because a spun-down service answers the first request with
           # a 503 while it boots. Without this the ping fails exactly when it
           # is doing its job, and emails a failure for waking the service up.
+          #
+          # --retry-max-time is what keeps that patience bounded. curl resets
+          # the --max-time counter on every retry, so five retries of two
+          # minutes each is a job that hangs for thirteen: run #388 on 24 Aug
+          # did exactly that, six attempts timing out end to end while the
+          # backend was down. The budget below reaches the same verdict in
+          # about three minutes. A warm service answers in under a second and
+          # a cold start in well under a minute, so nothing that was going to
+          # succeed needs longer.
           curl -fsS -o /dev/null -w "status: %{http_code}\n" \
-            --retry 5 --retry-delay 15 --retry-all-errors --max-time 120 \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            --max-time 60 --retry-max-time 180 \
             https://recur-z7q0.onrender.com/health
