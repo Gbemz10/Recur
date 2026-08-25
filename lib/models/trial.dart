@@ -48,6 +48,21 @@ class TrialReminder {
   bool get isDueSoon => daysUntilEnd >= 0 && daysUntilEnd <= 3;
   bool get isOverdue => daysUntilEnd < 0;
 
+  /// How long a passed reminder stays on the Trials tab.
+  ///
+  /// Three days of grace, then the reminder has done its job and stops being a
+  /// row you have to clear by hand. It used to sit in "Ending soon" for the
+  /// life of the install, red and unanswerable, because the app cannot know
+  /// whether you cancelled or let it convert.
+  static const graceDays = 3;
+
+  /// Past its end date by more than the grace period: off the Trials tab.
+  ///
+  /// Not deleted. The row stays on the server and Recur keeps watching the
+  /// statements for the charge — it just moves from something you are tracking
+  /// to something the app mentions quietly under the bell.
+  bool get isExpired => daysUntilEnd < -graceDays;
+
   /// Human-readable countdown, e.g. "Ends tomorrow".
   String get endsLabel {
     final d = daysUntilEnd;
@@ -55,5 +70,41 @@ class TrialReminder {
     if (d == 0) return 'Ends today';
     if (d == 1) return 'Ends tomorrow';
     return 'Ends in $d days';
+  }
+
+  /// The date line on a trial row.
+  ///
+  /// The three days either side of now get words instead of a date, because
+  /// "Expires today" is read at a glance and "Ends 24 Aug" has to be compared
+  /// against a calendar first — and those three are the only days where the
+  /// answer changes what you would do. Everything further out keeps the date,
+  /// which is the more useful form once the answer is "not yet".
+  ///
+  /// The tense follows the date rather than staying fixed: a trial that has
+  /// already ended expired, it does not end.
+  String get dateLabel {
+    final d = daysUntilEnd;
+    if (d == 0) return 'Expires today';
+    if (d == 1) return 'Expires tomorrow';
+    if (d == -1) return 'Expired yesterday';
+    return d < 0 ? 'Expired ${_shortDate(trialEndsAt)}' : 'Ends ${_shortDate(trialEndsAt)}';
+  }
+
+  static String _shortDate(DateTime d) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${d.day} ${months[d.month - 1]}';
   }
 }

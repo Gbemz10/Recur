@@ -42,6 +42,7 @@ class _TrialRemindersScreenState extends State<TrialRemindersScreen> {
     final added = await showAppSheet<bool>(
       context,
       title: 'Add a trial reminder',
+      inset: true,
       builder: (_) => _AddTrialReminderSheet(store: widget.store),
     );
     if (added != true || !mounted) return;
@@ -380,24 +381,6 @@ class _TrialReminderCard extends StatelessWidget {
     return AppColors.primaryInk(context);
   }
 
-  static String _endDate(DateTime d) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${d.day} ${months[d.month - 1]}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final color = _color(context);
@@ -448,7 +431,7 @@ class _TrialReminderCard extends StatelessWidget {
                         Icon(Icons.event_rounded, size: 12, color: AppColors.muted(context)),
                         const SizedBox(width: 4),
                         Text(
-                          'Ends ${_endDate(trial.trialEndsAt)}',
+                          trial.dateLabel,
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -534,7 +517,6 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
     if (_isDuplicate(label)) {
       final proceed = await showAppConfirmDialog(
         context,
-        title: 'Already tracking this trial',
         message: 'You already have a "$label" trial ending on ${_formatDate(_trialEndsAt)}. '
             'Add another one anyway?',
         confirmLabel: 'Add anyway',
@@ -632,26 +614,23 @@ class _AddTrialReminderSheetState extends State<_AddTrialReminderSheet> {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                label: 'Cancel',
-                variant: AppButtonVariant.ghost,
-                expand: true,
-                onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: AppButton(
-                label: 'Add reminder',
-                expand: true,
-                isLoading: _saving,
-                onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
-              ),
-            ),
-          ],
+        // Stacked, action first. Full-width targets, and the pair reads in the
+        // order of intent rather than sitting in a row where the one you
+        // probably want is the one furthest from your thumb.
+        AppButton(
+          label: 'Add reminder',
+          size: AppButtonSize.lg,
+          expand: true,
+          isLoading: _saving,
+          onPressed: _saving || _label.text.trim().isEmpty ? null : _submit,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.secondary,
+          size: AppButtonSize.lg,
+          expand: true,
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
         ),
       ],
     );

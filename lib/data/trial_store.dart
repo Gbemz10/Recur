@@ -21,10 +21,15 @@ class TrialStore extends ChangeNotifier {
 
   List<TrialReminder> get all => List.unmodifiable(_trialReminders);
 
-  /// Sorted soonest-first — the dashboard only ever wants to lead with
-  /// whichever trial is closest to converting.
+  /// What the Trials tab shows: soonest first, and nothing that expired.
+  ///
+  /// A reminder more than [TrialReminder.graceDays] past its end date is not
+  /// dropped from [all] — the notices behind the bell still mention it, and
+  /// the server still has the row — it just stops occupying a tab that is
+  /// meant to be a list of things you are still waiting on.
   List<TrialReminder> get upcoming {
-    final list = [..._trialReminders]..sort((a, b) => a.trialEndsAt.compareTo(b.trialEndsAt));
+    final list = _trialReminders.where((t) => !t.isExpired).toList()
+      ..sort((a, b) => a.trialEndsAt.compareTo(b.trialEndsAt));
     return list;
   }
 
