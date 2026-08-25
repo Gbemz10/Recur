@@ -6,7 +6,12 @@ import '../ui/ui.dart';
 
 /// Password creation, shown after the emailed code has been verified.
 ///
-/// The requirements are listed up front and tick live as they're met,
+/// One field, not two. A confirm box exists to catch a typo you cannot see,
+/// and the eye control already solves that — better, because it shows you the
+/// actual characters instead of asking you to reproduce the same mistake
+/// twice. Typing a long password a second time is also where people give up.
+///
+/// The requirements are stated up front and strike through as they're met,
 /// rather than being revealed as errors after a failed submit. Telling
 /// someone their password is wrong only once they've committed to it is a
 /// pointless bit of cruelty, and it's the main reason people abandon signup
@@ -33,24 +38,20 @@ class CreatePasswordScreen extends StatefulWidget {
 
 class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   final TextEditingController _password = TextEditingController();
-  final TextEditingController _confirm = TextEditingController();
 
   bool _obscure = true;
   bool _busy = false;
-  bool _submitted = false;
   String? _serverError;
 
   @override
   void initState() {
     super.initState();
     _password.addListener(() => setState(() {}));
-    _confirm.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _password.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -59,9 +60,8 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   bool get _longEnough => _value.length >= 8;
   bool get _hasLetter => RegExp(r'[A-Za-z]').hasMatch(_value);
   bool get _hasNumber => RegExp(r'[0-9]').hasMatch(_value);
-  bool get _matches => _value.isNotEmpty && _value == _confirm.text;
 
-  bool get _valid => _longEnough && _hasLetter && _hasNumber && _matches;
+  bool get _valid => _longEnough && _hasLetter && _hasNumber;
 
   /// 0–3. Deliberately coarse: a precise-looking strength meter implies a
   /// precision it doesn't have.
@@ -76,10 +76,9 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() {
-      _submitted = true;
-      _serverError = null;
-    });
+    setState(() => _serverError = null);
+    // The button is disabled until this holds, so this is a guard rather than
+    // a branch anyone reaches.
     if (!_valid) return;
 
     FocusScope.of(context).unfocus();
@@ -102,108 +101,121 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final confirmError =
-        _submitted && !_matches && _confirm.text.isNotEmpty ? 'Passwords do not match' : null;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-      ),
+      // The footer sits on the keyboard rather than behind it — same as the
+      // email and code screens.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xxl,
-            0,
-            AppSpacing.xxl,
-            AppSpacing.xxl,
-          ),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.isReset ? 'Set a new password' : 'Choose a password',
-                style: text.headlineSmall?.copyWith(letterSpacing: -0.4),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, 0, 0),
+                child: _BackButton(onPressed: () => Navigator.of(context).pop(false)),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text.rich(
-                TextSpan(
-                  style: text.bodyMedium?.copyWith(
-                    color: AppColors.muted(context),
-                    height: 1.5,
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.lg,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
                   ),
-                  children: [
-                    const TextSpan(text: 'This is how you will sign in to '),
-                    TextSpan(
-                      text: widget.email,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.isReset ? 'Set a new password' : 'Create your password',
+                        style: text.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
-                    const TextSpan(text: ' from now on.'),
-                  ],
+                      const SizedBox(height: AppSpacing.xl),
+                      AppTextField(
+                        controller: _password,
+                        label: 'Choose a password',
+                        prefixIcon: Icons.lock_outline_rounded,
+                        obscureText: _obscure,
+                        suffixIcon:
+                            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        onSuffixIconTap: () => setState(() => _obscure = !_obscure),
+                      ),
+                      if (_value.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _StrengthMeter(strength: _strength),
+                      ],
+                      const SizedBox(height: AppSpacing.md),
+                      AppPasswordRules(
+                        longEnough: _longEnough,
+                        hasLetter: _hasLetter,
+                        hasNumber: _hasNumber,
+                      ),
+                      if (_serverError != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded,
+                                size: 15, color: AppColors.danger),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                _serverError!,
+                                style: text.bodySmall?.copyWith(color: AppColors.danger),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxl),
-              AppTextField(
-                controller: _password,
-                label: 'Password',
-                hint: 'At least 8 characters',
-                prefixIcon: Icons.lock_outline_rounded,
-                obscureText: _obscure,
-                suffixIcon: _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                onSuffixIconTap: () => setState(() => _obscure = !_obscure),
-              ),
-              if (_value.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                _StrengthMeter(strength: _strength),
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                controller: _confirm,
-                label: 'Confirm password',
-                hint: 'Type it again',
-                prefixIcon: Icons.lock_outline_rounded,
-                obscureText: _obscure,
-                errorText: confirmError,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              _Requirement(met: _longEnough, label: 'At least 8 characters'),
-              _Requirement(met: _hasLetter, label: 'Contains a letter'),
-              _Requirement(met: _hasNumber, label: 'Contains a number'),
-              _Requirement(met: _matches, label: 'Both entries match'),
-              if (_serverError != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    const Icon(Icons.error_outline_rounded, size: 15, color: AppColors.danger),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        _serverError!,
-                        style: text.bodySmall?.copyWith(color: AppColors.danger),
-                      ),
-                    ),
-                  ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.lg,
                 ),
-              ],
-              const SizedBox(height: AppSpacing.xxl),
-              AppButton(
-                label: widget.isReset ? 'Update password' : 'Finish setup',
-                size: AppButtonSize.lg,
-                expand: true,
-                isLoading: _busy,
-                onPressed: _busy || !_valid ? null : _submit,
+                child: AppButton(
+                  label: widget.isReset ? 'Update password' : 'Done',
+                  size: AppButtonSize.lg,
+                  expand: true,
+                  isLoading: _busy,
+                  onPressed: _busy || !_valid ? null : _submit,
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The circle the email and code screens use.
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.track(context),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink(context)),
         ),
       ),
     );
@@ -256,48 +268,6 @@ class _StrengthMeter extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Requirement extends StatelessWidget {
-  const _Requirement({required this.met, required this.label});
-
-  final bool met;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            width: 17,
-            height: 17,
-            decoration: BoxDecoration(
-              color:
-                  met ? AppColors.success : Theme.of(context).colorScheme.surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              met ? Icons.check_rounded : Icons.remove_rounded,
-              size: 11,
-              color: met ? Colors.white : AppColors.muted(context),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

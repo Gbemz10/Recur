@@ -123,129 +123,187 @@ class _OtpScreenState extends State<OtpScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        backgroundColor: AppColors.background(context),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-      ),
+      // Same reasoning as the email screen: the footer sits on the keyboard
+      // rather than behind it, and doing that by hand is one padding.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xxl,
-            0,
-            AppSpacing.xxl,
-            AppSpacing.xxl,
-          ),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Enter your code',
-                style: text.headlineSmall?.copyWith(letterSpacing: -0.4),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.md, 0, 0),
+                child: _BackButton(onPressed: () => Navigator.of(context).pop(false)),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text.rich(
-                TextSpan(
-                  style: text.bodyMedium?.copyWith(
-                    color: AppColors.muted(context),
-                    height: 1.5,
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.lg,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
                   ),
-                  children: [
-                    const TextSpan(text: 'We emailed 6 digits to '),
-                    TextSpan(
-                      text: widget.email,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'We just sent you an email',
+                        style: text.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
-                    const TextSpan(
-                      text: '. Check your spam folder if it has not arrived.',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxxl),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text.rich(
+                        TextSpan(
+                          style: text.bodyMedium?.copyWith(
+                            color: AppColors.muted(context),
+                            height: 1.5,
+                          ),
+                          children: [
+                            const TextSpan(text: 'Enter the security code we sent to '),
+                            // Spelled out rather than masked. The most likely reason
+                            // a code has not arrived is a typo in the address, and
+                            // you cannot spot that in a row of asterisks.
+                            TextSpan(
+                              text: widget.email,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
 
-              // Boxes + the real field behind them.
-              Stack(
-                children: [
-                  // Rebuilds on text or focus change only, not on every
-                  // parent setState.
-                  AnimatedBuilder(
-                    animation: Listenable.merge([_controller, _focus]),
-                    builder: (context, _) => _CodeBoxes(
-                      value: _controller.text,
-                      length: _length,
-                      hasError: _error != null,
-                      focused: _focus.hasFocus,
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focus,
-                      autofocus: true,
-                      keyboardType: TextInputType.number,
-                      autofillHints: const [AutofillHints.oneTimeCode],
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(_length),
+                      // Boxes + the real field behind them.
+                      Stack(
+                        children: [
+                          // Rebuilds on text or focus change only, not on every
+                          // parent setState.
+                          AnimatedBuilder(
+                            animation: Listenable.merge([_controller, _focus]),
+                            builder: (context, _) => _CodeBoxes(
+                              value: _controller.text,
+                              length: _length,
+                              hasError: _error != null,
+                              focused: _focus.hasFocus,
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focus,
+                              autofocus: true,
+                              keyboardType: TextInputType.number,
+                              autofillHints: const [AutofillHints.oneTimeCode],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(_length),
+                              ],
+                              showCursor: false,
+                              enableInteractiveSelection: false,
+                              // Invisible without an Opacity layer.
+                              style: const TextStyle(
+                                color: Colors.transparent,
+                                fontSize: 1,
+                              ),
+                              cursorColor: Colors.transparent,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                                isDense: true,
+                                fillColor: Colors.transparent,
+                                filled: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      if (_error != null) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              size: 15,
+                              color: AppColors.danger,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                _error!,
+                                style: text.bodySmall?.copyWith(color: AppColors.danger),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
-                      showCursor: false,
-                      enableInteractiveSelection: false,
-                      // Invisible without an Opacity layer.
-                      style: const TextStyle(
-                        color: Colors.transparent,
-                        fontSize: 1,
-                      ),
-                      cursorColor: Colors.transparent,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                        isDense: true,
-                        fillColor: Colors.transparent,
-                        filled: true,
-                      ),
-                    ),
+
+                      const SizedBox(height: AppSpacing.xl),
+                      Center(child: _ResendCountdown(onResend: _onResend)),
+                    ],
                   ),
-                ],
-              ),
-
-              if (_error != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      size: 15,
-                      color: AppColors.danger,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        _error!,
-                        style: text.bodySmall?.copyWith(color: AppColors.danger),
-                      ),
-                    ),
-                  ],
                 ),
-              ],
-
-              const SizedBox(height: AppSpacing.xxl),
-
-              if (_busy)
-                const AppLoadingIndicator()
-              else
-                Center(child: _ResendCountdown(onResend: _onResend)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  0,
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                ),
+                // The code verifies itself on the sixth digit, so this is
+                // rarely the thing that submits it. It earns its place anyway:
+                // the number pad has no return key, and after a wrong code
+                // this is how you try the same digits again without clearing
+                // the field first.
+                // Listens to the controller rather than riding on setState.
+                // The screen deliberately does not rebuild on keystrokes — see
+                // the note at the top — so without this the button would still
+                // be disabled after the sixth digit was typed.
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => AppButton(
+                    label: 'Continue',
+                    size: AppButtonSize.lg,
+                    expand: true,
+                    isLoading: _busy,
+                    onPressed: _busy || _controller.text.length < _length ? null : _verify,
+                  ),
+                ),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The circle the email screen uses, pointing back instead of closing.
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.track(context),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink(context)),
         ),
       ),
     );
@@ -356,19 +414,36 @@ class _ResendCountdownState extends State<_ResendCountdown> {
 
   @override
   Widget build(BuildContext context) {
+    // The question is the label either way, so the line does not move or
+    // change shape when the timer runs out — only what it offers changes.
+    const question = "Didn't receive a code?";
+
     if (_left > 0) {
       return Text(
-        'Resend code in ${_left}s',
+        '$question Resend in ${_left}s',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted(context)),
       );
     }
-    return AppButton(
-      label: 'Resend code',
-      variant: AppButtonVariant.ghost,
-      onPressed: () {
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
         _run();
         widget.onResend();
       },
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Text(
+          question,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+            decoration: TextDecoration.underline,
+            decorationColor: AppColors.primary,
+          ),
+        ),
+      ),
     );
   }
 }

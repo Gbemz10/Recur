@@ -136,13 +136,23 @@ class AppButton extends StatelessWidget {
             Icon(icon, size: 18, color: fg),
             const SizedBox(width: AppSpacing.sm),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: _fontSize,
-              fontWeight: FontWeight.w600,
-              color: fg,
-              height: 1,
+          // Flexible, so a long label shortens rather than running out of
+          // the button. A fixed Text here overflows the moment the label is
+          // wide for the space — a full-width button on a narrow phone, or
+          // anyone with their text size turned up — and an overflow is a
+          // black-and-yellow stripe in debug and a clipped word in release.
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: _fontSize,
+                fontWeight: FontWeight.w600,
+                color: fg,
+                height: 1,
+              ),
             ),
           ),
           if (trailingIcon != null) ...[

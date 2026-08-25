@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data/api_client.dart';
+import 'data/profile_service.dart';
+import 'data/setup_flags.dart';
 import 'data/auth_service.dart';
 import 'data/banking_service.dart';
 import 'data/theme_controller.dart';
 import 'screens/app_shell.dart';
 import 'screens/auth_screen.dart';
+import 'screens/push_permission_screen.dart';
+import 'screens/choose_name_screen.dart';
 import 'screens/link_bank_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
@@ -69,10 +73,14 @@ class _RootFlow extends StatefulWidget {
   State<_RootFlow> createState() => _RootFlowState();
 }
 
-enum _Stage { splash, onboarding, auth, linkBank, app }
+enum _Stage { splash, onboarding, auth, chooseName, pushAsk, linkBank, app }
 
 class _RootFlowState extends State<_RootFlow> {
   _Stage _stage = _Stage.splash;
+
+  /// Set when the auth screen is reached by signing out rather than by
+  /// finishing onboarding.
+  bool _signedOut = false;
 
   /// A returning user who signs back in (after being logged out, e.g. by
   /// the session-storage key change or a genuinely expired refresh token)
@@ -81,7 +89,43 @@ class _RootFlowState extends State<_RootFlow> {
   /// to route straight to LinkBankScreen unconditionally, which looked like
   /// "all my data is gone" even though nothing was actually deleted, it was
   /// just hidden behind a link-bank screen the user had already completed.
+  /// Everything between "signed in" and "in the app", decided from state.
+  ///
+  /// Driven by what the account is missing rather than by which screen you
+  /// came from. Setting a name used to be one step of the signup chain, which
+  /// meant anyone who already had a password — an interrupted signup, or an
+  /// account made before that screen existed — signed in and never saw it,
+  /// and then wondered why the dashboard would not greet them.
   Future<void> _afterAuth() async {
+    if (await _needsName()) {
+      if (!mounted) return;
+      setState(() => _stage = _Stage.chooseName);
+      return;
+    }
+    await _afterName();
+  }
+
+  Future<bool> _needsName() async {
+    try {
+      final profile = await ProfileService.getProfile();
+      return (profile.displayName ?? '').trim().isEmpty;
+    } on ApiException {
+      // Cannot tell, so do not interrupt. A missing greeting is a smaller
+      // problem than a setup screen shown to someone who already answered it.
+      return false;
+    }
+  }
+
+  Future<void> _afterName() async {
+    if (!await SetupFlags.pushAsked()) {
+      if (!mounted) return;
+      setState(() => _stage = _Stage.pushAsk);
+      return;
+    }
+    await _afterSetup();
+  }
+
+  Future<void> _afterSetup() async {
     var hasActiveBank = false;
     try {
       final banks = await BankingService.listAccounts();
@@ -132,6 +176,22 @@ class _RootFlowState extends State<_RootFlow> {
           _Stage.auth => AuthScreen(
               key: const ValueKey('auth'),
               onAuthenticated: _afterAuth,
+              startInSignIn: _signedOut,
+              // Back to the carousel. Auth is a stage, not a route, so the
+              // close control needs somewhere to be sent.
+              onBack: () => setState(() => _stage = _Stage.onboarding),
+            ),
+          _Stage.chooseName => ChooseNameScreen(
+              key: const ValueKey('name'),
+              onDone: _afterName,
+            ),
+          _Stage.pushAsk => PushPermissionScreen(
+              key: const ValueKey('push'),
+              onDecided: (_) async {
+                // Asked once ever, whichever way it was answered.
+                await SetupFlags.markPushAsked();
+                await _afterSetup();
+              },
             ),
           _Stage.linkBank => LinkBankScreen(
               key: const ValueKey('link'),
@@ -139,7 +199,12 @@ class _RootFlowState extends State<_RootFlow> {
             ),
           _Stage.app => AppShell(
               key: const ValueKey('app'),
-              onSignOut: () => setState(() => _stage = _Stage.auth),
+              onSignOut: () => setState(() {
+                // Signing out is proof of an account, so the auth screen
+                // opens on sign-in rather than making them switch modes.
+                _signedOut = true;
+                _stage = _Stage.auth;
+              }),
             ),
         },
       ),

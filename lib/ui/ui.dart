@@ -20,6 +20,7 @@ export 'app_badge.dart';
 export 'app_alert.dart';
 export 'app_delete_animation.dart';
 export 'app_modal.dart';
+export 'app_password_rules.dart';
 export 'app_sheet.dart';
 export 'app_date_picker.dart';
 export 'app_nav.dart';
