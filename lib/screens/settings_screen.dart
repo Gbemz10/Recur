@@ -126,7 +126,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _confirmSignOut() async {
     final confirmed = await showAppConfirmDialog(
       context,
-      title: 'Sign out?',
       message: 'You will need your email and password to sign back in.',
       confirmLabel: 'Sign out',
       destructive: true,
@@ -140,7 +139,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _confirmDeleteAccount() async {
     final deleted = await showAppSheet<bool>(
       context,
-      title: 'Delete your account?',
+      // No sheet title: this one carries its own, centred under the emblem,
+      // like every other question the app asks.
+      inset: true,
+      showClose: true,
+      closeResult: false,
       builder: (_) => const _DeleteAccountSheet(),
     );
     if (deleted == true) {
@@ -193,12 +196,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _unlinkBank(LinkedBank bank) async {
     // A deletion rather than a status change: the connection stops existing,
     // and getting it back means going through Mono's consent flow again.
-    final confirmed = await showAppDeleteDialog(
+    final confirmed = await showAppConfirmDialog(
       context,
+      // Keeps its own title rather than the generic question: which bank is
+      // the whole point, and there is usually more than one linked.
       title: 'Unlink ${bank.bankName}?',
       message:
           'Recur stops reading new transactions. Subscriptions already detected stay in your history.',
       confirmLabel: 'Unlink',
+      destructive: true,
     );
     if (!confirmed || !mounted) return;
 
@@ -657,27 +663,38 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: AppColors.danger.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(14),
+        const SizedBox(height: AppSpacing.sm),
+        // The delete animation rather than the alert one. This is the end of
+        // the account, not a question about a status.
+        const Center(child: AppDeleteAnimation(size: 88)),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Delete your account?',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            height: 1.25,
+            color: AppColors.ink(context),
           ),
-          child: const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 23),
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           'This permanently removes your linked bank connections and everything '
           'Recur has detected. This cannot be undone.',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.muted(context), height: 1.5),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13.5,
+            height: 1.55,
+            color: AppColors.muted(context),
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
+        // The field keeps its own left-aligned label. A label belongs to the
+        // input under it, not to the centred sentence above it.
         AppTextField(
           controller: _password,
           label: 'Confirm your password',
@@ -702,27 +719,22 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                label: 'Cancel',
-                variant: AppButtonVariant.ghost,
-                expand: true,
-                onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: AppButton(
-                label: 'Delete account',
-                variant: AppButtonVariant.destructive,
-                expand: true,
-                isLoading: _deleting,
-                onPressed: _deleting || _password.text.isEmpty ? null : _delete,
-              ),
-            ),
-          ],
+        // Stacked, action first, same as every other question sheet.
+        AppButton(
+          label: 'Delete account',
+          variant: AppButtonVariant.destructive,
+          size: AppButtonSize.lg,
+          expand: true,
+          isLoading: _deleting,
+          onPressed: _deleting || _password.text.isEmpty ? null : _delete,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.secondary,
+          size: AppButtonSize.lg,
+          expand: true,
+          onPressed: _deleting ? null : () => Navigator.of(context).pop(false),
         ),
       ],
     );

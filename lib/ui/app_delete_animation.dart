@@ -3,7 +3,7 @@ import 'package:lottie/lottie.dart';
 
 import '../theme/app_colors.dart';
 
-/// The two motion assets the app uses, both played once.
+/// The motion assets the app uses, all played once.
 ///
 /// Wrapped rather than dropped inline at each call site so there is one place
 /// that decides how they behave: once, forward, no loop. A looping animation
@@ -24,6 +24,25 @@ class AppDeleteAnimation extends StatelessWidget {
       asset: 'assets/animations/delete.json',
       size: size,
       fallbackIcon: Icons.delete_outline_rounded,
+      fallbackColor: AppColors.danger,
+    );
+  }
+}
+
+/// Asks the question. Sits above a confirm dialog, where the beat it takes to
+/// resolve is the point: a static icon is read in the same glance as the
+/// title, motion is not.
+class AppAlertAnimation extends StatelessWidget {
+  const AppAlertAnimation({super.key, this.size = 92});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Once(
+      asset: 'assets/animations/alert.json',
+      size: size,
+      fallbackIcon: Icons.warning_amber_rounded,
       fallbackColor: AppColors.danger,
     );
   }

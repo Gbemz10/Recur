@@ -410,11 +410,19 @@ class SubscriptionDetailScreen extends StatelessWidget {
                 onPressed: () async {
                   final confirmed = await showAppConfirmDialog(
                     context,
-                    title: 'Mark as cancelled?',
+                    // No title of its own: "Are you sure?" asks the question
+                    // and the sentence below says what happens. A title that
+                    // repeated the button ("Mark as cancelled?" over a Mark
+                    // cancelled button) was using the loudest line on the
+                    // dialog to say the least.
                     message: 'We will stop counting ${subscription.displayName} in '
                         'your monthly total and let you know if it charges '
                         'you again.',
                     confirmLabel: 'Mark cancelled',
+                    // Red. It is the consequential answer on the sheet, and
+                    // the green it used to wear is the app's colour for
+                    // something having gone well.
+                    destructive: true,
                   );
                   if (confirmed && context.mounted) {
                     Navigator.of(context).pop(SubscriptionStatus.cancelled);

@@ -55,6 +55,7 @@ class _SpendingScreenState extends State<SpendingScreen> {
   Future<void> _editBudget(CategorySpend spend) async {
     final result = await showAppSheet<_BudgetResult>(
       context,
+      inset: true,
       builder: (_) => _BudgetSheet(spend: spend),
     );
     if (result == null || !mounted) return;
@@ -833,30 +834,25 @@ class _BudgetSheetState extends State<_BudgetSheet> {
         ),
 
         const SizedBox(height: AppSpacing.lg),
-        Row(
-          children: [
-            if (widget.spend.hasBudget) ...[
-              Expanded(
-                child: AppButton(
-                  label: 'Remove',
-                  variant: AppButtonVariant.outline,
-                  size: AppButtonSize.lg,
-                  expand: true,
-                  onPressed: () => Navigator.of(context).pop(const _BudgetResult(remove: true)),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Expanded(
-              child: AppButton(
-                label: widget.spend.hasBudget ? 'Save cap' : 'Set cap',
-                size: AppButtonSize.lg,
-                expand: true,
-                onPressed: valid ? _submit : null,
-              ),
-            ),
-          ],
+        // Stacked, like every other sheet's actions. Saving on top because it
+        // is what the sheet is for; removing the cap is the other thing you
+        // might do here, not the way out of it.
+        AppButton(
+          label: widget.spend.hasBudget ? 'Save cap' : 'Set cap',
+          size: AppButtonSize.lg,
+          expand: true,
+          onPressed: valid ? _submit : null,
         ),
+        if (widget.spend.hasBudget) ...[
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Remove',
+            variant: AppButtonVariant.outline,
+            size: AppButtonSize.lg,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(const _BudgetResult(remove: true)),
+          ),
+        ],
       ],
     );
   }
