@@ -110,6 +110,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final changed = await showAppSheet<bool>(
       context,
       title: 'Change password',
+      inset: true,
+      showClose: true,
+      closeResult: false,
       builder: (_) => const _ChangePasswordSheet(),
     );
     if (changed == true && mounted) {
@@ -177,12 +180,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    color: AppColors.ink(context),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    tooltip: 'Back',
-                  ),
+                  _BackButton(onPressed: () => Navigator.of(context).maybePop()),
+                  const SizedBox(width: AppSpacing.md),
                   Text(
                     'Profile',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.5),
@@ -216,34 +215,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : ListView(
                           padding: const EdgeInsets.fromLTRB(
                             AppSpacing.xl,
-                            0,
+                            AppSpacing.sm,
                             AppSpacing.xl,
                             AppSpacing.huge,
                           ),
                           children: [
-                            _IdentityCard(
+                            _IdentityHero(
                               profile: profile,
-                              active: active,
                               memberSince: _memberSinceLabel(profile.memberSince),
                               uploading: _uploadingPhoto,
                               onChangePhoto: _quickChangePhoto,
                             ),
-
                             const SizedBox(height: AppSpacing.xxl),
-                            const _SectionLabel('Your details'),
+
+                            // Only once there is something true to say. The
+                            // strip this replaced always rendered, so a new
+                            // account was met with "₦0 saved" — a number whose
+                            // only job is to report that nothing has happened.
+                            if (active > 0 || cancelled.isNotEmpty) ...[
+                              _StatStrip(
+                                active: active,
+                                cancelled: cancelled.length,
+                                savedMonthly: saved,
+                              ),
+                              const SizedBox(height: AppSpacing.xxl),
+                            ],
+
+                            // Actions, not facts. The name and the email used
+                            // to be listed again here under "Your details",
+                            // directly below the block already showing both.
+                            const _SectionLabel('Account'),
                             AppCard(
                               padding: EdgeInsets.zero,
                               child: Column(
                                 children: [
                                   _EditableRow(
-                                    label: 'Full name',
+                                    label: 'Name',
                                     value: profile.displayName ?? 'Not set',
                                     onTap: _openEditProfile,
-                                  ),
-                                  Divider(height: 1, color: AppColors.border(context)),
-                                  _EditableRow(
-                                    label: 'Email address',
-                                    value: profile.email,
                                   ),
                                   Divider(height: 1, color: AppColors.border(context)),
                                   _EditableRow(
@@ -254,17 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                             ),
-
-                            // Only when there is something to report. The
-                            // three stat tiles this replaced always rendered,
-                            // so a new account was greeted by "₦0 Saved / mo"
-                            // — a number whose only job is to say nothing has
-                            // happened yet.
-                            if (cancelled.isNotEmpty) ...[
-                              const SizedBox(height: AppSpacing.xxl),
-                              const _SectionLabel('What you have cancelled'),
-                              _SavedCard(count: cancelled.length, monthly: saved),
-                            ],
                           ],
                         ),
             ),
@@ -300,196 +298,202 @@ class _SectionLabel extends StatelessWidget {
 /// Who you are, as one block.
 ///
 /// The old version stacked a centred avatar, name, email and a pill, then
-/// three icon tiles below it — the arrangement every profile screen ships
-/// with. This keeps the photo prominent, because it is the one thing on the
-/// screen you actually came to change, and lets a single quiet line carry the
-/// account facts instead of spending three cards on them.
-class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({
+/// The account, said once and said large.
+///
+/// Centred, because there is one subject on this screen and it is you: a photo
+/// you came here to change, the name the app greets you by, and the address
+/// the account is keyed to. The facts that used to sit in a sentence under a
+/// divider are a chip now, which is enough weight for "joined in August".
+class _IdentityHero extends StatelessWidget {
+  const _IdentityHero({
     required this.profile,
-    required this.active,
     required this.memberSince,
     required this.uploading,
     required this.onChangePhoto,
   });
 
   final Profile profile;
-  final int active;
   final String memberSince;
   final bool uploading;
   final VoidCallback onChangePhoto;
 
   @override
   Widget build(BuildContext context) {
-    final tracking = active == 1 ? 'tracking 1 subscription' : 'tracking $active subscriptions';
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: AppAvatar(
-                      name: profile.displayLabel,
-                      imageUrl: profile.avatarUrl,
-                      size: 72,
-                    ),
-                  ),
-                  if (uploading)
-                    const Positioned.fill(
-                      child: Center(
-                        child: SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    right: 0,
-                    bottom: 2,
-                    child: Material(
-                      color: AppColors.primary,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: uploading ? null : onChangePhoto,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.surface(context), width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 13,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.displayLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
-                        color: AppColors.ink(context),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      profile.email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: AppColors.muted(context)),
-                    ),
-                  ],
+    return Column(
+      children: [
+        Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  width: 1.5,
                 ),
               ),
-            ],
+              child: AppAvatar(
+                name: profile.displayLabel,
+                imageUrl: profile.avatarUrl,
+                size: 96,
+              ),
+            ),
+            if (uploading)
+              const Positioned.fill(
+                child: Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            Positioned(
+              right: 2,
+              bottom: 4,
+              child: Material(
+                color: AppColors.primary,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: uploading ? null : onChangePhoto,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.background(context), width: 2.5),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, size: 15, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          profile.displayLabel,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.7,
+            height: 1.15,
+            color: AppColors.ink(context),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Divider(height: 1, color: AppColors.border(context)),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '$memberSince, $tracking.',
+        ),
+        const SizedBox(height: 4),
+        Text(
+          profile.email,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 13.5, color: AppColors.muted(context)),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.track(context),
+            borderRadius: AppRadius.fullBR,
+          ),
+          child: Text(
+            memberSince,
             style: TextStyle(
-              fontSize: 12.5,
-              height: 1.45,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: AppColors.muted(context),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-/// Appears only once there is something to show. Cancelling is the one thing
-/// the app asks people to do, so when it has happened it deserves a sentence
-/// rather than a tile reading zero.
-class _SavedCard extends StatelessWidget {
-  const _SavedCard({required this.count, required this.monthly});
+/// Three numbers, and only the ones that are true.
+///
+/// Saved earns a tile once anything has been cancelled; before that it would
+/// be a zero pretending to be a result.
+class _StatStrip extends StatelessWidget {
+  const _StatStrip({
+    required this.active,
+    required this.cancelled,
+    required this.savedMonthly,
+  });
 
-  final int count;
-  final double monthly;
+  final int active;
+  final int cancelled;
+  final double savedMonthly;
 
   @override
   Widget build(BuildContext context) {
+    final tiles = <Widget>[
+      _StatTile(value: '$active', label: active == 1 ? 'Tracking' : 'Tracking'),
+      if (cancelled > 0) _StatTile(value: '$cancelled', label: 'Cancelled'),
+      if (savedMonthly > 0)
+        _StatTile(value: formatNairaCompact(savedMonthly), label: 'Saved a month'),
+    ];
+
     return AppCard(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.13),
-              borderRadius: AppRadius.mdBR,
-            ),
-            child: const Icon(Icons.trending_down_rounded, size: 21, color: AppColors.success),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  count == 1 ? '1 subscription' : '$count subscriptions',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink(context),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${formatNairaCompact(monthly)} a month back in your pocket',
-                  style: TextStyle(fontSize: 12.5, color: AppColors.muted(context)),
-                ),
-              ],
-            ),
-          ),
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0)
+              SizedBox(
+                height: 34,
+                child: VerticalDivider(width: 1, color: AppColors.border(context)),
+              ),
+            Expanded(child: tiles[i]),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Picks a gallery image and uploads it, centralizing the error handling so
-/// a native-plugin-not-registered failure (the "photo library" error you
-/// get if the app is still running from before `image_picker` was added —
-/// hot reload/restart doesn't re-link new native plugins, only a full stop
-/// and `flutter run` does) reads as an actionable message instead of a
-/// generic one. Returns the updated [Profile] on success, null otherwise —
-/// callers just no-op on null since a snackbar has already explained why.
+class _StatTile extends StatelessWidget {
+  const _StatTile({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            color: AppColors.ink(context),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11.5, color: AppColors.muted(context)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shared by the header's camera badge and the edit sheet — both change the
+/// same photo, so they run the same picker and upload.
 Future<Profile?> pickAndUploadAvatar(BuildContext context) async {
   final picker = ImagePicker();
   final XFile? picked;
@@ -522,9 +526,6 @@ Future<Profile?> pickAndUploadAvatar(BuildContext context) async {
   }
 }
 
-/// Combined name + photo editor — the one place "who am I" gets changed,
-/// rather than splitting photo (camera badge) and name (a bare text field)
-/// across two disconnected interactions.
 class _EditProfileSheet extends StatefulWidget {
   const _EditProfileSheet({required this.profile});
 
@@ -669,10 +670,8 @@ class _ChangePasswordSheet extends StatefulWidget {
 class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   final TextEditingController _current = TextEditingController();
   final TextEditingController _next = TextEditingController();
-  final TextEditingController _confirm = TextEditingController();
 
   bool _obscure = true;
-  bool _submitted = false;
   bool _saving = false;
   String? _serverError;
 
@@ -681,14 +680,12 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     super.initState();
     _current.addListener(() => setState(() {}));
     _next.addListener(() => setState(() {}));
-    _confirm.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _current.dispose();
     _next.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -696,13 +693,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   bool get _longEnough => _newValue.length >= 8;
   bool get _hasLetter => RegExp(r'[A-Za-z]').hasMatch(_newValue);
   bool get _hasNumber => RegExp(r'[0-9]').hasMatch(_newValue);
-  bool get _matches => _newValue.isNotEmpty && _newValue == _confirm.text;
-  bool get _valid =>
-      _current.text.isNotEmpty && _longEnough && _hasLetter && _hasNumber && _matches;
+  bool get _valid => _current.text.isNotEmpty && _longEnough && _hasLetter && _hasNumber;
 
   Future<void> _save() async {
     setState(() {
-      _submitted = true;
       _serverError = null;
     });
     if (!_valid) return;
@@ -725,9 +719,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final confirmError =
-        _submitted && !_matches && _confirm.text.isNotEmpty ? 'Passwords do not match' : null;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,20 +744,15 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           prefixIcon: Icons.lock_reset_rounded,
           obscureText: _obscure,
         ),
-        const SizedBox(height: AppSpacing.lg),
-        AppTextField(
-          controller: _confirm,
-          label: 'Confirm new password',
-          hint: 'Type it again',
-          prefixIcon: Icons.lock_reset_rounded,
-          obscureText: _obscure,
-          errorText: confirmError,
+        const SizedBox(height: AppSpacing.md),
+        // The same line the signup screen uses, and no confirm box: the eye
+        // control shows the characters, which catches a typo better than
+        // asking someone to reproduce it.
+        AppPasswordRules(
+          longEnough: _longEnough,
+          hasLetter: _hasLetter,
+          hasNumber: _hasNumber,
         ),
-        const SizedBox(height: AppSpacing.lg),
-        _Requirement(met: _longEnough, label: 'At least 8 characters'),
-        _Requirement(met: _hasLetter, label: 'Contains a letter'),
-        _Requirement(met: _hasNumber, label: 'Contains a number'),
-        _Requirement(met: _matches, label: 'Both entries match'),
         if (_serverError != null) ...[
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -785,55 +771,12 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         const SizedBox(height: AppSpacing.xl),
         AppButton(
           label: 'Update password',
+          size: AppButtonSize.lg,
           expand: true,
           isLoading: _saving,
-          onPressed: _saving ? null : _save,
+          onPressed: _saving || !_valid ? null : _save,
         ),
       ],
-    );
-  }
-}
-
-/// Local copy of the same checklist row used in `CreatePasswordScreen` —
-/// Dart's `_`-privacy is per-file, not per-feature, so it can't be shared
-/// directly without promoting it to a public widget in `ui/`.
-class _Requirement extends StatelessWidget {
-  const _Requirement({required this.met, required this.label});
-
-  final bool met;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            width: 17,
-            height: 17,
-            decoration: BoxDecoration(
-              color: met ? AppColors.success : AppColors.track(context),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              met ? Icons.check_rounded : Icons.remove_rounded,
-              size: 11,
-              color: met ? Colors.white : AppColors.muted(context),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: met ? AppColors.inkSoft(context) : AppColors.muted(context),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -870,5 +813,29 @@ class _EditableRow extends StatelessWidget {
     );
     if (onTap == null) return row;
     return Material(color: Colors.transparent, child: InkWell(onTap: onTap, child: row));
+  }
+}
+
+/// The circle the auth screens use, so Profile's header matches the rest of
+/// the app rather than being the one place with a bare Material icon button.
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.track(context),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink(context)),
+        ),
+      ),
+    );
   }
 }
