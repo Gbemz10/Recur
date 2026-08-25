@@ -30,13 +30,16 @@
  * instead.
  */
 
-import { RECUR_MARK_PNG_BASE64 } from './emailAssets.js';
 
 /** Mirrors the Flutter app's AppColors light theme and the website's tokens. */
 const light = {
   bg: '#FAF9F4',
   card: '#FFFFFF',
   codeBg: '#FAF9F4',
+  // The code is the one thing in the email worth colouring: it is what the
+  // reader came for, and a tinted cell finds it faster than a grey one.
+  codeTint: '#EFF7F2',
+  codeBorder: '#BFE0CE',
   border: '#E8E9E0',
   borderStrong: '#D2D4C9',
   ink900: '#171A14',
@@ -53,6 +56,8 @@ const dark = {
   bg: '#10130F',
   card: '#191D16',
   codeBg: '#14180F',
+  codeTint: '#12241B',
+  codeBorder: '#2F5E46',
   border: '#2C3127',
   borderStrong: '#3E4238',
   ink900: '#F2F2EA',
@@ -63,11 +68,39 @@ const dark = {
   primary: '#3DBE8B',
 } as const;
 
+/**
+ * The app's brand gradient, flattened to three stops an email can use. `deep`
+ * doubles as the solid fallback: white text sits on it at better than 7:1,
+ * which the mid and warm stops cannot promise.
+ */
+const brand = {
+  deep: '#0B6E4F',
+  mid: '#2E8B57',
+  warm: '#C8A03A',
+} as const;
+
 const sansFont =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const monoFont = "'SF Mono', 'SFMono-Regular', 'Roboto Mono', 'Courier New', Courier, monospace";
 
-const MARK_SRC = `data:image/png;base64,${RECUR_MARK_PNG_BASE64}`;
+/**
+ * Hosted on the marketing site, not inlined and not on this backend.
+ *
+ * Three hosts were possible and only one of them works:
+ *
+ *   - A `data:` URI, which is what this used to be. Apple Mail renders it;
+ *     Gmail, Outlook.com and Yahoo strip it. Most recipients saw a broken
+ *     image where the logo should be.
+ *   - This API, which is on a free Render instance that sleeps after 15
+ *     idle minutes. Gmail fetches images through its own proxy exactly once
+ *     and caches the result — if that single fetch hits a cold start, the
+ *     logo is broken for that recipient for good.
+ *   - The website, which is static, on a CDN, and always warm.
+ *
+ * `www` rather than the apex, because the apex answers 308 and there is no
+ * reason to spend a redirect inside an image proxy.
+ */
+const MARK_SRC = 'https://www.recur.website/assets/brand/mark.png';
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -87,18 +120,44 @@ function preheader(text: string): string {
 }
 
 /**
- * The lockup. Rendered as a two-cell table rather than an inline-block pair,
- * because Outlook collapses inline-block and would stack the mark above the
- * wordmark. `mso-line-height-rule:exactly` stops Word from adding its own
- * leading around the wordmark and knocking it off the mark's centre line.
+ * The masthead: the mark and wordmark in white on the brand gradient, across
+ * the top of the card.
+ *
+ * The old header was a 34px mark on the page background, which meant every
+ * email opened on a cream rectangle with a small grey lockup and no colour
+ * anywhere — correct, and completely forgettable. A gradient band costs
+ * nothing in deliverability and is the one place the brand can actually
+ * appear.
+ *
+ * Gradients are a background-image, so anything that cannot render one falls
+ * back to `background-color` — deliberately the darker end of the gradient
+ * rather than a midpoint, since white text has to stay legible on it. Outlook
+ * on Windows gets the same treatment through the solid colour; no VML, which
+ * is a lot of markup to maintain for a decoration.
  */
-function lockup(): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+function masthead(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="masthead" style="background-color:${brand.deep}; background-image:linear-gradient(120deg, ${brand.deep} 0%, ${brand.mid} 55%, ${brand.warm} 100%); border-radius:18px 18px 0 0;">
 <tr>
-<td style="padding-right:10px; vertical-align:middle; line-height:0;">
-<img src="${MARK_SRC}" width="34" height="34" alt="Recur" style="display:block; width:34px; height:34px; border:0;" />
+<td style="padding:22px 30px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding-right:11px; vertical-align:middle; line-height:0;">
+<!--
+  The mark on a white chip, not straight onto the band. It is drawn in the
+  brand gradient itself, so green-on-green would have hidden most of it —
+  the chip is what makes it readable, and it reads as deliberate rather
+  than as a logo that failed to load.
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background-color:#FFFFFF; border-radius:10px; padding:6px; line-height:0;">
+<img src="${MARK_SRC}" width="26" height="26" alt="Recur" style="display:block; width:26px; height:26px; border:0;" />
+</td></tr>
+</table>
 </td>
-<td class="wordmark ink-900" style="vertical-align:middle; font-family:${sansFont}; font-size:24px; font-weight:800; letter-spacing:-1.08px; line-height:34px; mso-line-height-rule:exactly; color:${light.ink900};">recur</td>
+<td style="vertical-align:middle; font-family:${sansFont}; font-size:21px; font-weight:800; letter-spacing:-0.95px; line-height:30px; mso-line-height-rule:exactly; color:#FFFFFF;">recur</td>
+</tr>
+</table>
+</td>
 </tr>
 </table>`;
 }
@@ -117,7 +176,8 @@ function emailShell(bodyHtml: string, preheaderText: string): string {
   @media (prefers-color-scheme: dark) {
     .bg { background-color: ${dark.bg} !important; }
     .card { background-color: ${dark.card} !important; border-color: ${dark.border} !important; }
-    .code-cell { background-color: ${dark.codeBg} !important; border-color: ${dark.border} !important; }
+    .code-cell { background-color: ${dark.codeTint} !important; border-color: ${dark.codeBorder} !important; }
+    .accent-ink { color: ${dark.primary} !important; }
     .divider { border-color: ${dark.border} !important; }
     .ink-900, .wordmark { color: ${dark.ink900} !important; }
     .ink-600 { color: ${dark.ink600} !important; }
@@ -126,7 +186,7 @@ function emailShell(bodyHtml: string, preheaderText: string): string {
   }
   @media screen and (max-width: 480px) {
     .container { width: 100% !important; }
-    .card-pad { padding: 28px 22px !important; }
+    .card-pad { padding: 26px 20px 24px !important; }
   }
 </style>
 </head>
@@ -139,15 +199,10 @@ ${preheader(preheaderText)}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="container" style="max-width:472px;">
 
 <tr>
-<td style="padding-bottom:26px;">
-${lockup()}
-</td>
-</tr>
-
-<tr>
 <td class="card" style="background-color:${light.card}; border:1px solid ${light.border}; border-radius:18px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-<tr><td class="card-pad" style="padding:36px;">
+<tr><td style="line-height:0; font-size:0;">${masthead()}</td></tr>
+<tr><td class="card-pad" style="padding:34px 30px 32px;">
 ${bodyHtml}
 </td></tr>
 </table>
@@ -204,8 +259,8 @@ function codeDigits(code: string): string {
   const cells = code
     .split('')
     .map(
-      (digit) => `<td class="code-cell" width="46" style="width:46px; height:56px; background-color:${light.codeBg}; border:1px solid ${light.border}; border-radius:12px; text-align:center; vertical-align:middle;">
-<span class="ink-900" style="font-family:${monoFont}; font-size:25px; font-weight:700; letter-spacing:0.5px; color:${light.ink900};">${escapeHtml(digit)}</span>
+      (digit) => `<td class="code-cell" width="48" style="width:48px; height:60px; background-color:${light.codeTint}; border:1.5px solid ${light.codeBorder}; border-radius:14px; text-align:center; vertical-align:middle;">
+<span class="accent-ink" style="font-family:${monoFont}; font-size:27px; font-weight:700; letter-spacing:0.5px; color:${light.primary};">${escapeHtml(digit)}</span>
 </td>`,
     )
     .join('<td width="7" style="width:7px; line-height:1px; font-size:0;">&nbsp;</td>');
@@ -214,6 +269,7 @@ function codeDigits(code: string): string {
 <tr>${cells}</tr>
 </table>`;
 }
+
 
 /** A labelled key/value block, used for the sign-in details. */
 function detailRow(label: string, value: string, mono = false): string {
@@ -537,15 +593,21 @@ export interface DigestCategory {
  */
 export function renderWeeklyDigestEmail(input: {
   weekAhead: RenewalReminderCharge[];
-  monthSoFar: number;
-  monthLabel: string;
-  topCategories: DigestCategory[];
+  /**
+   * Still accepted, no longer shown. The digest is the week ahead and nothing
+   * else: a month-to-date total is a number you cannot act on, and it was
+   * doubling the length of the email to say so. The scheduler still computes
+   * and passes these, so dropping them from the payload is a separate change
+   * from dropping them from the design.
+   */
+  monthSoFar?: number;
+  monthLabel?: string;
+  topCategories?: DigestCategory[];
   activeCount: number;
   monthlyTotal: number;
   unsubscribeUrl: string;
 }): RenderedEmail {
-  const { weekAhead, monthSoFar, monthLabel, topCategories, activeCount, monthlyTotal, unsubscribeUrl } =
-    input;
+  const { weekAhead, activeCount, monthlyTotal, unsubscribeUrl } = input;
   const weekTotal = weekAhead.reduce((sum, c) => sum + c.amount, 0);
 
   const title = weekAhead.length === 0
@@ -558,12 +620,6 @@ export function renderWeeklyDigestEmail(input: {
 
   const rows = weekAhead
     .map((c, i) => chargeRow(c.name, shortDay(c.chargeDate), c.amount, i === weekAhead.length - 1))
-    .join('\n');
-
-  const categoryRows = topCategories
-    .map(
-      (c, i) => chargeRow(c.label, 'so far this month', c.spent, i === topCategories.length - 1),
-    )
     .join('\n');
 
   const html = emailShell(
@@ -582,24 +638,11 @@ ${rows}
 
 ${divider()}
 
-${eyebrow(`${monthLabel} so far`)}
-<p class="ink-900" style="margin:0 0 20px; font-family:${sansFont}; font-size:26px; font-weight:800; letter-spacing:-0.6px; color:${light.ink900};">${escapeHtml(naira(monthSoFar))}</p>
-
-${
-  topCategories.length > 0
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
-${categoryRows}
-</table>`
-    : `<p class="ink-500" style="margin:0; font-family:${sansFont}; font-size:13px; line-height:1.65; color:${light.ink500};">Nothing categorised yet this month.</p>`
-}
-
-${divider()}
-
 ${unsubscribeFooter(unsubscribeUrl, 'Sent every Monday.')}
 `,
     weekAhead.length === 0
-      ? `Nothing charges this week. ${naira(monthSoFar)} spent in ${monthLabel} so far.`
-      : `${naira(weekTotal)} charges this week. ${naira(monthSoFar)} spent in ${monthLabel} so far.`,
+      ? 'Nothing charges this week.'
+      : `${naira(weekTotal)} charges this week.`,
   );
 
   const text = [
@@ -611,11 +654,6 @@ ${unsubscribeFooter(unsubscribeUrl, 'Sent every Monday.')}
     ...(weekAhead.length > 0
       ? weekAhead.map((c) => `${c.name} · ${shortDay(c.chargeDate)} · ${naira(c.amount)}`)
       : []),
-    '',
-    `${monthLabel} so far: ${naira(monthSoFar)}`,
-    ...(topCategories.length > 0
-      ? topCategories.map((c) => `${c.label} · ${naira(c.spent)}`)
-      : ['Nothing categorised yet this month.']),
     '',
     'Sent every Monday.',
     `Unsubscribe from the weekly digest: ${unsubscribeUrl}`,

@@ -10,6 +10,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { subscriptionRoutes } from './modules/subscriptions/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { bankingRoutes } from './modules/banking/routes.js';
+import { brandRoutes } from './modules/brand/routes.js';
 import { webhookRoutes } from './modules/webhooks/routes.js';
 import { detectionRoutes } from './modules/detection/routes.js';
 import { waitlistRoutes } from './modules/waitlist/routes.js';
@@ -115,6 +116,7 @@ export function buildApp() {
   app.register(authRoutes);
   app.register(subscriptionRoutes);
   app.register(bankingRoutes);
+  app.register(brandRoutes);
   app.register(webhookRoutes);
   app.register(detectionRoutes);
   app.register(waitlistRoutes);
