@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/bank_store.dart';
 import '../data/profile_store.dart';
+import '../data/notice_read_store.dart';
 import '../data/spending_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
@@ -35,8 +38,22 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+/// [WidgetsBindingObserver] and the midnight timer are both about one thing:
+/// dates that describe *now*.
+///
+/// A trial row reads "Expires today" because the model asks DateTime.now()
+/// every time it is built — nothing is captured when the row is created, so
+/// the words are right whenever a frame is drawn. What the framework does not
+/// do is draw a frame because the clock moved. Left open across midnight, or
+/// backgrounded overnight and reopened, the shell would keep showing
+/// yesterday's wording until a tab change or a refresh happened to rebuild it.
+///
+/// So: rebuild once at midnight, and rebuild on resume, since a timer does not
+/// fire while the app is suspended and the phone may have been in a pocket for
+/// two days.
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
+  Timer? _dayRollover;
   final SubscriptionStore _store = SubscriptionStore();
   final TrialStore _trialStore = TrialStore();
   final ProfileStore _profileStore = ProfileStore();
@@ -46,6 +63,10 @@ class _AppShellState extends State<AppShell> {
   /// spending summary and the breakdown screen pushes on top of it, so both
   /// have to read one list that a budget edit updates once.
   final SpendingStore _spendingStore = SpendingStore();
+
+  /// Local, and owned here with the rest so the bell's badge and the
+  /// notifications page read the same instance.
+  final NoticeReadStore _noticeReadStore = NoticeReadStore();
 
   /// Five destinations, each answering one question.
   ///
@@ -93,7 +114,43 @@ class _AppShellState extends State<AppShell> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleDayRollover();
+  }
+
+  void _scheduleDayRollover() {
+    _dayRollover?.cancel();
+    final now = DateTime.now();
+    // Dart normalises day + 1 across month and year ends, so this is the next
+    // midnight whatever today happens to be.
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    _dayRollover = Timer(
+      // A second past the hour, so the rebuild cannot land on the boundary
+      // itself and compute the day it just left.
+      nextMidnight.difference(now) + const Duration(seconds: 1),
+      () {
+        if (mounted) setState(() {});
+        _scheduleDayRollover();
+      },
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // Cheap, and the only reliable catch for a phone that was asleep when the
+    // day turned. Reschedules too, since the timer that was pending is now
+    // measuring from the wrong midnight.
+    setState(() {});
+    _scheduleDayRollover();
+  }
+
+  @override
   void dispose() {
+    _dayRollover?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _recurringSection.dispose();
     _store.dispose();
     _trialStore.dispose();
@@ -115,6 +172,7 @@ class _AppShellState extends State<AppShell> {
             trialStore: _trialStore,
             profileStore: _profileStore,
             spendingStore: _spendingStore,
+            readStore: _noticeReadStore,
             onOpenTab: _goToTab,
           ),
           RecurringScreen(store: _store, section: _recurringSection),

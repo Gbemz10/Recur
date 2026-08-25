@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart' show formatNaira, formatNairaCompact;
+import '../data/notice_read_store.dart';
+import '../data/notices.dart';
 import '../data/profile_store.dart';
 import '../data/spending_store.dart';
 import '../data/subscription_store.dart';
 import '../data/trial_store.dart';
 import '../models/spending.dart';
 import '../models/subscription.dart';
-import '../models/trial.dart';
 import '../theme/recur_brand.dart';
 import '../ui/ui.dart';
+import '../widgets/insight_strips.dart';
 import 'app_shell.dart' show AppTab;
+import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'subscription_detail_screen.dart';
 
@@ -33,6 +36,7 @@ class DashboardScreen extends StatefulWidget {
     required this.trialStore,
     required this.profileStore,
     required this.spendingStore,
+    required this.readStore,
     required this.onOpenTab,
   });
 
@@ -40,6 +44,7 @@ class DashboardScreen extends StatefulWidget {
   final TrialStore trialStore;
   final ProfileStore profileStore;
   final SpendingStore spendingStore;
+  final NoticeReadStore readStore;
 
   /// Switches the shell to another destination. Home is a set of doorways, so
   /// almost every card takes one.
@@ -66,8 +71,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  List<Listenable> get _stores =>
-      [widget.store, widget.trialStore, widget.profileStore, widget.spendingStore];
+  List<Listenable> get _stores => [
+        widget.store,
+        widget.trialStore,
+        widget.profileStore,
+        widget.spendingStore,
+        // So the badge drops the moment a notice is read on the page pushed
+        // over this one.
+        widget.readStore,
+      ];
 
   void _onChange() {
     if (mounted) setState(() {});
@@ -96,18 +108,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return list.take(3).toList();
   }
 
-  List<Subscription> get _thisWeek {
-    final list = _active.where((s) => s.isDueSoon).toList()..sort(_byUrgency);
-    return list;
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotificationsScreen(
+          store: widget.store,
+          trialStore: widget.trialStore,
+          readStore: widget.readStore,
+          onOpenTab: widget.onOpenTab,
+        ),
+      ),
+    );
   }
-
-  double get _thisWeekTotal => _thisWeek.fold(0.0, (sum, s) => sum + s.amount);
-
-  List<Subscription> get _priceChanges =>
-      _active.where((s) => s.hasPriceChange && s.priceIncreased).toList();
-
-  List<TrialReminder> get _trialsDueSoon =>
-      widget.trialStore.upcoming.where((t) => t.isDueSoon || t.isOverdue).toList();
 
   Future<void> _openDetail(Subscription sub) async {
     await Navigator.of(context).push<SubscriptionStatus>(
@@ -156,7 +168,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.huge),
           children: [
-            _Greeting(profileStore: widget.profileStore, store: widget.store),
+            _Greeting(
+              profileStore: widget.profileStore,
+              store: widget.store,
+              noticeCount:
+                  Notices.from(widget.store, widget.trialStore).unreadCount(widget.readStore.read),
+              onOpenNotifications: _openNotifications,
+            ),
             const SizedBox(height: AppSpacing.lg),
 
             _HeroTotal(
@@ -165,33 +183,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: () => widget.onOpenTab(AppTab.recurring),
             ),
 
-            // Only ever appears when something is genuinely imminent. A
-            // permanent banner is wallpaper.
-            if (_thisWeek.isNotEmpty) ...[
-              gap,
-              _AttentionStrip(
-                total: _thisWeekTotal,
-                subs: _thisWeek,
-                onTap: () => widget.onOpenTab(AppTab.recurring),
-              ),
-            ],
-
-            if (_priceChanges.isNotEmpty) ...[
-              gap,
-              _PriceChangeStrip(
-                subs: _priceChanges,
-                onTap: () => _openDetail(_priceChanges.first),
-              ),
-            ],
-
-            if (_trialsDueSoon.isNotEmpty) ...[
-              gap,
-              _TrialStrip(
-                trials: _trialsDueSoon,
-                onTap: () => widget.onOpenTab(AppTab.trials),
-              ),
-            ],
-
+            // The imminent-charge, price-rise and trial alerts used to sit
+            // here. They are behind the bell now: they made Home longer the
+            // more there was to say, pushing the total — the thing this
+            // screen exists for — down the page exactly when the month was
+            // busiest.
             gap,
             _SpendingCard(
               store: widget.spendingStore,
@@ -200,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             if (_review.isNotEmpty) ...[
               gap,
-              _ReviewNudge(
+              ReviewNudge(
                 count: _review.length,
                 onTap: () => widget.onOpenTab(AppTab.recurring, section: 1),
               ),
@@ -232,13 +228,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 /// already listens to it, so there is one load for the tab rather than one
 /// per widget that happens to show a face.
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.profileStore, required this.store});
+  const _Greeting({
+    required this.profileStore,
+    required this.store,
+    required this.noticeCount,
+    required this.onOpenNotifications,
+  });
 
   final ProfileStore profileStore;
 
   /// ProfileScreen shows subscription stats alongside the account, so it
   /// needs the same shared list every other tab reads.
   final SubscriptionStore store;
+
+  final int noticeCount;
+  final VoidCallback onOpenNotifications;
 
   String get _partOfDay {
     final hour = DateTime.now().hour;
@@ -282,6 +286,10 @@ class _Greeting extends StatelessWidget {
               ],
             ),
           ),
+          // Bell first, then the face. The alerts are the thing you might
+          // have arrived to check; the account is where you go on purpose.
+          NotificationBell(count: noticeCount, onTap: onOpenNotifications),
+          const SizedBox(width: AppSpacing.xs),
           GestureDetector(
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -439,159 +447,6 @@ class _SectionHeader extends StatelessWidget {
 /// A coloured strip for something imminent. One shape, three meanings,
 /// separated only by colour and copy, so the page has a consistent way of
 /// saying "look at this".
-class _AlertStrip extends StatelessWidget {
-  const _AlertStrip({
-    required this.color,
-    required this.icon,
-    required this.title,
-    this.detail,
-    required this.onTap,
-  });
-
-  final Color color;
-  final IconData icon;
-  final String title;
-
-  /// Optional. A strip whose title already says the whole thing does not need
-  /// a second line explaining it.
-  final String? detail;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.09),
-          borderRadius: AppRadius.lgBR,
-          border: Border.all(color: color.withValues(alpha: 0.26)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration:
-                  BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: AppRadius.mdBR),
-              child: Icon(icon, size: 19, color: color),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(color: AppColors.ink(context)),
-                  ),
-                  if (detail != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      detail!,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppColors.muted(context)),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.muted(context)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AttentionStrip extends StatelessWidget {
-  const _AttentionStrip({required this.total, required this.subs, required this.onTap});
-
-  final double total;
-  final List<Subscription> subs;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final first = subs.first;
-    return _AlertStrip(
-      color: AppColors.warning,
-      icon: Icons.schedule_rounded,
-      title: '${formatNaira(total)} hits this week',
-      detail: '${first.displayName} first, ${first.nextChargeLabel.toLowerCase()}',
-      onTap: onTap,
-    );
-  }
-}
-
-class _PriceChangeStrip extends StatelessWidget {
-  const _PriceChangeStrip({required this.subs, required this.onTap});
-
-  final List<Subscription> subs;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final first = subs.first;
-    return _AlertStrip(
-      color: AppColors.danger,
-      icon: Icons.trending_up_rounded,
-      title: subs.length == 1 ? '${first.displayName} went up' : '${subs.length} prices went up',
-      detail: subs.length == 1
-          ? 'Now ${formatNaira(first.amount)}, was ${formatNaira(first.previousAmount!)}'
-          : 'Tap to see what changed and by how much',
-      onTap: onTap,
-    );
-  }
-}
-
-class _TrialStrip extends StatelessWidget {
-  const _TrialStrip({required this.trials, required this.onTap});
-
-  final List<TrialReminder> trials;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final first = trials.first;
-    return _AlertStrip(
-      color: AppColors.info,
-      icon: Icons.timer_rounded,
-      title: trials.length == 1
-          ? '${first.label} converts soon'
-          : '${trials.length} trials convert soon',
-      detail: first.isOverdue
-          ? 'This one has already passed its end date'
-          : 'Cancel before it turns into a real charge',
-      onTap: onTap,
-    );
-  }
-}
-
-class _ReviewNudge extends StatelessWidget {
-  const _ReviewNudge({required this.count, required this.onTap});
-
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _AlertStrip(
-      color: AppColors.primary,
-      icon: Icons.fact_check_outlined,
-      title: count == 1 ? '1 charge to review' : '$count charges to review',
-      onTap: onTap,
-    );
-  }
-}
 
 /// Home's window into spending: the month's total, the split, and the top few
 /// categories. Everything else lives on the Spending tab.
