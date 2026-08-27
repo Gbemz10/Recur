@@ -206,23 +206,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // A total of zero is not a total. Home leads with the number the
-            // app exists to produce, and before anything has been detected
-            // that number is furniture: ₦0, 0 active subscriptions, ₦0 a
-            // year, over a gradient built to make a figure feel important.
-            // Until there is something to count, the screen says what to do
-            // instead.
-            if (_hasNothingYet)
+            _HeroTotal(
+              monthly: _monthlyTotal,
+              count: _active.length,
+              onTap: () => widget.onOpenTab(AppTab.recurring),
+            ),
+
+            // Under the total, not instead of it. The zero is honest — it is
+            // what Recur has found so far — and this says what to do about
+            // it, which the gradient card on its own could not.
+            if (_hasNothingYet) ...[
+              gap,
               _NothingYet(
                 bankLinked: widget.bankStore.hasActiveBank,
                 onLinkBank: _openLinkBank,
-              )
-            else
-              _HeroTotal(
-                monthly: _monthlyTotal,
-                count: _active.length,
-                onTap: () => widget.onOpenTab(AppTab.recurring),
               ),
+            ],
 
             // The imminent-charge, price-rise and trial alerts used to sit
             // here. They are behind the bell now: they made Home longer the
@@ -349,13 +348,16 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-/// What Home says before it has anything to count.
+/// What Home offers before it has anything to count.
 ///
-/// Two different situations, and telling them apart is the whole point of this
-/// widget. With no bank linked there is an action to offer, and it is the one
-/// action the app is asking for. With a bank linked and still nothing found,
-/// there is nothing to do but wait — a button there would be a lie, since the
-/// next sync is not something the user can hurry.
+/// Two situations, and telling them apart is the whole point. With no bank
+/// linked there is an action to offer, and it is the one action the app is
+/// asking for. With a bank linked and still nothing found, there is nothing to
+/// do but wait — a button there would be a lie, since the next sync is not
+/// something the user can hurry.
+///
+/// No explanatory paragraph either way. The title is the whole message, and
+/// the button says what happens next.
 class _NothingYet extends StatelessWidget {
   const _NothingYet({required this.bankLinked, required this.onLinkBank});
 
@@ -365,58 +367,36 @@ class _NothingYet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xl,
-        AppSpacing.xxl,
-        AppSpacing.xl,
-        AppSpacing.xl,
-      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
               bankLinked ? Icons.radar_rounded : Icons.account_balance_rounded,
-              size: 27,
+              size: 24,
               color: AppColors.primaryInk(context),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           Text(
             bankLinked ? 'Nothing repeating yet' : 'Connect a bank to begin',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 19,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
               height: 1.2,
               color: AppColors.ink(context),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            bankLinked
-                ? 'Recur is reading your statement. A subscription shows up '
-                    'here once the same charge has appeared enough times to be '
-                    'sure it repeats.'
-                : 'Recur reads your statement and finds every charge that '
-                    'repeats — the ones you forgot, and the ones that quietly '
-                    'went up. Nothing moves money, and you can disconnect at '
-                    'any time.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.5,
-              height: 1.55,
-              color: AppColors.muted(context),
-            ),
-          ),
           if (!bankLinked) ...[
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.lg),
             AppButton(
               label: 'Link my bank',
               size: AppButtonSize.lg,

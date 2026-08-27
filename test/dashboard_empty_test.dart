@@ -75,9 +75,12 @@ void main() {
     expect(find.text('Connect a bank to begin'), findsOneWidget);
     expect(find.widgetWithText(AppButton, 'Link my bank'), findsOneWidget);
 
-    // And none of the furniture a zero total brings with it.
-    expect(find.text('TOTAL MONTHLY SUBSCRIPTIONS'), findsNothing);
-    expect(find.textContaining('0 active subscriptions'), findsNothing);
+    // Under the total, not instead of it: the zero is what Recur has found so
+    // far, and it stays on screen.
+    expect(find.text('TOTAL MONTHLY SUBSCRIPTIONS'), findsOneWidget);
+
+    // The title carries the message on its own.
+    expect(find.textContaining('Recur reads your statement'), findsNothing);
   });
 
   testWidgets('with a bank linked and nothing found, it offers no button',
@@ -101,6 +104,7 @@ void main() {
     });
 
     expect(find.text('Nothing repeating yet'), findsOneWidget);
+    expect(find.text('TOTAL MONTHLY SUBSCRIPTIONS'), findsOneWidget);
     // Nothing to press: the next sync is not something the user can hurry,
     // and a button that cannot help is a lie.
     expect(find.widgetWithText(AppButton, 'Link my bank'), findsNothing);
