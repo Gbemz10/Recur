@@ -47,6 +47,17 @@ void main() {
     });
   });
 
+  testWidgets('the name screen carries no placeholder or helper text', (tester) async {
+    await pump(tester, ChooseNameScreen(onDone: () {}));
+
+    // The label above the field says what it is; a greyed-out example name
+    // inside it says the same thing twice and reads as a value already there.
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.decoration?.hintText, isNull);
+
+    expect(find.textContaining('This is what Recur will call you'), findsNothing);
+  });
+
   group('the notification ask', () {
     testWidgets('offers both answers, and says where to change it', (tester) async {
       await pump(tester, PushPermissionScreen(onDecided: (_) {}));

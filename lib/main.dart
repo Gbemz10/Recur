@@ -96,7 +96,14 @@ class _RootFlowState extends State<_RootFlow> {
   /// meant anyone who already had a password — an interrupted signup, or an
   /// account made before that screen existed — signed in and never saw it,
   /// and then wondered why the dashboard would not greet them.
-  Future<void> _afterAuth() async {
+  Future<void> _afterAuth({bool isNewAccount = false}) async {
+    // A brand new account has no name by definition, so there is nothing to
+    // ask the server. Skipping that round trip is what stops the email screen
+    // sitting on display while it completes.
+    if (isNewAccount) {
+      setState(() => _stage = _Stage.chooseName);
+      return;
+    }
     if (await _needsName()) {
       if (!mounted) return;
       setState(() => _stage = _Stage.chooseName);

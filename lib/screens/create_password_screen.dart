@@ -25,12 +25,22 @@ class CreatePasswordScreen extends StatefulWidget {
     super.key,
     required this.email,
     this.isReset = false,
+    this.onFinished,
   });
 
   final String email;
 
   /// Reset flow reached via "forgot password" rather than initial signup.
   final bool isReset;
+
+  /// Called with the password saved, *before* this screen pops.
+  ///
+  /// The order is the point. Popping first unwinds to the email screen and
+  /// leaves it on display for the length of the pop animation and whatever
+  /// the next decision costs — which looked like signup bouncing backwards a
+  /// step before going forwards. Letting the flow move first means the pop
+  /// reveals wherever it moved to.
+  final VoidCallback? onFinished;
 
   @override
   State<CreatePasswordScreen> createState() => _CreatePasswordScreenState();
@@ -95,6 +105,8 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
     }
     if (!mounted) return;
     setState(() => _busy = false);
+    widget.onFinished?.call();
+    if (!mounted) return;
     Navigator.of(context).pop(true);
   }
 

@@ -105,19 +105,9 @@ class _ChooseNameScreenState extends State<ChooseNameScreen> {
                       AppTextField(
                         controller: _name,
                         label: 'Your name',
-                        hint: 'Ada',
                         keyboardType: TextInputType.name,
                         textCapitalization: TextCapitalization.words,
                         errorText: _error,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'This is what Recur will call you. Just a first name is '
-                        'plenty — it only ever appears to you.',
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.muted(context),
-                          height: 1.45,
-                        ),
                       ),
                     ],
                   ),

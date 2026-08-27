@@ -31,7 +31,10 @@ class AuthScreen extends StatefulWidget {
     this.startInSignIn = false,
   });
 
-  final VoidCallback onAuthenticated;
+  /// [isNewAccount] tells the root flow it is looking at an account created
+  /// seconds ago, which cannot have a name yet — so it can move on without
+  /// asking the server what it already knows.
+  final void Function({bool isNewAccount}) onAuthenticated;
 
   /// Opens on sign-in rather than sign-up.
   ///
@@ -127,14 +130,17 @@ class _AuthScreenState extends State<AuthScreen> {
 
       final done = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
-          builder: (_) => CreatePasswordScreen(email: _normalisedEmail, isReset: false),
+          builder: (_) => CreatePasswordScreen(
+            email: _normalisedEmail,
+            isReset: false,
+            onFinished: () => widget.onAuthenticated(isNewAccount: true),
+          ),
         ),
       );
-      // The account exists from here on. What is still missing — a name, the
-      // notification ask — is decided by the root flow from the account
-      // itself, so an interrupted signup picks up where it left off instead
-      // of skipping the rest forever.
-      if (done == true) widget.onAuthenticated();
+      // Nothing to do here on success: CreatePasswordScreen already told the
+      // root flow, before it popped, so that the pop reveals the next step
+      // rather than this screen.
+      if (done != true) return;
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);

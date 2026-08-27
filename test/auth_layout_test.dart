@@ -19,7 +19,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(MaterialApp(
-      home: AuthScreen(onAuthenticated: () {}, onBack: () {}),
+      home: AuthScreen(onAuthenticated: ({bool isNewAccount = false}) {}, onBack: () {}),
     ));
     await tester.pumpAndSettle();
   }
