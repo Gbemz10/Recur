@@ -18,6 +18,23 @@ import 'package:flutter_test/flutter_test.dart';
 /// later test's requests go through — see the note above.
 Duration fakeWriteDelay = Duration.zero;
 
+/// Canned GET responses by path, e.g. `{'/trials': {'trialReminders': []}}`.
+///
+/// Top-level and mutable for the same reason as [fakeWriteDelay], and it is a
+/// sharper trap here. `apiClient` is a lazily-created global that builds its
+/// `http.Client` once, so `createHttpClient` runs for the *first* test only —
+/// every later test's requests go through that first FakeHttpClient. A map
+/// passed to a second constructor is silently never consulted, which reads as
+/// the app failing to parse a fixture that is in fact correct.
+///
+/// So tests set this, rather than constructing a client with their responses.
+Map<String, Map<String, dynamic>> fakeResponses = {};
+
+/// Replaces the canned responses for the test about to run.
+void setFakeResponses(Map<String, Map<String, dynamic>> responses) {
+  fakeResponses = responses;
+}
+
 /// The API client reaches the keychain for the device id and access token
 /// before every request. There is no plugin behind that channel in a test, so
 /// without this the call fails long before HTTP is involved.
@@ -39,15 +56,16 @@ void stubSecureStorage() {
 /// list, and the status PATCH just succeeds, which is all this test asks of
 /// the network.
 class FakeHttpClient implements HttpClient {
-  /// Response bodies by the path they answer, e.g. `/trials`. Anything not
-  /// listed — every write — answers `{}`, which is all these tests ask of it.
-  FakeHttpClient(this.responses);
-
-  final Map<String, Map<String, dynamic>> responses;
+  /// Seeds [fakeResponses] as a convenience for the first test; every later
+  /// test must call [setFakeResponses], since this constructor will not run
+  /// again — see the note on [fakeResponses].
+  FakeHttpClient([Map<String, Map<String, dynamic>>? seed]) {
+    if (seed != null) fakeResponses = seed;
+  }
 
   @override
   Future<HttpClientRequest> openUrl(String method, Uri url) async {
-    final canned = method == 'GET' ? responses[url.path] : null;
+    final canned = method == 'GET' ? fakeResponses[url.path] : null;
     return FakeRequest(method, url, jsonEncode(canned ?? const {}),
         isWrite: canned == null);
   }

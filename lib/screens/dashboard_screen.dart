@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart' show formatNaira, formatNairaCompact;
 import '../data/notice_read_store.dart';
+import '../data/bank_store.dart';
 import '../data/notices.dart';
 import '../data/profile_store.dart';
 import '../data/spending_store.dart';
@@ -13,6 +14,7 @@ import '../theme/recur_brand.dart';
 import '../ui/ui.dart';
 import '../widgets/insight_strips.dart';
 import 'app_shell.dart' show AppTab;
+import 'link_bank_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'subscription_detail_screen.dart';
@@ -37,6 +39,7 @@ class DashboardScreen extends StatefulWidget {
     required this.profileStore,
     required this.spendingStore,
     required this.readStore,
+    required this.bankStore,
     required this.onOpenTab,
   });
 
@@ -45,6 +48,10 @@ class DashboardScreen extends StatefulWidget {
   final ProfileStore profileStore;
   final SpendingStore spendingStore;
   final NoticeReadStore readStore;
+
+  /// Home is the one screen that can be reached with nothing on it, so it is
+  /// the one that has to know whether a bank was ever linked.
+  final BankStore bankStore;
 
   /// Switches the shell to another destination. Home is a set of doorways, so
   /// almost every card takes one.
@@ -79,6 +86,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // So the badge drops the moment a notice is read on the page pushed
         // over this one.
         widget.readStore,
+        // And so the empty state stops being empty the moment a bank lands.
+        widget.bankStore,
       ];
 
   void _onChange() {
@@ -103,9 +112,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// just passed vanished from Home completely, taking the most urgent item on
   /// the screen with it. `_byUrgency` already sorts negatives first, so they
   /// land at the top where they belong.
+  /// Nothing detected, in any state — not active, not waiting in Review, not
+  /// cancelled. A row in any of those means the app has something to say.
+  bool get _hasNothingYet => widget.store.all.isEmpty && !widget.store.isLoading;
+
   List<Subscription> get _upNext {
     final list = [..._active]..sort(_byUrgency);
     return list.take(3).toList();
+  }
+
+  /// Pushed rather than made a stage: someone who skipped linking at signup
+  /// and came back to it later is mid-session, not mid-setup, and should end
+  /// up back on Home with their subscriptions rather than walked through the
+  /// rest of onboarding again.
+  Future<void> _openLinkBank() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => LinkBankScreen(onDone: () => Navigator.of(context).pop()),
+      ),
+    );
+    if (!mounted) return;
+    // Whatever happened in there, the two things Home reads may both have
+    // changed: the bank list, and what the detector found from its first sync.
+    await Future.wait([widget.bankStore.load(), widget.store.load()]);
   }
 
   void _openNotifications() {
@@ -177,11 +206,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            _HeroTotal(
-              monthly: _monthlyTotal,
-              count: _active.length,
-              onTap: () => widget.onOpenTab(AppTab.recurring),
-            ),
+            // A total of zero is not a total. Home leads with the number the
+            // app exists to produce, and before anything has been detected
+            // that number is furniture: ₦0, 0 active subscriptions, ₦0 a
+            // year, over a gradient built to make a figure feel important.
+            // Until there is something to count, the screen says what to do
+            // instead.
+            if (_hasNothingYet)
+              _NothingYet(
+                bankLinked: widget.bankStore.hasActiveBank,
+                onLinkBank: _openLinkBank,
+              )
+            else
+              _HeroTotal(
+                monthly: _monthlyTotal,
+                count: _active.length,
+                onTap: () => widget.onOpenTab(AppTab.recurring),
+              ),
 
             // The imminent-charge, price-rise and trial alerts used to sit
             // here. They are behind the bell now: they made Home longer the
@@ -302,6 +343,87 @@ class _Greeting extends StatelessWidget {
               size: 40,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What Home says before it has anything to count.
+///
+/// Two different situations, and telling them apart is the whole point of this
+/// widget. With no bank linked there is an action to offer, and it is the one
+/// action the app is asking for. With a bank linked and still nothing found,
+/// there is nothing to do but wait — a button there would be a lie, since the
+/// next sync is not something the user can hurry.
+class _NothingYet extends StatelessWidget {
+  const _NothingYet({required this.bankLinked, required this.onLinkBank});
+
+  final bool bankLinked;
+  final VoidCallback onLinkBank;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xxl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              bankLinked ? Icons.radar_rounded : Icons.account_balance_rounded,
+              size: 27,
+              color: AppColors.primaryInk(context),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            bankLinked ? 'Nothing repeating yet' : 'Connect a bank to begin',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+              height: 1.2,
+              color: AppColors.ink(context),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            bankLinked
+                ? 'Recur is reading your statement. A subscription shows up '
+                    'here once the same charge has appeared enough times to be '
+                    'sure it repeats.'
+                : 'Recur reads your statement and finds every charge that '
+                    'repeats — the ones you forgot, and the ones that quietly '
+                    'went up. Nothing moves money, and you can disconnect at '
+                    'any time.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.55,
+              color: AppColors.muted(context),
+            ),
+          ),
+          if (!bankLinked) ...[
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              label: 'Link my bank',
+              size: AppButtonSize.lg,
+              expand: true,
+              onPressed: onLinkBank,
+            ),
+          ],
         ],
       ),
     );

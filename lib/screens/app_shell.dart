@@ -173,6 +173,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             profileStore: _profileStore,
             spendingStore: _spendingStore,
             readStore: _noticeReadStore,
+            bankStore: _bankStore,
             onOpenTab: _goToTab,
           ),
           RecurringScreen(store: _store, section: _recurringSection),
