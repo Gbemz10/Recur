@@ -137,6 +137,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Future.wait([widget.bankStore.load(), widget.store.load()]);
   }
 
+  Widget _greeting() => _Greeting(
+        profileStore: widget.profileStore,
+        store: widget.store,
+        noticeCount:
+            Notices.from(widget.store, widget.trialStore).unreadCount(widget.readStore.read),
+        onOpenNotifications: _openNotifications,
+      );
+
   void _openNotifications() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -184,6 +192,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     const gap = SizedBox(height: AppSpacing.lg);
 
+    if (_hasNothingYet) {
+      return SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => Future.wait([widget.store.load(), widget.bankStore.load()]),
+          // A CustomScrollView rather than a Column, so pull-to-refresh still
+          // works on a screen with nothing to scroll — SliverFillRemaining is
+          // what lets the prompt sit in the middle of whatever space is left
+          // rather than tight under the card.
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      _greeting(),
+                      const SizedBox(height: AppSpacing.lg),
+                      _HeroTotal(
+                        monthly: _monthlyTotal,
+                        count: _active.length,
+                        onTap: () => widget.onOpenTab(AppTab.recurring),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.huge,
+                  ),
+                  // Column with a centred main axis rather than Center: the
+                  // sliver hands down a bounded height, and this is the
+                  // arrangement that actually uses all of it.
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _NothingYet(
+                        bankLinked: widget.bankStore.hasActiveBank,
+                        onLinkBank: _openLinkBank,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SafeArea(
       bottom: false,
       child: RefreshIndicator(
@@ -197,13 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.huge),
           children: [
-            _Greeting(
-              profileStore: widget.profileStore,
-              store: widget.store,
-              noticeCount:
-                  Notices.from(widget.store, widget.trialStore).unreadCount(widget.readStore.read),
-              onOpenNotifications: _openNotifications,
-            ),
+            _greeting(),
             const SizedBox(height: AppSpacing.lg),
 
             _HeroTotal(
@@ -211,17 +271,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               count: _active.length,
               onTap: () => widget.onOpenTab(AppTab.recurring),
             ),
-
-            // Under the total, not instead of it. The zero is honest — it is
-            // what Recur has found so far — and this says what to do about
-            // it, which the gradient card on its own could not.
-            if (_hasNothingYet) ...[
-              gap,
-              _NothingYet(
-                bankLinked: widget.bankStore.hasActiveBank,
-                onLinkBank: _openLinkBank,
-              ),
-            ],
 
             // The imminent-charge, price-rise and trial alerts used to sit
             // here. They are behind the bell now: they made Home longer the
@@ -356,8 +405,9 @@ class _Greeting extends StatelessWidget {
 /// do but wait — a button there would be a lie, since the next sync is not
 /// something the user can hurry.
 ///
-/// No explanatory paragraph either way. The title is the whole message, and
-/// the button says what happens next.
+/// No card around it and no icon above it. A card would put a second bordered
+/// box directly under the one carrying the total, and the two would read as a
+/// pair of equals; this is a line of text and the thing to press.
 class _NothingYet extends StatelessWidget {
   const _NothingYet({required this.bankLinked, required this.onLinkBank});
 
@@ -366,46 +416,29 @@ class _NothingYet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              bankLinked ? Icons.radar_rounded : Icons.account_balance_rounded,
-              size: 24,
-              color: AppColors.primaryInk(context),
-            ),
+    return Column(
+      children: [
+        Text(
+          bankLinked ? 'Nothing repeating yet' : 'Connect a bank to begin',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            height: 1.2,
+            color: AppColors.ink(context),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            bankLinked ? 'Nothing repeating yet' : 'Connect a bank to begin',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-              height: 1.2,
-              color: AppColors.ink(context),
-            ),
+        ),
+        if (!bankLinked) ...[
+          const SizedBox(height: AppSpacing.lg),
+          AppButton(
+            label: 'Link my bank',
+            size: AppButtonSize.lg,
+            expand: true,
+            onPressed: onLinkBank,
           ),
-          if (!bankLinked) ...[
-            const SizedBox(height: AppSpacing.lg),
-            AppButton(
-              label: 'Link my bank',
-              size: AppButtonSize.lg,
-              expand: true,
-              onPressed: onLinkBank,
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }

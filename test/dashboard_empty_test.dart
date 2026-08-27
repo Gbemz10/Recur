@@ -81,6 +81,20 @@ void main() {
 
     // The title carries the message on its own.
     expect(find.textContaining('Recur reads your statement'), findsNothing);
+
+    // And it sits in the space below the card rather than tight under it.
+    // Measured, because "looks centred" is exactly the kind of thing that
+    // quietly stops being true when a sliver is swapped for a column.
+    final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+    final heroFooter = tester.getRect(find.textContaining('a year'));
+    final prompt = tester.getRect(find.text('Connect a bank to begin'));
+    final button = tester.getRect(find.widgetWithText(AppButton, 'Link my bank'));
+
+    final above = prompt.top - heroFooter.bottom;
+    final below = screen.height - button.bottom;
+    expect(above, greaterThan(120), reason: 'not tucked under the card');
+    expect((above - below).abs(), lessThan(90),
+        reason: 'roughly centred in what is left of the screen');
   });
 
   testWidgets('with a bank linked and nothing found, it offers no button',
