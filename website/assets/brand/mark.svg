@@ -1,0 +1,23 @@
+<!--
+  Recur's mark, generated from the same geometry as _RecurLogoPainter in
+  lib/widgets/recur_logo.dart: an open arc swept 78% of the circle with a
+  triangular head at the leading tip.
+
+  Written to the SVG Tiny 1.2 Portable/Secure profile so it can double as the
+  BIMI logo — square viewBox, a <title>, no scripts, no external references,
+  no raster. See launch blocker 10.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps"
+     viewBox="0 0 512 512" width="512" height="512" role="img">
+  <title>Recur</title>
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B6E4F"/>
+      <stop offset="0.5" stop-color="#6E8F45"/>
+      <stop offset="1" stop-color="#D9A441"/>
+    </linearGradient>
+  </defs>
+  <path d="M 307.44 89.70 A 174.08 174.08 0 1 1 102.28 174.30"
+        fill="none" stroke="url(#brand)" stroke-width="79.36" stroke-linecap="round"/>
+  <path d="M 147.93 88.40 L 153.85 256.79 L 5.06 177.72 Z" fill="#D9A441"/>
+</svg>
