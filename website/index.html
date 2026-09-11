@@ -2176,6 +2176,8 @@
   /* The operating company, named so the site and the CAC registration line up
      for anyone checking one against the other. Quieter than the contact line
      above it, because it is a statement of record rather than an offer. */
+  .footer-legal a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .footer-legal a:hover { color: var(--forest-ink); }
   .footer-legal {
     margin: 4px 0 0;
     text-align: center;
@@ -2792,7 +2794,7 @@
     <a href="mailto:support@recur.website"><span class="footer-contact-label">Contact us:</span> support@recur.website</a>
   </div>
 
-  <p class="footer-legal">&copy; 2026 Damprose Innovations Limited</p>
+  <p class="footer-legal">&copy; 2026 Damprose Innovations Limited &middot; <a href="/privacy">Privacy</a></p>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite">

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy notice, Recur</title>
+<meta name="description" content="What Recur collects, why, who touches it, and how to get it deleted.">
+<link rel="icon" href="/assets/brand/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #FAF9F4;
+    --surface: #FFFFFF;
+    --line: #E8E9E0;
+    --ink: #171A14;
+    --ink-soft: #5E6255;
+    --ink-faint: #6E7166;
+    --forest: #0B6E4F;
+    --edge: clamp(20px, 5vw, 56px);
+    --sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 var(--edge) 96px; }
+
+  header.top { padding: 28px 0 0; }
+  .back {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em;
+    color: var(--ink-faint); text-decoration: none;
+  }
+  .back:hover { color: var(--forest); }
+
+  h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1.1; letter-spacing: -0.02em; margin: 40px 0 8px; font-weight: 800; }
+  .updated { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 40px; }
+  h2 { font-size: 21px; line-height: 1.25; letter-spacing: -0.01em; margin: 44px 0 12px; font-weight: 600; }
+  h3 { font-size: 16px; margin: 26px 0 6px; font-weight: 600; }
+  p, li { color: var(--ink-soft); }
+  p { margin: 0 0 16px; }
+  ul { margin: 0 0 16px; padding-left: 22px; }
+  li { margin: 0 0 8px; }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--forest); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+
+  .lede { font-size: 18px; color: var(--ink); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px 22px; margin: 0 0 24px;
+  }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  footer.page {
+    border-top: 1px solid var(--line); margin-top: 56px; padding-top: 24px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  }
+  footer.page a { color: var(--ink-faint); }
+  footer.page a:hover { color: var(--forest); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top"><a class="back" href="/">&larr; recur</a></header>
+
+<h1>Privacy notice</h1>
+<p class="updated">Last updated 11 September 2026</p>
+
+<p class="lede">Recur reads your bank transactions to find the charges that
+repeat. That is about as personal as data gets, so this page says plainly what
+we collect, why, who else touches it, and how to make us delete it.</p>
+
+<div class="card">
+  <p><strong>The short version.</strong> We read your transactions, we never
+  see your bank login, we cannot move your money, we do not sell anything to
+  anyone, and you can delete everything from inside the app.</p>
+</div>
+
+<h2>Who we are</h2>
+<p>Recur is operated by <strong>Damprose Innovations Limited</strong>, a company
+registered in Nigeria. For anything in this notice, write to
+<a href="mailto:support@recur.website">support@recur.website</a>.</p>
+
+<h2>What we collect</h2>
+
+<h3>Your account</h3>
+<ul>
+  <li>Email address, and a password stored as a one-way hash we cannot reverse</li>
+  <li>The name you choose, and a profile picture if you add one</li>
+</ul>
+
+<h3>Keeping your account safe</h3>
+<ul>
+  <li>One-time codes, stored hashed, valid for ten minutes</li>
+  <li>Session tokens, stored hashed and revocable</li>
+  <li>A device identifier, your IP address and browser or device description,
+      so we can tell you when something signs in from a device we have not
+      seen before</li>
+</ul>
+
+<h3>Your bank connection</h3>
+<ul>
+  <li>The bank's name, and the last digits of the account number. We never
+      store the full number</li>
+  <li>An identifier that lets us ask Mono about that account</li>
+</ul>
+<p><strong>We never see your bank login.</strong> You sign in inside a screen
+hosted by Mono, a CBN-licensed open banking provider. Your credentials never
+reach us.</p>
+
+<h3>Your transactions</h3>
+<ul>
+  <li>The date, amount, description and payee of transactions on the account
+      you connected</li>
+  <li>What we work out from them: which charges repeat, how often, what they
+      cost, and what is coming next</li>
+  <li>Budgets you set, categories you correct, and trials you log</li>
+</ul>
+
+<h3>What you tell us to send</h3>
+<ul>
+  <li>Whether you want renewal reminders and how many days ahead</li>
+  <li>Whether you want the weekly digest</li>
+</ul>
+
+<h2>Why we are allowed to hold it</h2>
+<p>Under the Nigeria Data Protection Act 2023 we rely on:</p>
+<ul>
+  <li><strong>Your consent</strong> for everything to do with your bank
+      account, your transactions and the emails we send. You give it when you
+      connect a bank and you can take it back at any time</li>
+  <li><strong>Performing our contract with you</strong> for your account
+      itself, since we cannot run an account without an email address and a
+      password</li>
+  <li><strong>Our legitimate interest in security</strong> for the device and
+      IP details behind new-device alerts</li>
+</ul>
+
+<h2>Who else touches it</h2>
+<p>Only the companies that make the product work:</p>
+<ul>
+  <li><strong>Mono</strong>, for the bank connection and transaction history</li>
+  <li><strong>Supabase</strong>, which hosts our database</li>
+  <li><strong>Render</strong>, which runs our servers</li>
+  <li><strong>Vercel</strong>, which serves this website</li>
+  <li><strong>Resend</strong>, which delivers our email. A reminder or digest
+      names the subscription it is about, so Resend handles that detail too</li>
+</ul>
+<p>Some of these process data outside Nigeria. We will only continue to use
+them on a footing the NDPA allows.</p>
+
+<h2>What we never do</h2>
+<ul>
+  <li>We never sell, rent or share your data for advertising</li>
+  <li>We do not run advertising or third-party tracking in the app or on this
+      site</li>
+  <li>We cannot move your money. Recur has no payment capability of any kind,
+      so no transfer, payment or withdrawal is possible through it</li>
+  <li>We never ask for your bank password, PIN or OTP. If anything claiming to
+      be Recur asks, it is not us</li>
+</ul>
+
+<h2>How long we keep it</h2>
+<ul>
+  <li><strong>Your account and transaction data</strong>, while your account
+      exists. Deleting the account deletes it</li>
+  <li><strong>One-time codes</strong>, ten minutes</li>
+  <li><strong>Session tokens</strong>, up to thirty days, or until you sign out</li>
+  <li><strong>Waitlist emails</strong>, until we open, or until you ask us to
+      remove you</li>
+</ul>
+
+<h2>Your rights</h2>
+<p>You can ask us to show you what we hold, correct it, delete it, stop using
+it, or hand it over. Most of it you can do yourself:</p>
+<ul>
+  <li><strong>Delete everything.</strong> In the app, delete your account. We
+      ask for your password, unlink you from Mono, and remove your data:
+      transactions, detected subscriptions, budgets, sessions, all of it</li>
+  <li><strong>Stop the bank connection.</strong> Unlink the account in the app
+      and we stop reading anything new</li>
+  <li><strong>Stop the emails.</strong> Every email has an unsubscribe link,
+      and the settings screen has a switch for each kind</li>
+</ul>
+<p>For anything else, write to
+<a href="mailto:support@recur.website">support@recur.website</a>. If you think
+we have handled your data badly, you can complain to the Nigeria Data
+Protection Commission.</p>
+
+<h2>How we protect it</h2>
+<ul>
+  <li>Passwords and one-time codes are hashed with argon2id and cannot be read
+      back</li>
+  <li>Sign-in tokens are short-lived and can be revoked</li>
+  <li>Secrets we must store are encrypted at rest with AES-256-GCM</li>
+  <li>Everything travels over HTTPS</li>
+  <li>Your bank credentials never reach us at all</li>
+</ul>
+
+<h2>Children</h2>
+<p>Recur is not for anyone under 18, and we do not knowingly collect their
+data. If you believe a child has an account, tell us and we will remove it.</p>
+
+<h2>Changes</h2>
+<p>If we change this notice we will update the date at the top, and tell you in
+the app or by email if the change is one that matters.</p>
+
+<hr>
+
+<footer class="page">
+  <p>&copy; 2026 Damprose Innovations Limited &middot;
+  <a href="mailto:support@recur.website">support@recur.website</a></p>
+</footer>
+
+</div>
+</body>
+</html>
