@@ -2173,6 +2173,19 @@
   .footer-contact a:hover .footer-contact-label { color: var(--forest-ink); }
   .footer-contact a:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 2px; border-radius: 4px; }
 
+  /* The operating company, named so the site and the CAC registration line up
+     for anyone checking one against the other. Quieter than the contact line
+     above it, because it is a statement of record rather than an offer. */
+  .footer-legal {
+    margin: 4px 0 0;
+    text-align: center;
+    padding: 0 var(--edge);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--ink-faint);
+  }
+
   /* ------------------------------------------------------ reveal on scroll */
   .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
   .reveal.in { opacity: 1; transform: none; }
@@ -2778,6 +2791,8 @@
   <div class="footer-contact">
     <a href="mailto:support@recur.website"><span class="footer-contact-label">Contact us:</span> support@recur.website</a>
   </div>
+
+  <p class="footer-legal">&copy; 2026 Damprose Innovations Limited</p>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite">
