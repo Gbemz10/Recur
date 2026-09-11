@@ -80,7 +80,6 @@ All paths verified to exist on 2 Sept 2026.
 |---|---|---|
 | `~/Downloads/recur-frontend` | **The repo you work in.** Flutter app in `lib/`, mirrored backend in `backend/`, mirrored site in `website/`. Remote: `github.com/Gbemz10/Recur`, branch `main`. | **yes** |
 | `~/Downloads/recur-backend` | The copy that **actually runs locally**, holds the real `.env`. | **no** |
-| `~/Downloads/recur-website` | Standalone copy of the static site. | **no** |
 | `~/Downloads/recur-backend/.env` | Real secrets: database URL, Mono keys, Resend key, JWT secret. Never commit. | — |
 | `~/Downloads/flutter` | The Flutter SDK itself. | — |
 | `~/.claude/projects/-Users-gbemiga-Downloads-recur-frontend/memory/` | Five memory files: overview, launch blockers, working setup, current queue, incorporation. **Copy these to the new account** — they are the long-term context. | — |
@@ -461,8 +460,11 @@ expensive and least visible.
 - `PATCH /subscriptions//status` returns 500 on an empty id.
 - Status lives in three lists that must agree.
 - `PUBLIC_API_URL` must be right per environment.
-- `recur-backend` and `recur-website` are unversioned parallel trees that can
-  silently drift from the repo.
+- `recur-backend` is an unversioned parallel tree that can silently drift from
+  the repo. There was a second one, `~/Downloads/recur-website`, holding a copy
+  of the static site less than half the size of the live one. It was deleted on
+  11 Sept 2026 after confirming it held nothing the repo did not. The site now
+  has one source: `website/` in this repo, which deploys to Vercel on push.
 - **Backend linting does not run.** `npm run lint` in `backend/` exits before
   linting anything: ESLint 9 wants the flat `eslint.config.js` format and the
   project still has the old `.eslintrc` style. It has been failing silently, so
