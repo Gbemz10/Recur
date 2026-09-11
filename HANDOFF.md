@@ -7,44 +7,56 @@ rather than verified, it says so.
 
 ---
 
-## 0. Do this first — the domain is suspended
+## 0. The domain suspension is cleared (was the hard blocker)
 
-`recur.website` is **suspended by Namecheap for failed ICANN WHOIS contact
-verification**. Verified 2 Sept 2026:
+`recur.website` was suspended by Namecheap for failed ICANN WHOIS contact
+verification, which took every DNS record with it and broke signup. **Resolved.**
+Verified 11 Sept 2026:
 
 ```
 dig +short NS recur.website
-  failed-whois-verification.namecheap.com.
-  verify-contact-details.namecheap.com.
+  ns1.vercel-dns.com.
+  ns2.vercel-dns.com.
 
-dig +short MX  recur.website         -> (nothing)
-dig +short TXT recur.website         -> (nothing)
-dig +short TXT _dmarc.recur.website  -> (nothing)
-https://www.recur.website/           -> connection refused
-http://recur.website/                -> 200, Namecheap holding page
+dig +short A recur.website           -> 64.29.17.65, 216.198.79.1
 ```
 
-Every DNS record is gone while this holds. In order of severity:
+DNS now runs on Vercel, and the records Resend needs were re-added by hand on
+11 Sept 2026 because the suspension had taken them:
 
-1. **Signup is broken.** Mail is sent from `noreply@recur.website` via Resend.
-   With no SPF or DKIM published, receivers cannot authenticate it, so OTP
-   codes bounce or land in spam. Nobody can complete signup.
-2. **The marketing site is offline**, which 404s the logo now embedded in every
-   email.
-3. `MONO_REDIRECT_URL` is `https://recur.website/mono/callback`.
-4. BIMI (blocker 10) cannot start until DNS exists again.
+| Type | Host | Value |
+| --- | --- | --- |
+| `TXT` | `resend._domainkey` | `p=MIGfMA0...IDAQAB` (DKIM) |
+| `TXT` | `send` | `v=spf1 include:amazonses.com ~all` |
+| `MX` | `send` | `feedback-smtp.eu-west-1.amazonses.com` (priority 10) |
+| `TXT` | `_dmarc` | `v=DMARC1; p=none;` |
 
-**Fix:** Namecheap dashboard → resend the contact-verification email → click the
-link. Usually restored within the hour. Then **confirm the records came back**:
-Vercel's A/CNAME, Resend's DKIM selector, SPF, and DMARC. They may need
-re-adding by hand.
+All four confirmed resolving from public DNS, with the DKIM key compared byte
+for byte against the dashboard. Resend's own status still read **Pending** at
+the time of writing: the records are published, but someone has to press
+**Verify DNS Records** in the Resend dashboard (Domains -> recur.website) to
+make it re-check.
+
+Two things to know about this domain's mail setup:
+
+- **The root `MX` is deliberately empty.** Resend sends from the `send.`
+  subdomain; the root is reserved for whatever mailbox provider serves
+  `support@recur.website`. Do not turn on **Enable Receiving** in Resend, which
+  claims the root `MX` and would collide with it.
+- **DMARC is at `p=none`**, which is monitoring only. BIMI (blocker 10) needs
+  `p=quarantine` or `p=reject`, so that has to be tightened later, once SPF and
+  DKIM alignment has been watched for a while.
+
+Still open from the original fallout: the marketing site has to be deployed for
+the email logo at `https://www.recur.website/assets/brand/mark.png` to resolve,
+and `MONO_REDIRECT_URL` points at `https://recur.website/mono/callback`.
 
 ---
 
 ## 1. What to do next, in order
 
-1. **Clear the domain suspension** (§0). Nothing else ships until mail
-   authenticates.
+1. **Press Verify in Resend** (§0). The suspension is cleared and the SPF,
+   DKIM and DMARC records are published; Resend just has not re-checked them.
 2. **Check Render's deploy.** `/health` returns 200 but `/brand/mark.png`
    returns 404, so production is running code older than commit `a270f9b` —
    live emails still have the old design and the broken logo. Look for a failed
@@ -451,6 +463,11 @@ expensive and least visible.
 - `PUBLIC_API_URL` must be right per environment.
 - `recur-backend` and `recur-website` are unversioned parallel trees that can
   silently drift from the repo.
+- **Backend linting does not run.** `npm run lint` in `backend/` exits before
+  linting anything: ESLint 9 wants the flat `eslint.config.js` format and the
+  project still has the old `.eslintrc` style. It has been failing silently, so
+  no backend code has actually been linted. Migrate the config, then expect a
+  first run to surface a backlog. Found 11 Sept 2026.
 
 ### 9. Render free tier
 
