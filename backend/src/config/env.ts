@@ -56,6 +56,11 @@ const schema = z.object({
   // that emails a user would otherwise have to remember this on its own.
   EMAIL_SUPPRESS_LIST: z.string().default('demo@recur.website'),
   EMAIL_FROM: z.string().default('Recur <noreply@recur.website>'),
+  // Mail goes out from noreply@, which is the signal not to reply to it. People
+  // reply anyway, and with nothing listening on that address the message is
+  // lost. This points those replies at the shared support inbox without
+  // changing what the From line says. Set it empty to send no Reply-To header.
+  EMAIL_REPLY_TO: z.string().default('support@recur.website'),
   RESEND_API_KEY: z.string().optional().default(''),
 
   // "*" allows any origin (fine in dev; only affects browser clients — see

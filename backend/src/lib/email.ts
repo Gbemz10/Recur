@@ -65,6 +65,7 @@ export async function sendEmail(input: SendEmailInput): Promise<void> {
       to: input.to,
       subject: input.subject,
       text: input.text,
+      ...(env.EMAIL_REPLY_TO ? { reply_to: env.EMAIL_REPLY_TO } : {}),
       ...(input.html ? { html: input.html } : {}),
       ...(input.headers ? { headers: input.headers } : {}),
     }),
