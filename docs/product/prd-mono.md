@@ -1,6 +1,6 @@
 # Recur, product requirements
 
-**Company:** Damprose Innovations Limited
+**Company:** Recur Software Limited (RC 9900877)
 **Product:** Recur, iOS and Android
 **Prepared for:** Mono compliance review
 **Date:** 11 September 2026
@@ -128,7 +128,7 @@ are documented separately and available on request.
 
 | | |
 | --- | --- |
-| **Company** | Damprose Innovations Limited, registered with the CAC |
+| **Company** | Recur Software Limited, RC 9900877, registered with the CAC |
 | **Category** | Information and Communication. Recur is a software company, not a financial institution |
 | **Licence** | None held, and none required. Mono is the CBN-licensed party for the data access |
 | **Privacy notice** | Published at https://recur.website/privacy |
@@ -137,5 +137,5 @@ are documented separately and available on request.
 
 ## 10. Contact
 
-Oluwagbemiga Shoga, Damprose Innovations Limited
+Oluwagbemiga Shoga, Recur Software Limited
 support@recur.website

@@ -1,10 +1,12 @@
 # Recur, record of processing activities
 
-**Controller:** Damprose Innovations Limited
+**Controller:** Recur Software Limited (RC 9900877)
 **Product:** Recur (iOS and Android application)
-**Prepared:** 11 September 2026
+**Prepared:** 11 September 2026 · **Revised:** 30 September 2026
 **Status:** pre-launch. No member of the public has an account. The only live
 records belong to the founder and to seeded demo fixtures.
+
+> **Revision, 30 September 2026.** The controller named in this record changed from Damprose Innovations Limited to Recur Software Limited (RC 9900877), incorporated 28 September 2026. Recur is now owned and operated by that company; Damprose is dormant and holds no Recur data. Nothing else in this record changed: the processing activities, categories, purposes and retention described below are the same ones the code performed before the change.
 
 > Drafted from the database schema and application code, not from memory, so
 > every row below can be checked against `backend/src/db/schema.ts`. It is a

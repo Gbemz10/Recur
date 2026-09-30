@@ -38,11 +38,40 @@
      Sans throughout, and the "ledger" texture this brand wants actually
      comes from tabular monospaced numerals, not from a Georgia-adjacent
      display face. Mono now carries that job and earns its download. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- Fonts are served from this origin, not fonts.gstatic.com. A webfont
+     request to Google hands the visitor's IP address to a third party on
+     every single page load, which is the substance of the Munich ruling on
+     Google Fonts and is hard to square with the privacy notice this site
+     links to. It also costs two extra DNS lookups and a TLS handshake
+     before any text can paint. The whole latin set is 44KB. -->
+<link rel="preload" href="/assets/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 
 <style>
+  /* ------------------------------------------------------------- fonts
+     Plus Jakarta Sans is a variable font, so one file covers 400 through
+     800 and the three weights this site uses cost one request, not three. */
+  @font-face {
+    font-family: 'Plus Jakarta Sans';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/assets/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/assets/fonts/ibm-plex-mono-latin-400.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/assets/fonts/ibm-plex-mono-latin-600.woff2') format('woff2');
+  }
+
   /* ============================================================== tokens
      Lifted directly from the Flutter app's AppColors, which is the brand's
      real source of truth. The previous site had drifted to a saturated
@@ -1460,6 +1489,33 @@
   }
   .scan-year-note { display: block; font-size: 14.5px; color: var(--ink-soft); margin-top: 8px; }
 
+  /* Quiet enough that it never competes with the figure above it, but a real
+     target: 13px text with padding clears the 24px minimum hit area. */
+  .scan-replay {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 22px; padding: 9px 15px 9px 12px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint); background: transparent;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  /* An author `display` beats the user agent's rule for [hidden], so without
+     this the control is on screen before there is anything to replay. */
+  .scan-replay[hidden] { display: none; }
+  .scan-replay:hover { color: var(--forest-ink); border-color: var(--forest-ink); }
+  .scan-replay:focus-visible { outline: 2.5px solid var(--forest-ink); outline-offset: 2px; }
+  .scan-replay-mark {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 1.5px solid currentColor; border-top-color: transparent;
+  }
+  .scan-replay:hover .scan-replay-mark { transform: rotate(140deg); }
+  .scan-replay-mark { transition: transform 0.45s var(--ease); }
+  @media (prefers-reduced-motion: reduce) {
+    .scan-replay-mark { transition: none; }
+  }
+
   /* ---- the review strip ----
      Lifted from the app's own alert strip, because this is the single
      interaction that turns the section from information into something to
@@ -2176,6 +2232,8 @@
   /* The operating company, named so the site and the CAC registration line up
      for anyone checking one against the other. Quieter than the contact line
      above it, because it is a statement of record rather than an offer. */
+  .sec-note-link { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  .sec-note-link:hover { color: #fff; }
   .footer-legal a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
   .footer-legal a:hover { color: var(--forest-ink); }
   .footer-legal {
@@ -2475,6 +2533,12 @@
                 <span class="scan-year money" id="scan-year">&#8358;0</span>
                 <span class="scan-year-note">is what those three alone take out of a year.</span>
               </div>
+              <!-- The sweep is the argument this section makes, and it used to
+                   be spent the moment it played. Anyone who scrolled past it
+                   fast, or came back up the page, never saw it. -->
+              <button type="button" class="scan-replay" id="scan-replay" hidden>
+                <span class="scan-replay-mark" aria-hidden="true"></span>Read it again
+              </button>
             </div>
           </div>
         </div>
@@ -2700,7 +2764,7 @@
         </ul>
 
         <div class="panel-foot">
-          <p class="mono">Read-only access, licensed via Mono</p>
+          <p class="mono">Read-only access, licensed via Mono &middot; <a class="sec-note-link" href="/privacy">Privacy notice</a></p>
           <a href="#waitlist" class="btn btn-on-panel btn-sm">Get early access</a>
         </div>
       </div>
@@ -2753,6 +2817,10 @@
           <summary>What will it cost?<span class="faq-sign" aria-hidden="true"></span></summary>
           <p class="faq-answer">Recur is not open yet, and pricing is not settled. Everyone on the waitlist gets in free while it is finding its feet, and will know what it costs well before that changes. No card is involved in joining.</p>
         </details>
+        <details class="faq-item">
+          <summary>What happens to my data?<span class="faq-sign" aria-hidden="true"></span></summary>
+          <p class="faq-answer">It stays yours. We read your transactions to find what repeats, and we do not sell or share them with anyone for advertising. Deleting your account removes everything: transactions, detected subscriptions, budgets and sessions, and unlinks you from your bank on the way out. The full detail is in the <a href="/privacy">privacy notice</a>.</p>
+        </details>
       </div>
     </div>
   </section>
@@ -2794,7 +2862,7 @@
     <a href="mailto:support@recur.website"><span class="footer-contact-label">Contact us:</span> support@recur.website</a>
   </div>
 
-  <p class="footer-legal">&copy; 2026 Damprose Innovations Limited &middot; <a href="/privacy">Privacy</a></p>
+  <p class="footer-legal">&copy; 2026 Recur Software Limited &middot; <a href="/privacy">Privacy</a></p>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite">
@@ -3181,7 +3249,41 @@
       // Once the band has gone, the lines that do not repeat step back. It
       // happens after the last badge, not with it, so the reader sees the
       // three get chosen before the other three recede.
-      setTimeout(function () { scan.classList.add('is-done'); }, 2250);
+      setTimeout(function () {
+        scan.classList.add('is-done');
+        offer();
+      }, 2250);
+    }
+
+    // Put the panel back to nothing found, so the sweep has something to do.
+    function reset() {
+      scan.classList.remove('is-scanning', 'is-done');
+      lines.forEach(function (l) { l.classList.remove('is-hit'); });
+      hits.forEach(function (h) { h.classList.remove('is-in'); });
+      countEl.textContent = '0 found';
+      monthEl.textContent = naira(0);
+      yearEl.textContent = naira(0);
+    }
+
+    var replay = document.getElementById('scan-replay');
+
+    // The control only appears once the sweep has actually finished, because
+    // before that there is nothing to repeat. Under reduced motion there is no
+    // sweep to watch, so it never appears at all.
+    function offer() {
+      if (!replay || REDUCED) return;
+      replay.hidden = false;
+    }
+
+    if (replay) {
+      replay.addEventListener('click', function () {
+        replay.hidden = true;
+        reset();
+        // A frame between clearing and replaying, so the browser paints the
+        // empty state rather than collapsing both into one style recalculation
+        // and showing nothing change.
+        requestAnimationFrame(function () { requestAnimationFrame(play); });
+      });
     }
 
     onceInView(scan, play, 0.25);

@@ -1,7 +1,7 @@
 # Recur, sub-processors
 
-**Controller:** Damprose Innovations Limited
-**Prepared:** 11 September 2026
+**Controller:** Recur Software Limited (RC 9900877)
+**Prepared:** 11 September 2026 · **Revised:** 30 September 2026
 
 Every third party that touches personal data on Recur's behalf. Drafted for
 DPCO review; the transfer-safeguard column in particular needs confirming

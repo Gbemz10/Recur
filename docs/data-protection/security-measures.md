@@ -1,7 +1,7 @@
 # Recur, technical and organisational measures
 
-**Controller:** Damprose Innovations Limited
-**Prepared:** 11 September 2026
+**Controller:** Recur Software Limited (RC 9900877)
+**Prepared:** 11 September 2026 · **Revised:** 30 September 2026
 
 Every claim below was checked against the code on the date of writing, with the
 file it lives in named so an auditor can verify rather than take it on trust.
